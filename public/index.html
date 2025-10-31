@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle ESP32 - WebSocket</title>
+    <style>
+        body { font-family: Arial; margin: 20px; background: #f0f0f0; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        .button { background: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .button:hover { background: #45a049; }
+        .device { background: #e8f5e8; padding: 10px; margin: 5px 0; border-radius: 5px; }
+        .log { background: #f0f0f0; padding: 10px; border-radius: 5px; height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Controle Remoto ESP32</h1>
+        
+        <h3>📱 Dispositivos Conectados:</h3>
+        <div id="devices"></div>
+        
+        <div id="controls" style="display: none;">
+            <h3>🎮 Controles:</h3>
+            <button class="button" onclick="sendCommand('led_on')">💡 Ligar LED</button>
+            <button class="button" onclick="sendCommand('led_off')">⚫ Desligar LED</button>
+            <button class="button" onclick="sendCommand('toggle')">🔄 Alternar LED</button>
+            <button class="button" onclick="sendCommand('status')">📊 Status</button>
+        </div>
+        
+        <h3>📝 Log:</h3>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        let currentDevice = null;
+        
+        // Atualiza lista de dispositivos
+        async function refreshDevices() {
+            try {
+                const response = await fetch('/devices');
+                const data = await response.json();
+                
+                const devicesDiv = document.getElementById('devices');
+                devicesDiv.innerHTML = '';
+                
+                if (data.devices.length === 0) {
+                    devicesDiv.innerHTML = '<p>Nenhum dispositivo conectado</p>';
+                    return;
+                }
+                
+                data.devices.forEach(device => {
+                    const deviceDiv = document.createElement('div');
+                    deviceDiv.className = 'device';
+                    deviceDiv.innerHTML = `
+                        <strong>${device.id}</strong> 
+                        <span>${device.connected ? '✅ Online' : '❌ Offline'}</span>
+                        <button class="button" onclick="selectDevice('${device.id}')">Selecionar</button>
+                    `;
+                    devicesDiv.appendChild(deviceDiv);
+                });
+                
+            } catch (error) {
+                console.error('Erro:', error);
+            }
+        }
+        
+        // Seleciona um dispositivo
+        function selectDevice(deviceId) {
+            currentDevice = deviceId;
+            document.getElementById('controls').style.display = 'block';
+            addLog(`📱 Dispositivo selecionado: ${deviceId}`);
+        }
+        
+        // Envia comando para o ESP32
+        async function sendCommand(command) {
+            if (!currentDevice) {
+                alert('Selecione um dispositivo primeiro!');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/command/${currentDevice}/${command}`, { 
+                    method: 'POST' 
+                });
+                
+                const data = await response.json();
+                addLog(data.message);
+                
+            } catch (error) {
+                addLog('❌ Erro ao enviar comando');
+            }
+        }
+        
+        // Adiciona entrada no log
+        function addLog(message) {
+            const log = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `[${timestamp}] ${message}<br>`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        // Atualiza a cada 5 segundos
+        setInterval(refreshDevices, 5000);
+        refreshDevices();
+        
+        addLog('Sistema iniciado - Aguardando ESP32...');
+    </script>
+</body>
+</html>
