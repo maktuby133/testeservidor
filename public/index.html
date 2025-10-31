@@ -403,52 +403,75 @@
             overflow: visible;
         }
 
+        /* NOVO ESTILO PARA GRÁFICOS MELHORADOS */
         .barra-horizontal {
             display: flex;
             align-items: end;
-            gap: 2px;
+            gap: 4px;
             height: 150px;
             padding: 10px 0;
             width: 100%;
             position: relative;
         }
 
-        .barra {
+        .barra-container {
+            position: relative;
+            height: 100%;
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 2px;
+        }
+
+        .barra {
+            width: 85%;
             background: linear-gradient(to top, #1a2a6c, #2a3a9c);
-            border-radius: 3px 3px 0 0;
+            border-radius: 4px 4px 0 0;
             position: relative;
             min-height: 3px;
             transition: all 0.5s ease;
-            max-height: 100% !important;
+            cursor: pointer;
+        }
+
+        .barra:hover {
+            opacity: 0.8;
+            transform: scaleY(1.05);
         }
 
         .barra-semana {
-            flex: 1;
+            width: 85%;
             background: linear-gradient(to top, #32CD32, #228B22);
-            border-radius: 3px 3px 0 0;
+            border-radius: 4px 4px 0 0;
             position: relative;
             min-height: 3px;
             transition: all 0.5s ease;
-            max-height: 100% !important;
+            cursor: pointer;
+        }
+
+        .barra-semana:hover {
+            opacity: 0.8;
+            transform: scaleY(1.05);
         }
 
         .barra-valor-acima {
             position: absolute;
-            font-size: 0.6rem;
-            font-weight: 600;
+            font-size: 0.65rem;
+            font-weight: 700;
             white-space: nowrap;
             z-index: 10;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 1px 3px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2px 4px;
             border-radius: 3px;
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            color: #1a2a6c;
         }
 
         .barra-hora {
             text-align: center;
-            font-size: 0.6rem;
+            font-size: 0.7rem;
             font-weight: 600;
             color: #666;
             margin-top: 5px;
@@ -458,7 +481,7 @@
             display: flex;
             justify-content: space-between;
             margin-top: 8px;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             color: #666;
             font-weight: 600;
         }
@@ -467,7 +490,7 @@
             display: flex;
             justify-content: space-between;
             margin-top: 8px;
-            font-size: 0.6rem;
+            font-size: 0.7rem;
             color: #666;
             font-weight: 600;
             flex-wrap: wrap;
@@ -522,14 +545,6 @@
             font-weight: 600;
         }
 
-        .barra-container {
-            position: relative;
-            height: 100%;
-            flex: 1;
-            display: flex;
-            align-items: end;
-        }
-
         .tolerancia-info {
             text-align: center;
             margin-top: 10px;
@@ -572,6 +587,27 @@
             font-weight: 700;
             animation: pulse 1s infinite;
             border: 2px solid #ff4444;
+        }
+
+        /* LEGENDA DOS GRÁFICOS */
+        .grafico-legenda {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 10px;
+            font-size: 0.75rem;
+        }
+
+        .legenda-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legenda-cor {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
         }
 
         /* MODAL CONFIGURAÇÃO */
@@ -733,6 +769,10 @@
             📅 <span id="currentDate">--/--/----</span> | 🕒 <span id="currentTime">--:--:--</span>
         </div>
 
+        <div id="connectionAlert" class="alert-banner" style="display:none;">
+            🚨 ALERTA: ESP32 NÃO CONECTADO! Verifique a conexão do dispositivo.
+        </div>
+
         <div id="bootAlert" class="boot-alert" style="display:none;">
             🔄 <strong>SISTEMA ESTABILIZANDO APÓS REINÍCIO</strong><br>
             ⏰ Consumo ignorado por 30 segundos para evitar leituras falsas
@@ -844,6 +884,12 @@
                             <div class="horas-labels" id="horasLabels24h">
                                 <!-- Labels serão gerados dinamicamente -->
                             </div>
+                            <div class="grafico-legenda">
+                                <div class="legenda-item">
+                                    <div class="legenda-cor" style="background: #1a2a6c"></div>
+                                    <span>Consumo por Hora</span>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="grafico-box">
@@ -858,6 +904,12 @@
                             </div>
                             <div class="semanas-labels" id="labels5s">
                                 <!-- Labels serão gerados dinamicamente -->
+                            </div>
+                            <div class="grafico-legenda">
+                                <div class="legenda-item">
+                                    <div class="legenda-cor" style="background: #32CD32"></div>
+                                    <span>Consumo Semanal</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -909,6 +961,7 @@
         let ws = null;
         let clientId = null;
         let lastData = null;
+        let esp32Connected = false;
 
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -919,11 +972,6 @@
             ws.onopen = function() {
                 console.log('✅ Conectado ao servidor WebSocket');
                 updateConnectionStatus('Conectado', 'connected');
-                // Solicitar dados imediatamente após conectar
-                sendCommand('get_data');
-                sendCommand('get_consumo');
-                sendCommand('get_consumo_semanal');
-                sendCommand('get_status');
             };
             
             ws.onmessage = function(event) {
@@ -954,7 +1002,17 @@
             switch(data.type) {
                 case 'connected':
                     clientId = data.clientId;
-                    console.log('🆔 Client ID:', clientId);
+                    esp32Connected = data.isESP32 || false;
+                    console.log('🆔 Client ID:', clientId, 'ESP32:', esp32Connected);
+                    
+                    if (esp32Connected) {
+                        document.getElementById('connectionAlert').style.display = 'none';
+                        // Solicitar dados do ESP32
+                        sendCommand('get_data');
+                        sendCommand('get_consumo');
+                        sendCommand('get_consumo_semanal');
+                        sendCommand('get_status');
+                    }
                     break;
                     
                 case 'all_data':
@@ -974,6 +1032,13 @@
                 case 'consumo_semanal_data':
                     console.log('📅 Dados semanais recebidos:', data.consumo_semanal);
                     updateConsumoSemanalCharts(data);
+                    break;
+
+                case 'error':
+                    if (data.message === 'ESP32 não conectado') {
+                        document.getElementById('connectionAlert').style.display = 'block';
+                        esp32Connected = false;
+                    }
                     break;
             }
         }
@@ -1112,12 +1177,12 @@
                 ws.send(command);
                 console.log('📤 Comando enviado:', command);
             } else {
-                alert('❌ Não conectado ao servidor. Tentando reconectar...');
+                console.log('❌ WebSocket não conectado, tentando reconectar...');
                 connectWebSocket();
             }
         }
 
-        // ====== FUNÇÕES DE GRÁFICOS CORRIGIDAS ======
+        // ====== FUNÇÕES DE GRÁFICOS MELHORADAS ======
         function updateGrafico24h(consumoData) {
             const container = document.getElementById('grafico24h');
             const labelsContainer = document.getElementById('horasLabels24h');
@@ -1128,49 +1193,60 @@
             container.innerHTML = '';
             labelsContainer.innerHTML = '';
             
-            const maxConsumo = Math.max(...consumoData, 50, 1);
+            // Encontrar o maior valor para escala (mínimo 50L para boa visualização)
+            const maxConsumo = Math.max(...consumoData, 50);
             let total24h = 0;
-            const maxBarHeight = 85;
+            const maxBarHeight = 85; // Altura máxima em porcentagem
 
-            // Gerar labels das horas
+            // Gerar labels das horas (apenas algumas para não poluir)
+            const horasExibir = [0, 6, 12, 18, 23];
             for (let i = 0; i < 24; i++) {
                 const label = document.createElement('div');
                 label.className = 'barra-hora';
-                label.textContent = i + 'h';
+                if (horasExibir.includes(i)) {
+                    label.textContent = i + 'h';
+                    label.style.fontWeight = '700';
+                } else {
+                    label.textContent = '•';
+                    label.style.color = '#999';
+                }
                 labelsContainer.appendChild(label);
             }
 
             // Gerar barras
             consumoData.forEach((consumo, index) => {
                 total24h += consumo;
-                const alturaPercent = Math.min((consumo / maxConsumo) * maxBarHeight, maxBarHeight);
+                
+                // Calcular altura baseada no maior consumo (com mínimo de 3% para barras vazias visíveis)
+                const alturaPercent = consumo > 0 ? 
+                    Math.min((consumo / maxConsumo) * maxBarHeight, maxBarHeight) : 
+                    3;
                 
                 const barContainer = document.createElement('div');
                 barContainer.className = 'barra-container';
-                barContainer.style.display = 'flex';
-                barContainer.style.flexDirection = 'column';
-                barContainer.style.alignItems = 'center';
-                barContainer.style.height = '100%';
-                barContainer.style.justifyContent = 'flex-end';
+                barContainer.title = `Hora ${index}h: ${consumo}L consumidos`;
                 
                 const barra = document.createElement('div');
                 barra.className = 'barra';
-                barra.style.height = Math.max(alturaPercent, 3) + '%';
-                barra.style.width = '90%';
-                barra.style.minWidth = '8px';
-                barra.style.transition = 'height 0.5s ease';
+                barra.style.height = alturaPercent + '%';
+                
+                // Destaque para horas com consumo
+                if (consumo > 0) {
+                    barra.style.background = 'linear-gradient(to top, #1a2a6c, #4169E1)';
+                    barra.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+                } else {
+                    barra.style.background = 'linear-gradient(to top, #a0a0a0, #c0c0c0)';
+                    barra.style.opacity = '0.6';
+                }
                 
                 barContainer.appendChild(barra);
                 
+                // Adicionar valor acima da barra apenas se for maior que 0
                 if (consumo > 0) {
                     const valorLabel = document.createElement('div');
                     valorLabel.className = 'barra-valor-acima';
                     valorLabel.textContent = consumo + 'L';
-                    valorLabel.style.position = 'absolute';
                     valorLabel.style.bottom = (alturaPercent + 2) + '%';
-                    valorLabel.style.left = '50%';
-                    valorLabel.style.transform = 'translateX(-50%)';
-                    valorLabel.style.fontSize = '0.6rem';
                     barContainer.appendChild(valorLabel);
                 }
                 
@@ -1178,7 +1254,7 @@
             });
 
             document.getElementById('total24h').textContent = total24h;
-            console.log('✅ Gráfico 24h atualizado. Total:', total24h);
+            console.log('✅ Gráfico 24h atualizado. Total:', total24h, 'Max:', maxConsumo);
         }
 
         function updateGraficoSemanas(consumoData, semanas) {
@@ -1191,29 +1267,35 @@
             container.innerHTML = '';
             labelsContainer.innerHTML = '';
 
-            const maxConsumo = Math.max(...consumoData, 50, 1);
+            // Encontrar o maior valor para escala
+            const maxConsumo = Math.max(...consumoData, 50);
             let total5s = 0;
             const maxBarHeight = 85;
 
             // Gerar barras
             for (let i = 0; i < 5; i++) {
                 total5s += consumoData[i];
-                const alturaPercent = Math.min((consumoData[i] / maxConsumo) * maxBarHeight, maxBarHeight);
+                
+                const alturaPercent = consumoData[i] > 0 ? 
+                    Math.min((consumoData[i] / maxConsumo) * maxBarHeight, maxBarHeight) : 
+                    3;
                 
                 const barContainer = document.createElement('div');
                 barContainer.className = 'barra-container';
-                barContainer.style.display = 'flex';
-                barContainer.style.flexDirection = 'column';
-                barContainer.style.alignItems = 'center';
-                barContainer.style.height = '100%';
-                barContainer.style.justifyContent = 'flex-end';
+                barContainer.title = `${semanas[i]}: ${consumoData[i]}L consumidos`;
                 
                 const barra = document.createElement('div');
                 barra.className = 'barra-semana';
-                barra.style.height = Math.max(alturaPercent, 3) + '%';
-                barra.style.width = '90%';
-                barra.style.minWidth = '8px';
-                barra.style.transition = 'height 0.5s ease';
+                barra.style.height = alturaPercent + '%';
+                
+                // Destaque para semanas com consumo
+                if (consumoData[i] > 0) {
+                    barra.style.background = 'linear-gradient(to top, #228B22, #32CD32)';
+                    barra.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+                } else {
+                    barra.style.background = 'linear-gradient(to top, #a0a0a0, #c0c0c0)';
+                    barra.style.opacity = '0.6';
+                }
                 
                 barContainer.appendChild(barra);
                 
@@ -1221,11 +1303,7 @@
                     const valorLabel = document.createElement('div');
                     valorLabel.className = 'barra-valor-acima';
                     valorLabel.textContent = consumoData[i] + 'L';
-                    valorLabel.style.position = 'absolute';
                     valorLabel.style.bottom = (alturaPercent + 2) + '%';
-                    valorLabel.style.left = '50%';
-                    valorLabel.style.transform = 'translateX(-50%)';
-                    valorLabel.style.fontSize = '0.6rem';
                     barContainer.appendChild(valorLabel);
                 }
                 
@@ -1242,7 +1320,7 @@
             }
 
             document.getElementById('total5s').textContent = total5s;
-            console.log('✅ Gráfico semanas atualizado. Total:', total5s);
+            console.log('✅ Gráfico semanas atualizado. Total:', total5s, 'Max:', maxConsumo);
         }
 
         function updateResumoConsumo(consumoAcumuladoHora, consumoAcumuladoHoje, consumoSemanal) {
@@ -1262,8 +1340,8 @@
             if (lastData) {
                 document.getElementById('configAltura').value = lastData.altura_caixa || 100;
                 document.getElementById('configVolume').value = lastData.volume_total || 1000;
-                document.getElementById('configFator').value = 1.0; // Valor padrão
-                document.getElementById('configDistancia').value = 10.0; // Valor padrão
+                document.getElementById('configFator').value = 1.0;
+                document.getElementById('configDistancia').value = 10.0;
             }
         }
 
@@ -1308,15 +1386,15 @@
             // Atualizar data/hora a cada segundo
             setInterval(updateDateTime, 1000);
             
-            // Atualizar dados a cada 3 segundos
+            // Atualizar dados a cada 5 segundos
             setInterval(() => {
-                if (ws && ws.readyState === WebSocket.OPEN) {
+                if (ws && ws.readyState === WebSocket.OPEN && esp32Connected) {
                     sendCommand('get_data');
                     sendCommand('get_consumo');
                     sendCommand('get_consumo_semanal');
                     sendCommand('get_status');
                 }
-            }, 3000);
+            }, 5000);
 
             // Inicializar gráficos vazios
             updateGrafico24h(new Array(24).fill(0));
