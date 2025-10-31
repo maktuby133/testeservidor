@@ -929,6 +929,7 @@
             ws.onmessage = function(event) {
                 try {
                     const data = JSON.parse(event.data);
+                    console.log('📨 Dados recebidos:', data.type, data);
                     handleWebSocketMessage(data);
                 } catch (error) {
                     console.error('❌ Erro ao processar mensagem:', error);
@@ -948,7 +949,7 @@
         }
 
         function handleWebSocketMessage(data) {
-            console.log('📨 Dados recebidos:', data);
+            console.log('📨 Tipo de mensagem:', data.type);
             
             switch(data.type) {
                 case 'connected':
@@ -966,10 +967,12 @@
                     break;
                     
                 case 'consumo_data':
+                    console.log('📊 Dados de consumo recebidos:', data.consumo_diario);
                     updateConsumoCharts(data);
                     break;
                     
                 case 'consumo_semanal_data':
+                    console.log('📅 Dados semanais recebidos:', data.consumo_semanal);
                     updateConsumoSemanalCharts(data);
                     break;
             }
@@ -1120,6 +1123,8 @@
             const labelsContainer = document.getElementById('horasLabels24h');
             if (!container || !labelsContainer) return;
             
+            console.log('📊 Atualizando gráfico 24h:', consumoData);
+            
             container.innerHTML = '';
             labelsContainer.innerHTML = '';
             
@@ -1142,10 +1147,18 @@
                 
                 const barContainer = document.createElement('div');
                 barContainer.className = 'barra-container';
+                barContainer.style.display = 'flex';
+                barContainer.style.flexDirection = 'column';
+                barContainer.style.alignItems = 'center';
+                barContainer.style.height = '100%';
+                barContainer.style.justifyContent = 'flex-end';
                 
                 const barra = document.createElement('div');
                 barra.className = 'barra';
                 barra.style.height = Math.max(alturaPercent, 3) + '%';
+                barra.style.width = '90%';
+                barra.style.minWidth = '8px';
+                barra.style.transition = 'height 0.5s ease';
                 
                 barContainer.appendChild(barra);
                 
@@ -1153,7 +1166,11 @@
                     const valorLabel = document.createElement('div');
                     valorLabel.className = 'barra-valor-acima';
                     valorLabel.textContent = consumo + 'L';
+                    valorLabel.style.position = 'absolute';
                     valorLabel.style.bottom = (alturaPercent + 2) + '%';
+                    valorLabel.style.left = '50%';
+                    valorLabel.style.transform = 'translateX(-50%)';
+                    valorLabel.style.fontSize = '0.6rem';
                     barContainer.appendChild(valorLabel);
                 }
                 
@@ -1161,12 +1178,15 @@
             });
 
             document.getElementById('total24h').textContent = total24h;
+            console.log('✅ Gráfico 24h atualizado. Total:', total24h);
         }
 
         function updateGraficoSemanas(consumoData, semanas) {
             const container = document.getElementById('grafico5s');
             const labelsContainer = document.getElementById('labels5s');
             if (!container || !labelsContainer) return;
+            
+            console.log('📅 Atualizando gráfico semanas:', consumoData, semanas);
             
             container.innerHTML = '';
             labelsContainer.innerHTML = '';
@@ -1182,10 +1202,18 @@
                 
                 const barContainer = document.createElement('div');
                 barContainer.className = 'barra-container';
+                barContainer.style.display = 'flex';
+                barContainer.style.flexDirection = 'column';
+                barContainer.style.alignItems = 'center';
+                barContainer.style.height = '100%';
+                barContainer.style.justifyContent = 'flex-end';
                 
                 const barra = document.createElement('div');
                 barra.className = 'barra-semana';
                 barra.style.height = Math.max(alturaPercent, 3) + '%';
+                barra.style.width = '90%';
+                barra.style.minWidth = '8px';
+                barra.style.transition = 'height 0.5s ease';
                 
                 barContainer.appendChild(barra);
                 
@@ -1193,7 +1221,11 @@
                     const valorLabel = document.createElement('div');
                     valorLabel.className = 'barra-valor-acima';
                     valorLabel.textContent = consumoData[i] + 'L';
+                    valorLabel.style.position = 'absolute';
                     valorLabel.style.bottom = (alturaPercent + 2) + '%';
+                    valorLabel.style.left = '50%';
+                    valorLabel.style.transform = 'translateX(-50%)';
+                    valorLabel.style.fontSize = '0.6rem';
                     barContainer.appendChild(valorLabel);
                 }
                 
@@ -1210,6 +1242,7 @@
             }
 
             document.getElementById('total5s').textContent = total5s;
+            console.log('✅ Gráfico semanas atualizado. Total:', total5s);
         }
 
         function updateResumoConsumo(consumoAcumuladoHora, consumoAcumuladoHoje, consumoSemanal) {
@@ -1284,6 +1317,10 @@
                     sendCommand('get_status');
                 }
             }, 3000);
+
+            // Inicializar gráficos vazios
+            updateGrafico24h(new Array(24).fill(0));
+            updateGraficoSemanas(new Array(5).fill(0), ['S1', 'S2', 'S3', 'S4', 'S5']);
         });
     </script>
 </body>
