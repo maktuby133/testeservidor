@@ -1,7 +1,7 @@
 {
-  "name": "caixa-agua-websocket",
+  "name": "caixa-agua-websocket-completo",
   "version": "1.0.0",
-  "description": "Servidor WebSocket para monitoramento de caixa d'água",
+  "description": "Sistema completo de monitoramento de caixa d'água com WebSocket",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
