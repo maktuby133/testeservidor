@@ -324,6 +324,26 @@
             box-shadow: 0 8px 20px rgba(255, 69, 0, 0.6);
         }
 
+        .btn-wifi {
+            background: linear-gradient(135deg, #4169E1, #1E90FF);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(65, 105, 225, 0.4);
+        }
+
+        .btn-wifi:hover {
+            background: linear-gradient(135deg, #1E90FF, #4169E1);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(65, 105, 225, 0.6);
+        }
+
         .date-time {
             text-align: center;
             margin: 15px 0;
@@ -554,6 +574,88 @@
             border: 2px solid #ff4444;
         }
 
+        /* MODAL CONFIGURAÇÃO */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #ffffff, #f8f9fa);
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .config-form {
+            margin-top: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #1a2a6c;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            border-color: #1a2a6c;
+            outline: none;
+        }
+
+        .btn-save {
+            background: linear-gradient(135deg, #32CD32, #228B22);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .btn-save:hover {
+            background: linear-gradient(135deg, #228B22, #32CD32);
+            transform: translateY(-2px);
+        }
+
         @keyframes waterShine {
             0% { transform: translateX(-100%); }
             100% { transform: translateX(100%); }
@@ -736,11 +838,11 @@
                             </div>
                             <div class="grafico-content">
                                 <div class="barra-horizontal" id="grafico24h">
-                                    <div class="grafico-limit"></div>
+                                    <!-- Barras serão geradas dinamicamente -->
                                 </div>
                             </div>
-                            <div class="horas-labels">
-                                <span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span>
+                            <div class="horas-labels" id="horasLabels24h">
+                                <!-- Labels serão gerados dinamicamente -->
                             </div>
                         </div>
 
@@ -751,10 +853,12 @@
                             </div>
                             <div class="grafico-content">
                                 <div class="barra-horizontal" id="grafico5s">
-                                    <div class="grafico-limit"></div>
+                                    <!-- Barras serão geradas dinamicamente -->
                                 </div>
                             </div>
-                            <div class="semanas-labels" id="labels5s"></div>
+                            <div class="semanas-labels" id="labels5s">
+                                <!-- Labels serão gerados dinamicamente -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -762,7 +866,8 @@
         </div>
 
         <div class="config-buttons">
-            <button class="btn-config" onclick="sendCommand('get_config')">⚙️ Configurações</button>
+            <button class="btn-config" onclick="openConfigModal()">⚙️ Configurações</button>
+            <button class="btn-wifi" onclick="sendCommand('restart_ap')">📡 Configurar WiFi</button>
             <button class="btn-reset" onclick="sendCommand('reset_consumo')">🔄 Resetar Consumo</button>
             <button class="btn-config" onclick="sendCommand('get_data')">🔄 Atualizar Dados</button>
         </div>
@@ -772,11 +877,38 @@
         </div>
     </div>
 
-    <!-- SCRIPT WEBSOCKET - ADICIONADO PARA INTEGRAÇÃO -->
+    <!-- MODAL DE CONFIGURAÇÃO -->
+    <div id="configModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeConfigModal()">&times;</span>
+            <h2>⚙️ Configurações do Sistema</h2>
+            <div class="config-form">
+                <div class="form-group">
+                    <label for="configAltura">Altura da Caixa (cm):</label>
+                    <input type="number" id="configAltura" step="0.1" placeholder="Ex: 100.0">
+                </div>
+                <div class="form-group">
+                    <label for="configVolume">Volume Total (L):</label>
+                    <input type="number" id="configVolume" step="0.1" placeholder="Ex: 1000.0">
+                </div>
+                <div class="form-group">
+                    <label for="configFator">Fator de Calibração:</label>
+                    <input type="number" id="configFator" step="0.01" placeholder="Ex: 1.0">
+                </div>
+                <div class="form-group">
+                    <label for="configDistancia">Distância Cheia (cm):</label>
+                    <input type="number" id="configDistancia" step="0.1" placeholder="Ex: 10.0">
+                </div>
+                <button class="btn-save" onclick="saveConfig()">💾 Salvar Configurações</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ====== CONEXÃO WEBSOCKET ======
         let ws = null;
         let clientId = null;
+        let lastData = null;
 
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -791,6 +923,7 @@
                 sendCommand('get_data');
                 sendCommand('get_consumo');
                 sendCommand('get_consumo_semanal');
+                sendCommand('get_status');
             };
             
             ws.onmessage = function(event) {
@@ -815,6 +948,8 @@
         }
 
         function handleWebSocketMessage(data) {
+            console.log('📨 Dados recebidos:', data);
+            
             switch(data.type) {
                 case 'connected':
                     clientId = data.clientId;
@@ -822,6 +957,7 @@
                     break;
                     
                 case 'all_data':
+                    lastData = data;
                     updateInterface(data);
                     break;
                     
@@ -841,76 +977,131 @@
 
         function updateInterface(data) {
             // Atualizar nível da água
-            document.getElementById('percentageDisplay').textContent = data.percentage + '%';
-            document.getElementById('waterLevel').style.height = data.percentage + '%';
+            const percentage = data.percentage || 0;
+            document.getElementById('percentageDisplay').textContent = percentage + '%';
+            document.getElementById('waterLevel').style.height = percentage + '%';
             
             // Atualizar valores
-            document.getElementById('levelValue').textContent = data.height + ' cm';
-            document.getElementById('litersValue').textContent = data.liters + ' L';
-            document.getElementById('consumoAcumuladoHora').textContent = data.consumo_hora + ' L';
-            document.getElementById('consumoAcumuladoHoje').textContent = data.consumo_hoje + ' L';
-            document.getElementById('volumeTotalDisplay').textContent = data.volume_total;
-            document.getElementById('alturaCaixaDisplay').textContent = data.altura_caixa;
+            document.getElementById('levelValue').textContent = (data.height || 0) + ' cm';
+            document.getElementById('litersValue').textContent = (data.liters || 0) + ' L';
+            document.getElementById('consumoAcumuladoHora').textContent = (data.consumo_hora || 0) + ' L';
+            document.getElementById('consumoAcumuladoHoje').textContent = (data.consumo_hoje || 0) + ' L';
+            document.getElementById('volumeTotalDisplay').textContent = data.volume_total || 1000;
+            document.getElementById('alturaCaixaDisplay').textContent = data.altura_caixa || 100;
             
             // Atualizar status do sensor
-            document.getElementById('sensorStatusMini').textContent = data.sensor_ok ? '✅' : '❌';
-            document.getElementById('sensorStatusMini').className = data.sensor_ok ? 'status-online' : 'status-offline';
+            const sensorOk = data.sensor_ok !== undefined ? data.sensor_ok : true;
+            document.getElementById('sensorStatusMini').textContent = sensorOk ? '✅' : '❌';
+            document.getElementById('sensorStatusMini').className = sensorOk ? 'status-online' : 'status-offline alert-active';
             
-            // Atualizar status container
+            // Atualizar status container baseado no system_status
             let status, statusClass;
-            if (!data.sensor_ok) {
-                status = '🚨 ERRO NO SENSOR';
-                statusClass = 'sensor-error';
-            } else if(data.percentage < 10) { 
-                status = '🔴 NÍVEL CRÍTICO'; 
-                statusClass = 'critical'; 
+            const systemStatus = data.status || 'ESTAVEL';
+            
+            switch(systemStatus) {
+                case 'ALERTA_SENSOR':
+                    status = '🚨 ERRO NO SENSOR';
+                    statusClass = 'sensor-error';
+                    document.getElementById('sensorAlertBanner').style.display = 'block';
+                    break;
+                case 'ALERTA_CONEXAO':
+                    status = '🔴 SEM CONEXÃO';
+                    statusClass = 'critical';
+                    break;
+                case 'ALERTA_MEMORIA':
+                    status = '🟡 MEMÓRIA BAIXA';
+                    statusClass = 'warning';
+                    break;
+                case 'ALERTA_NIVEL_BAIXO':
+                    status = '🟡 NÍVEL BAIXO';
+                    statusClass = 'warning';
+                    break;
+                case 'CONSUMO_ATIVO':
+                    status = '🔵 CONSUMO ATIVO';
+                    statusClass = 'full';
+                    break;
+                case 'ESTAVEL':
+                default:
+                    if (!sensorOk) {
+                        status = '🚨 ERRO NO SENSOR';
+                        statusClass = 'sensor-error';
+                    } else if(percentage < 10) { 
+                        status = '🔴 NÍVEL CRÍTICO'; 
+                        statusClass = 'critical'; 
+                    }
+                    else if(percentage < 50) { 
+                        status = '🟡 NÍVEL BAIXO'; 
+                        statusClass = 'warning'; 
+                    }
+                    else if(percentage < 90) { 
+                        status = '🟢 NÍVEL NORMAL'; 
+                        statusClass = 'normal'; 
+                    }
+                    else { 
+                        status = '🔵 NÍVEL CHEIO'; 
+                        statusClass = 'full'; 
+                    }
+                    document.getElementById('sensorAlertBanner').style.display = 'none';
             }
-            else if(data.percentage < 50) { status = '🟡 NÍVEL BAIXO'; statusClass = 'warning'; }
-            else if(data.percentage < 90) { status = '🟢 NÍVEL NORMAL'; statusClass = 'normal'; }
-            else { status = '🔵 NÍVEL CHEIO'; statusClass = 'full'; }
             
             document.getElementById('statusText').textContent = status;
             document.getElementById('statusContainer').className = 'status-container ' + statusClass;
 
             // Atualizar cor da água
             let waterColor = 'linear-gradient(to bottom, rgba(0,119,255,0.9), rgba(0,200,255,0.95))';
-            if (!data.sensor_ok) waterColor = 'linear-gradient(to bottom, rgba(255,0,0,0.7), rgba(255,100,100,0.8))';
-            else if(data.percentage < 10) waterColor = 'linear-gradient(to bottom, rgba(255,50,50,0.9), rgba(255,100,100,0.95))';
-            else if(data.percentage < 50) waterColor = 'linear-gradient(to bottom, rgba(255,165,0,0.9), rgba(255,200,0,0.95))';
+            if (!sensorOk) waterColor = 'linear-gradient(to bottom, rgba(255,0,0,0.7), rgba(255,100,100,0.8))';
+            else if(percentage < 10) waterColor = 'linear-gradient(to bottom, rgba(255,50,50,0.9), rgba(255,100,100,0.95))';
+            else if(percentage < 50) waterColor = 'linear-gradient(to bottom, rgba(255,165,0,0.9), rgba(255,200,0,0.95))';
             document.getElementById('waterLevel').style.background = waterColor;
 
             // Atualizar tempo
             const now = new Date();
             document.getElementById('lastUpdate').textContent = now.toLocaleTimeString('pt-BR');
             document.getElementById('lastUpdateMini').textContent = now.toLocaleTimeString('pt-BR');
+
+            // Atualizar estabilidade
+            document.getElementById('sensorStableMini').textContent = data.leituras_estabilidade || '0';
+            document.getElementById('sensorAlertMini').textContent = data.consumo_confirmado ? '🔴' : '✅';
+            document.getElementById('sensorAlertMini').className = data.consumo_confirmado ? 'alert-active' : 'status-online';
         }
 
         function updateSystemStatus(data) {
             document.getElementById('wifiStatusMini').textContent = data.wifi_connected ? '✅' : '❌';
             document.getElementById('wifiStatusMini').className = data.wifi_connected ? 'status-online' : 'status-offline';
-            document.getElementById('memoryMini').textContent = data.free_memory;
-            document.getElementById('bootStatusMini').textContent = data.boot_estabilizando ? '🔄' : '✅';
-            document.getElementById('recoveryStatusMini').textContent = data.recuperacao_sensor ? '🔧' : '✅';
-            document.getElementById('resetCountMini').textContent = data.reset_count || '0';
+            document.getElementById('memoryMini').textContent = data.free_memory || '0';
+            
+            // Mostrar/ocultar alertas baseado no status
+            if (data.system_status === 'ALERTA_SENSOR') {
+                document.getElementById('sensorAlertBanner').style.display = 'block';
+            } else {
+                document.getElementById('sensorAlertBanner').style.display = 'none';
+            }
         }
 
         function updateConsumoCharts(data) {
-            updateGrafico24h(data.consumo_diario);
+            if (data.consumo_diario) {
+                updateGrafico24h(data.consumo_diario);
+            }
         }
 
         function updateConsumoSemanalCharts(data) {
-            updateGraficoSemanas(data.consumo_semanal, data.semanas_consumo);
-            updateResumoConsumo(data.consumo_acumulado_ultima_hora, data.consumo_acumulado_hoje, data.consumo_semanal);
+            if (data.consumo_semanal && data.semanas_consumo) {
+                updateGraficoSemanas(data.consumo_semanal, data.semanas_consumo);
+                updateResumoConsumo(
+                    data.consumo_acumulado_ultima_hora || 0, 
+                    data.consumo_acumulado_hoje || 0, 
+                    data.consumo_semanal
+                );
+            }
         }
 
         function updateConnectionStatus(message, status) {
-            const element = document.getElementById('connectionStatus');
-            if (element) {
-                element.textContent = message;
-                element.className = `connection-status ${status}`;
-            }
             // Atualizar no status mini
-            document.getElementById('wsStatusMini').textContent = status === 'connected' ? '✅' : '❌';
+            const element = document.getElementById('wifiStatusMini');
+            if (element) {
+                element.textContent = status === 'connected' ? '✅' : '❌';
+                element.className = status === 'connected' ? 'status-online' : 'status-offline';
+            }
         }
 
         function sendCommand(command) {
@@ -918,64 +1109,55 @@
                 ws.send(command);
                 console.log('📤 Comando enviado:', command);
             } else {
-                alert('❌ Não conectado ao servidor');
+                alert('❌ Não conectado ao servidor. Tentando reconectar...');
+                connectWebSocket();
             }
         }
 
-        // ====== FUNÇÕES ORIGINAIS DO HTML ======
-        function updateDateTime() {
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('pt-BR');
-            const timeStr = now.toLocaleTimeString('pt-BR');
-            document.getElementById('currentDate').textContent = dateStr;
-            document.getElementById('currentTime').textContent = timeStr;
-        }
-
+        // ====== FUNÇÕES DE GRÁFICOS CORRIGIDAS ======
         function updateGrafico24h(consumoData) {
             const container = document.getElementById('grafico24h');
-            if (!container) return;
+            const labelsContainer = document.getElementById('horasLabels24h');
+            if (!container || !labelsContainer) return;
             
-            container.innerHTML = '<div class="grafico-limit"></div>';
+            container.innerHTML = '';
+            labelsContainer.innerHTML = '';
+            
             const maxConsumo = Math.max(...consumoData, 50, 1);
             let total24h = 0;
-
             const maxBarHeight = 85;
 
+            // Gerar labels das horas
+            for (let i = 0; i < 24; i++) {
+                const label = document.createElement('div');
+                label.className = 'barra-hora';
+                label.textContent = i + 'h';
+                labelsContainer.appendChild(label);
+            }
+
+            // Gerar barras
             consumoData.forEach((consumo, index) => {
                 total24h += consumo;
+                const alturaPercent = Math.min((consumo / maxConsumo) * maxBarHeight, maxBarHeight);
+                
+                const barContainer = document.createElement('div');
+                barContainer.className = 'barra-container';
+                
                 const barra = document.createElement('div');
                 barra.className = 'barra';
-                const alturaPercent = Math.min((consumo / maxConsumo) * maxBarHeight, maxBarHeight);
                 barra.style.height = Math.max(alturaPercent, 3) + '%';
-
+                
+                barContainer.appendChild(barra);
+                
                 if (consumo > 0) {
                     const valorLabel = document.createElement('div');
                     valorLabel.className = 'barra-valor-acima';
                     valorLabel.textContent = consumo + 'L';
-                    valorLabel.style.position = 'absolute';
                     valorLabel.style.bottom = (alturaPercent + 2) + '%';
-                    valorLabel.style.left = '50%';
-                    valorLabel.style.transform = 'translateX(-50%)';
-                    valorLabel.style.fontSize = '0.6rem';
-                    valorLabel.style.fontWeight = '600';
-                    valorLabel.style.color = '#1a2a6c';
-                    valorLabel.style.whiteSpace = 'nowrap';
-                    valorLabel.style.zIndex = '10';
-
-                    const barContainer = document.createElement('div');
-                    barContainer.className = 'barra-container';
-                    barContainer.style.position = 'relative';
-                    barContainer.style.height = '100%';
-                    barContainer.style.flex = '1';
-                    barContainer.style.display = 'flex';
-                    barContainer.style.alignItems = 'end';
-
-                    barContainer.appendChild(barra);
                     barContainer.appendChild(valorLabel);
-                    container.appendChild(barContainer);
-                } else {
-                    container.appendChild(barra);
                 }
+                
+                container.appendChild(barContainer);
             });
 
             document.getElementById('total24h').textContent = total24h;
@@ -986,59 +1168,46 @@
             const labelsContainer = document.getElementById('labels5s');
             if (!container || !labelsContainer) return;
             
-            container.innerHTML = '<div class="grafico-limit"></div>';
+            container.innerHTML = '';
             labelsContainer.innerHTML = '';
 
             const maxConsumo = Math.max(...consumoData, 50, 1);
             let total5s = 0;
-
             const maxBarHeight = 85;
 
+            // Gerar barras
             for (let i = 0; i < 5; i++) {
                 total5s += consumoData[i];
+                const alturaPercent = Math.min((consumoData[i] / maxConsumo) * maxBarHeight, maxBarHeight);
+                
+                const barContainer = document.createElement('div');
+                barContainer.className = 'barra-container';
+                
                 const barra = document.createElement('div');
                 barra.className = 'barra-semana';
-                const alturaPercent = Math.min((consumoData[i] / maxConsumo) * maxBarHeight, maxBarHeight);
                 barra.style.height = Math.max(alturaPercent, 3) + '%';
-
+                
+                barContainer.appendChild(barra);
+                
                 if (consumoData[i] > 0) {
                     const valorLabel = document.createElement('div');
                     valorLabel.className = 'barra-valor-acima';
                     valorLabel.textContent = consumoData[i] + 'L';
-                    valorLabel.style.position = 'absolute';
                     valorLabel.style.bottom = (alturaPercent + 2) + '%';
-                    valorLabel.style.left = '50%';
-                    valorLabel.style.transform = 'translateX(-50%)';
-                    valorLabel.style.fontSize = '0.6rem';
-                    valorLabel.style.fontWeight = '600';
-                    valorLabel.style.color = '#228B22';
-                    valorLabel.style.whiteSpace = 'nowrap';
-                    valorLabel.style.zIndex = '10';
-
-                    const barContainer = document.createElement('div');
-                    barContainer.className = 'barra-container';
-                    barContainer.style.position = 'relative';
-                    barContainer.style.height = '100%';
-                    barContainer.style.flex = '1';
-                    barContainer.style.display = 'flex';
-                    barContainer.style.alignItems = 'end';
-
-                    barContainer.appendChild(barra);
                     barContainer.appendChild(valorLabel);
-                    container.appendChild(barContainer);
-                } else {
-                    container.appendChild(barra);
                 }
+                
+                container.appendChild(barContainer);
             }
 
-            const labels = ['S1', 'S2', 'S3', 'S4', 'S5'];
-            labels.forEach((label, index) => {
-                const labelDiv = document.createElement('div');
-                labelDiv.className = 'barra-hora';
-                labelDiv.textContent = label;
-                labelDiv.title = semanas ? semanas[index] : label;
-                labelsContainer.appendChild(labelDiv);
-            });
+            // Gerar labels das semanas
+            for (let i = 0; i < 5; i++) {
+                const label = document.createElement('div');
+                label.className = 'barra-hora';
+                label.textContent = semanas ? semanas[i] : `S${i+1}`;
+                label.title = semanas ? semanas[i] : `Semana ${i+1}`;
+                labelsContainer.appendChild(label);
+            }
 
             document.getElementById('total5s').textContent = total5s;
         }
@@ -1051,6 +1220,53 @@
             document.getElementById('consumoSemanas').textContent = consumoSemanas + ' L';
         }
 
+        // ====== MODAL DE CONFIGURAÇÃO ======
+        function openConfigModal() {
+            const modal = document.getElementById('configModal');
+            modal.style.display = 'block';
+            
+            // Preencher valores atuais
+            if (lastData) {
+                document.getElementById('configAltura').value = lastData.altura_caixa || 100;
+                document.getElementById('configVolume').value = lastData.volume_total || 1000;
+                document.getElementById('configFator').value = 1.0; // Valor padrão
+                document.getElementById('configDistancia').value = 10.0; // Valor padrão
+            }
+        }
+
+        function closeConfigModal() {
+            document.getElementById('configModal').style.display = 'none';
+        }
+
+        function saveConfig() {
+            const altura = document.getElementById('configAltura').value;
+            const volume = document.getElementById('configVolume').value;
+            const fator = document.getElementById('configFator').value;
+            const distancia = document.getElementById('configDistancia').value;
+            
+            const configCommand = `config:altura=${altura}&volume=${volume}&fator=${fator}&distancia=${distancia}`;
+            sendCommand(configCommand);
+            closeConfigModal();
+            alert('⚙️ Configurações enviadas para o ESP32!');
+        }
+
+        // ====== FUNÇÕES GERAIS ======
+        function updateDateTime() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('pt-BR');
+            const timeStr = now.toLocaleTimeString('pt-BR');
+            document.getElementById('currentDate').textContent = dateStr;
+            document.getElementById('currentTime').textContent = timeStr;
+        }
+
+        // Fechar modal ao clicar fora
+        window.onclick = function(event) {
+            const modal = document.getElementById('configModal');
+            if (event.target === modal) {
+                closeConfigModal();
+            }
+        }
+
         // Inicializar quando a página carregar
         document.addEventListener('DOMContentLoaded', function() {
             connectWebSocket();
@@ -1059,14 +1275,15 @@
             // Atualizar data/hora a cada segundo
             setInterval(updateDateTime, 1000);
             
-            // Atualizar dados a cada 5 segundos
+            // Atualizar dados a cada 3 segundos
             setInterval(() => {
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     sendCommand('get_data');
                     sendCommand('get_consumo');
                     sendCommand('get_consumo_semanal');
+                    sendCommand('get_status');
                 }
-            }, 5000);
+            }, 3000);
         });
     </script>
 </body>
