@@ -1,11 +1,10 @@
 {
-  "name": "esp32-websocket-server",
+  "name": "caixa-agua-websocket",
   "version": "1.0.0",
-  "description": "Servidor WebSocket para ESP32 no Render",
+  "description": "Servidor WebSocket para monitoramento de caixa d'água",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
