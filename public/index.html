@@ -766,8 +766,9 @@
                         <div class="resumo-value" id="consumoAcumuladoHoje">0 L</div>
                     </div>
                     <div class="resumo-card">
-                        <div class="resumo-label">📅 Consumo 5 Semanas</div>
-                        <div class="resumo-value" id="consumoSemanas">0 L</div>
+                        <!-- 🎯 ALTERADO: AGORA MOSTRA CONSUMO MENSAL -->
+                        <div class="resumo-label">📅 Consumo Mensal Acumulado</div>
+                        <div class="resumo-value" id="consumoMensal">0 L</div>
                     </div>
                 </div>
 
@@ -790,15 +791,16 @@
                         <!-- GRÁFICO VERTICAL DE SEMANAS -->
                         <div class="grafico-box">
                             <div class="grafico-header">
-                                <h3>📅 Últimas 5 Semanas</h3>
-                                <div class="grafico-stats">Total: <span id="total5s">0</span>L</div>
+                                <!-- 🎯 ALTERADO: AGORA MOSTRA 4 SEMANAS -->
+                                <h3>📅 Últimas 4 Semanas</h3>
+                                <div class="grafico-stats">Total: <span id="totalSemanas">0</span>L</div>
                             </div>
                             <div class="grafico-content">
-                                <div class="barra-vertical" id="grafico5s">
+                                <div class="barra-vertical" id="graficoSemanas">
                                     <!-- Barras verticais serão geradas aqui -->
                                 </div>
                             </div>
-                            <div class="semanas-labels" id="labels5s">
+                            <div class="semanas-labels" id="labelsSemanas">
                                 <!-- Labels serão gerados dinamicamente -->
                             </div>
                         </div>
@@ -831,7 +833,8 @@
             consumo_diario: new Array(24).fill(0),
             valores_consumo: new Array(24).fill(0),
             consumo_acumulado_ultima_hora: 0,
-            consumo_acumulado_hoje: 0
+            consumo_acumulado_hoje: 0,
+            consumo_mensal: 0 // 🎯 NOVO CAMPO
         };
 
         function connectWebSocket() {
@@ -980,12 +983,18 @@
                     currentConsumoData.consumo_acumulado_hoje = data.consumo_acumulado_hoje;
                 }
                 
+                // 🎯 ATUALIZAR CONSUMO MENSAL SE DISPONÍVEL
+                if (data.consumo_mensal !== undefined) {
+                    currentConsumoData.consumo_mensal = data.consumo_mensal;
+                }
+                
                 // Atualizar gráficos com dados mesclados
                 updateConsumoCharts(currentConsumoData);
                 updateResumoConsumo(
                     currentConsumoData.consumo_acumulado_ultima_hora,
                     currentConsumoData.consumo_acumulado_hoje,
-                    data.consumo_semanal
+                    data.consumo_semanal,
+                    currentConsumoData.consumo_mensal
                 );
             }
         }
@@ -1003,6 +1012,9 @@
             // 🎯 CORREÇÃO: Usar dados do consumo atual, não zerar
             document.getElementById('consumoAcumuladoHora').textContent = currentConsumoData.consumo_acumulado_ultima_hora + ' L';
             document.getElementById('consumoAcumuladoHoje').textContent = currentConsumoData.consumo_acumulado_hoje + ' L';
+            
+            // 🎯 ATUALIZAR CONSUMO MENSAL
+            document.getElementById('consumoMensal').textContent = currentConsumoData.consumo_mensal + ' L';
             
             document.getElementById('volumeTotalDisplay').textContent = data.volume_total || 1000;
             document.getElementById('alturaCaixaDisplay').textContent = data.altura_caixa || 100;
@@ -1093,6 +1105,12 @@
             const freeMemory = data.free_memory || 0;
             document.getElementById('memoryMini').textContent = formatMemory(freeMemory);
             
+            // 🎯 ATUALIZAR CONSUMO MENSAL NO STATUS
+            if (data.consumo_mensal !== undefined) {
+                currentConsumoData.consumo_mensal = data.consumo_mensal;
+                document.getElementById('consumoMensal').textContent = data.consumo_mensal + ' L';
+            }
+            
             if (data.system_status === 'ALERTA_SENSOR') {
                 document.getElementById('sensorAlertBanner').style.display = 'block';
             }
@@ -1158,32 +1176,36 @@
             document.getElementById('total24h').textContent = total24h;
         }
 
+        // 🎯 FUNÇÃO ATUALIZADA PARA 4 SEMANAS
         function updateConsumoSemanalCharts(data) {
             if (data.consumo_semanal && data.semanas_consumo) {
                 updateGraficoSemanas(data.consumo_semanal, data.semanas_consumo);
                 updateResumoConsumo(
                     currentConsumoData.consumo_acumulado_ultima_hora, 
                     currentConsumoData.consumo_acumulado_hoje, 
-                    data.consumo_semanal
+                    data.consumo_semanal,
+                    data.consumo_mensal || currentConsumoData.consumo_mensal || 0
                 );
             }
         }
 
+        // 🎯 FUNÇÃO ATUALIZADA PARA 4 SEMANAS
         function updateGraficoSemanas(consumoData, semanas) {
-            const container = document.getElementById('grafico5s');
-            const labelsContainer = document.getElementById('labels5s');
+            const container = document.getElementById('graficoSemanas');
+            const labelsContainer = document.getElementById('labelsSemanas');
             if (!container || !labelsContainer) return;
             
             container.innerHTML = '';
             labelsContainer.innerHTML = '';
 
             const maxConsumo = Math.max(...consumoData, 50, 1);
-            let total5s = 0;
+            let totalSemanas = 0;
             const maxBarHeight = 85;
 
-            for (let i = 0; i < 5; i++) {
-                total5s += consumoData[i];
-                const alturaPercent = Math.min((consumoData[i] / maxConsumo) * maxBarHeight, maxBarHeight);
+            // 🎯 AGORA SÃO 4 SEMANAS
+            for (let i = 0; i < 4; i++) {
+                totalSemanas += consumoData[i] || 0;
+                const alturaPercent = Math.min(((consumoData[i] || 0) / maxConsumo) * maxBarHeight, maxBarHeight);
                 
                 const barContainer = document.createElement('div');
                 barContainer.className = 'barra-container';
@@ -1198,7 +1220,7 @@
                     const valorLabel = document.createElement('div');
                     valorLabel.className = 'barra-valor-acima';
                     // 🎯 CORREÇÃO: Mostrar valor REAL acumulado
-                    valorLabel.textContent = consumoData[i] + 'L';
+                    valorLabel.textContent = (consumoData[i] || 0) + 'L';
                     valorLabel.style.bottom = (alturaPercent + 2) + '%';
                     barContainer.appendChild(valorLabel);
                 }
@@ -1206,7 +1228,8 @@
                 container.appendChild(barContainer);
             }
 
-            for (let i = 0; i < 5; i++) {
+            // 🎯 AGORA SÃO 4 LABELS
+            for (let i = 0; i < 4; i++) {
                 const label = document.createElement('div');
                 label.className = 'barra-hora';
                 label.textContent = semanas ? semanas[i] : `S${i+1}`;
@@ -1214,15 +1237,19 @@
                 labelsContainer.appendChild(label);
             }
 
-            document.getElementById('total5s').textContent = total5s;
+            document.getElementById('totalSemanas').textContent = totalSemanas;
         }
 
-        function updateResumoConsumo(consumoAcumuladoHora, consumoAcumuladoHoje, consumoSemanal) {
+        // 🎯 FUNÇÃO ATUALIZADA COM CONSUMO MENSAL
+        function updateResumoConsumo(consumoAcumuladoHora, consumoAcumuladoHoje, consumoSemanal, consumoMensal) {
             document.getElementById('consumoAcumuladoHora').textContent = consumoAcumuladoHora + ' L';
             document.getElementById('consumoAcumuladoHoje').textContent = consumoAcumuladoHoje + ' L';
+            
+            // 🎯 AGORA MOSTRA CONSUMO MENSAL
+            document.getElementById('consumoMensal').textContent = (consumoMensal || 0) + ' L';
                 
-            const consumoSemanas = consumoSemanal ? consumoSemanal.reduce((a, b) => a + b, 0) : 0;
-            document.getElementById('consumoSemanas').textContent = consumoSemanas + ' L';
+            const totalSemanas = consumoSemanal ? consumoSemanal.reduce((a, b) => a + b, 0) : 0;
+            document.getElementById('totalSemanas').textContent = totalSemanas + 'L';
         }
 
         function sendCommand(command) {
@@ -1245,7 +1272,8 @@
                     consumo_diario: new Array(24).fill(0),
                     valores_consumo: new Array(24).fill(0),
                     consumo_acumulado_ultima_hora: 0,
-                    consumo_acumulado_hoje: 0
+                    consumo_acumulado_hoje: 0,
+                    consumo_mensal: 0
                 };
                 
                 updateConnectionStatus('🔄 Resetando consumo...', 'connecting');
@@ -1280,7 +1308,7 @@
             console.log('🚀 Inicializando Monitor Caixa de Compensação - Chillers...');
             
             create24hHorizontalChart(new Array(24).fill(0));
-            updateGraficoSemanas(new Array(5).fill(0), ['S1', 'S2', 'S3', 'S4', 'S5']);
+            updateGraficoSemanas(new Array(4).fill(0), ['S1', 'S2', 'S3', 'S4']);
             
             connectWebSocket();
             updateDateTime();
