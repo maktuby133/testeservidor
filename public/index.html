@@ -284,26 +284,6 @@
             margin-top: 20px;
         }
 
-        .btn-config {
-            background: linear-gradient(135deg, #32CD32, #228B22);
-            color: white;
-            padding: 12px 25px;
-            border: none;
-            border-radius: 10px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            text-decoration: none;
-            font-weight: 700;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 15px rgba(50, 205, 50, 0.4);
-        }
-
-        .btn-config:hover {
-            background: linear-gradient(135deg, #228B22, #32CD32);
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(50, 205, 50, 0.6);
-        }
-
         .btn-reset {
             background: linear-gradient(135deg, #FF4500, #DC143C);
             color: white;
@@ -324,7 +304,7 @@
             box-shadow: 0 8px 20px rgba(255, 69, 0, 0.6);
         }
 
-        .btn-wifi {
+        .btn-refresh {
             background: linear-gradient(135deg, #4169E1, #1E90FF);
             color: white;
             padding: 12px 25px;
@@ -338,7 +318,7 @@
             box-shadow: 0 5px 15px rgba(65, 105, 225, 0.4);
         }
 
-        .btn-wifi:hover {
+        .btn-refresh:hover {
             background: linear-gradient(135deg, #1E90FF, #4169E1);
             transform: translateY(-3px);
             box-shadow: 0 8px 20px rgba(65, 105, 225, 0.6);
@@ -389,7 +369,6 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
 
-        /* NOVO ESTILO PARA GRÁFICO HORIZONTAL DE 24H */
         .grafico-horizontal {
             width: 100%;
             height: 200px;
@@ -452,7 +431,6 @@
             text-align: right;
         }
 
-        /* Estilo para gráfico semanal (mantido vertical) */
         .grafico-content {
             width: 100%;
             height: 200px;
@@ -500,31 +478,13 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
         }
 
-        .barra-hora {
-            text-align: center;
-            font-size: 0.6rem;
-            font-weight: 600;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .horas-labels {
+        .semanas-labels {
             display: flex;
             justify-content: space-between;
             margin-top: 8px;
             font-size: 0.7rem;
             color: #666;
             font-weight: 600;
-        }
-
-        .semanas-labels {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 8px;
-            font-size: 0.6rem;
-            color: #666;
-            font-weight: 600;
-            flex-wrap: wrap;
         }
 
         .consumo-resumo {
@@ -592,42 +552,6 @@
             font-style: italic;
         }
 
-        .boot-alert {
-            background: linear-gradient(135deg, rgba(255, 165, 0, 0.3), rgba(255, 200, 0, 0.3));
-            color: #cc8800;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-weight: 700;
-            border: 2px solid #ffa500;
-            animation: pulse 2s infinite;
-        }
-
-        .recovery-alert {
-            background: linear-gradient(135deg, rgba(255, 140, 0, 0.3), rgba(255, 165, 0, 0.3));
-            color: #cc7700;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-weight: 700;
-            border: 2px solid #ff8c00;
-            animation: pulse 1.5s infinite;
-        }
-
-        .alert-banner {
-            background: linear-gradient(135deg, #ff0000, #cc0000);
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-weight: 700;
-            animation: pulse 1s infinite;
-            border: 2px solid #ff4444;
-        }
-
         .connection-status {
             text-align: center;
             margin: 10px 0;
@@ -646,86 +570,21 @@
             color: white;
         }
 
-        /* MODAL CONFIGURAÇÃO */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.7);
-        }
-
-        .modal-content {
-            background: linear-gradient(135deg, #ffffff, #f8f9fa);
-            margin: 5% auto;
-            padding: 30px;
-            border-radius: 20px;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-            position: relative;
-        }
-
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .close:hover {
-            color: #000;
-        }
-
-        .config-form {
-            margin-top: 20px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #1a2a6c;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 10px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-
-        .form-group input:focus {
-            border-color: #1a2a6c;
-            outline: none;
-        }
-
-        .btn-save {
-            background: linear-gradient(135deg, #32CD32, #228B22);
+        .connecting {
+            background: linear-gradient(135deg, #FFA500, #FF8C00);
             color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            cursor: pointer;
-            width: 100%;
-            font-weight: 700;
-            transition: all 0.3s ease;
         }
 
-        .btn-save:hover {
-            background: linear-gradient(135deg, #228B22, #32CD32);
-            transform: translateY(-2px);
+        .alert-banner {
+            background: linear-gradient(135deg, #ff0000, #cc0000);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 700;
+            animation: pulse 1s infinite;
+            border: 2px solid #ff4444;
         }
 
         @keyframes waterShine {
@@ -746,12 +605,6 @@
         @keyframes blink {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
-        }
-
-        @keyframes wave {
-            0% { transform: translateX(0) rotate(0deg); }
-            50% { transform: translateX(-15px) rotate(180deg); }
-            100% { transform: translateX(0) rotate(360deg); }
         }
 
         @media (max-width: 1200px) {
@@ -794,6 +647,13 @@
             .barra-valor-acima {
                 font-size: 0.5rem;
             }
+            .config-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            .btn-reset, .btn-refresh {
+                width: 200px;
+            }
         }
     </style>
 </head>
@@ -806,22 +666,12 @@
         </div>
 
         <!-- Status de conexão melhorado -->
-        <div class="connection-status" id="connectionStatus">
-            🔄 Conectando ao ESP32...
+        <div class="connection-status connecting" id="connectionStatus">
+            🔄 Conectando ao servidor...
         </div>
 
         <div id="connectionAlert" class="alert-banner" style="display:none;">
             🚨 ALERTA: ESP32 NÃO CONECTADO! Verifique a conexão do dispositivo.
-        </div>
-
-        <div id="bootAlert" class="boot-alert" style="display:none;">
-            🔄 <strong>SISTEMA ESTABILIZANDO APÓS REINÍCIO</strong><br>
-            ⏰ Consumo ignorado por 30 segundos para evitar leituras falsas
-        </div>
-
-        <div id="recoveryAlert" class="recovery-alert" style="display:none;">
-            🔧 <strong>RECUPERAÇÃO DE SENSOR ATIVA</strong><br>
-            ⏰ Consumo ignorado por 15 segundos após falha do sensor
         </div>
 
         <div id="sensorAlertBanner" class="alert-banner" style="display:none;">
@@ -842,26 +692,20 @@
                 🚨 Alerta: <span id="sensorAlertMini" class="status-offline">--</span>
             </div>
             <div class="status-item">
-                🔄 Boot: <span id="bootStatusMini" class="status-offline">--</span>
-            </div>
-            <div class="status-item">
-                🔧 Recup: <span id="recoveryStatusMini" class="status-offline">--</span>
-            </div>
-            <div class="status-item">
-                🔄 Reinícios: <span id="resetCountMini" class="status-offline">--</span>
-            </div>
-            <div class="status-item">
-                💾 Mem: <span id="memoryMini">--</span> bytes
+                💾 Mem: <span id="memoryMini">--</span>
             </div>
             <div class="status-item">
                 🔄 <span id="lastUpdateMini">--:--:--</span>
             </div>
         </div>
 
-        <div class="capacity-info">Capacidade: <span id="volumeTotalDisplay">1000</span> L | Altura: <span id="alturaCaixaDisplay">100</span> cm</div>
+        <div class="capacity-info">
+            Capacidade: <span id="volumeTotalDisplay">1000</span> L | 
+            Altura: <span id="alturaCaixaDisplay">100</span> cm
+        </div>
 
         <div class="tolerancia-info">
-            🎯 Sistema Anti-Falsos Consumos Ativo | Tolerância Dinâmica: ±<span id="toleranciaAtual">15</span>L | Mínimo: <span id="minimoConsumo">10</span> L
+            🎯 Sistema Anti-Falsos Consumos Ativo | Tolerância: ±<span id="toleranciaAtual">18</span>L | Mínimo: <span id="minimoConsumo">10</span> L
         </div>
 
         <div class="dashboard">
@@ -945,93 +789,89 @@
             </div>
         </div>
 
+        <!-- BOTÕES SIMPLIFICADOS -->
         <div class="config-buttons">
-            <button class="btn-config" onclick="openConfigModal()">⚙️ Configurações</button>
-            <button class="btn-wifi" onclick="sendCommand('restart_ap')">📡 Configurar WiFi</button>
             <button class="btn-reset" onclick="resetConsumo()">🔄 Resetar Consumo</button>
-            <button class="btn-config" onclick="sendCommand('get_data')">🔄 Atualizar Dados</button>
+            <button class="btn-refresh" onclick="refreshData()">🔄 Atualizar Dados</button>
         </div>
 
         <div class="update-info">
-            🔄 Atualização automática a cada 3 segundos | Última atualização: <span id="lastUpdate">--:--:--</span>
-        </div>
-    </div>
-
-    <!-- MODAL DE CONFIGURAÇÃO -->
-    <div id="configModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeConfigModal()">&times;</span>
-            <h2>⚙️ Configurações do Sistema</h2>
-            <div class="config-form">
-                <div class="form-group">
-                    <label for="configAltura">Altura da Caixa (cm):</label>
-                    <input type="number" id="configAltura" step="0.1" placeholder="Ex: 100.0">
-                </div>
-                <div class="form-group">
-                    <label for="configVolume">Volume Total (L):</label>
-                    <input type="number" id="configVolume" step="0.1" placeholder="Ex: 1000.0">
-                </div>
-                <div class="form-group">
-                    <label for="configFator">Fator de Calibração:</label>
-                    <input type="number" id="configFator" step="0.01" placeholder="Ex: 1.0">
-                </div>
-                <div class="form-group">
-                    <label for="configDistancia">Distância Cheia (cm):</label>
-                    <input type="number" id="configDistancia" step="0.1" placeholder="Ex: 10.0">
-                </div>
-                <button class="btn-save" onclick="saveConfig()">💾 Salvar Configurações</button>
-            </div>
+            🔄 Atualização automática a cada 5 segundos | Última atualização: <span id="lastUpdate">--:--:--</span>
         </div>
     </div>
 
     <script>
-        // ====== CONEXÃO WEBSOCKET ======
+        // ====== CONEXÃO WEBSOCKET CORRIGIDA ======
         let ws = null;
-        let clientId = null;
+        let isConnected = false;
         let lastData = null;
-        let esp32Connected = false;
-        let connectionEstablished = false;
+        let connectionAttempts = 0;
+        const MAX_CONNECTION_ATTEMPTS = 5;
 
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws`;
             
-            console.log('🔄 Tentando conectar WebSocket...');
-            updateConnectionStatus('🔄 Conectando ao ESP32...', 'disconnected');
+            console.log('🔄 Tentando conectar WebSocket...', wsUrl);
+            updateConnectionStatus('🔄 Conectando ao servidor...', 'connecting');
             
-            ws = new WebSocket(wsUrl);
-            
-            ws.onopen = function() {
-                console.log('✅ WebSocket conectado com sucesso!');
-                connectionEstablished = true;
-                updateConnectionStatus('✅ Conectado ao ESP32', 'connected');
-                document.getElementById('connectionAlert').style.display = 'none';
-            };
-            
-            ws.onmessage = function(event) {
-                try {
-                    const data = JSON.parse(event.data);
-                    console.log('📨 Dados recebidos:', data.type);
-                    handleWebSocketMessage(data);
-                } catch (error) {
-                    console.error('❌ Erro ao processar mensagem:', error);
-                }
-            };
-            
-            ws.onclose = function() {
-                console.log('❌ Conexão WebSocket fechada');
-                connectionEstablished = false;
-                esp32Connected = false;
-                updateConnectionStatus('❌ Desconectado do ESP32', 'disconnected');
+            try {
+                ws = new WebSocket(wsUrl);
                 
-                // Tentar reconectar após 3 segundos
-                setTimeout(connectWebSocket, 3000);
-            };
-            
-            ws.onerror = function(error) {
-                console.error('❌ Erro WebSocket:', error);
+                ws.onopen = function() {
+                    console.log('✅ WebSocket conectado com sucesso!');
+                    isConnected = true;
+                    connectionAttempts = 0;
+                    updateConnectionStatus('✅ Conectado ao servidor', 'connected');
+                    document.getElementById('connectionAlert').style.display = 'none';
+                    
+                    // Solicitar dados iniciais
+                    setTimeout(() => {
+                        sendCommand('get_data');
+                        sendCommand('get_consumo');
+                        sendCommand('get_consumo_semanal');
+                        sendCommand('get_status');
+                    }, 1000);
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log('📨 Dados recebidos:', data.type);
+                        handleWebSocketMessage(data);
+                    } catch (error) {
+                        console.error('❌ Erro ao processar mensagem:', error);
+                    }
+                };
+                
+                ws.onclose = function(event) {
+                    console.log('❌ Conexão WebSocket fechada:', event.code, event.reason);
+                    isConnected = false;
+                    updateConnectionStatus('❌ Desconectado do servidor', 'disconnected');
+                    
+                    // Tentar reconectar com backoff exponencial
+                    const reconnectDelay = Math.min(1000 * Math.pow(2, connectionAttempts), 30000);
+                    connectionAttempts++;
+                    
+                    if (connectionAttempts <= MAX_CONNECTION_ATTEMPTS) {
+                        console.log(`🔄 Tentativa ${connectionAttempts}/${MAX_CONNECTION_ATTEMPTS} em ${reconnectDelay}ms`);
+                        setTimeout(connectWebSocket, reconnectDelay);
+                    } else {
+                        console.error('❌ Máximo de tentativas de conexão atingido');
+                        updateConnectionStatus('❌ Falha na conexão', 'disconnected');
+                        document.getElementById('connectionAlert').style.display = 'block';
+                    }
+                };
+                
+                ws.onerror = function(error) {
+                    console.error('❌ Erro WebSocket:', error);
+                    updateConnectionStatus('❌ Erro de conexão', 'disconnected');
+                };
+                
+            } catch (error) {
+                console.error('❌ Erro ao criar WebSocket:', error);
                 updateConnectionStatus('❌ Erro de conexão', 'disconnected');
-            };
+            }
         }
 
         function updateConnectionStatus(message, status) {
@@ -1039,10 +879,10 @@
             element.textContent = message;
             element.className = `connection-status ${status}`;
             
-            // Mostrar/ocultar alerta de conexão
+            // Mostrar/ocultar alerta de conexão baseado no status
             if (status === 'connected') {
                 document.getElementById('connectionAlert').style.display = 'none';
-            } else {
+            } else if (status === 'disconnected') {
                 document.getElementById('connectionAlert').style.display = 'block';
             }
         }
@@ -1052,30 +892,14 @@
             
             switch(data.type) {
                 case 'connected':
-                    clientId = data.clientId;
-                    // Considerar conectado se recebemos qualquer mensagem do ESP32
-                    esp32Connected = true;
-                    console.log('🆔 Client ID:', clientId, 'ESP32 Conectado:', esp32Connected);
-                    
-                    updateConnectionStatus('✅ Conectado ao ESP32', 'connected');
-                    document.getElementById('connectionAlert').style.display = 'none';
-                    
-                    // Solicitar dados do ESP32
-                    setTimeout(() => {
-                        sendCommand('get_data');
-                        sendCommand('get_consumo');
-                        sendCommand('get_consumo_semanal');
-                        sendCommand('get_status');
-                    }, 1000);
+                    console.log('🆔 Conectado ao servidor, Client ID:', data.clientId);
+                    updateConnectionStatus('✅ Conectado ao servidor', 'connected');
                     break;
                     
                 case 'all_data':
                     lastData = data;
                     updateInterface(data);
-                    // Se recebemos dados, ESP32 está conectado
-                    esp32Connected = true;
-                    updateConnectionStatus('✅ Conectado ao ESP32', 'connected');
-                    document.getElementById('connectionAlert').style.display = 'none';
+                    updateConnectionStatus('✅ Conectado - Dados recebidos', 'connected');
                     break;
                     
                 case 'status':
@@ -1083,27 +907,28 @@
                     break;
                     
                 case 'consumo_data':
-                    console.log('📊 Dados de consumo recebidos:', data.consumo_diario);
+                    console.log('📊 Dados de consumo recebidos');
                     updateConsumoCharts(data);
                     break;
                     
                 case 'consumo_semanal_data':
-                    console.log('📅 Dados semanais recebidos:', data.consumo_semanal);
+                    console.log('📅 Dados semanais recebidos');
                     updateConsumoSemanalCharts(data);
                     break;
 
+                case 'command_ack':
+                    console.log('✅ Comando confirmado:', data.command);
+                    break;
+                    
                 case 'error':
+                    console.error('❌ Erro do servidor:', data.message);
                     if (data.message === 'ESP32 não conectado') {
-                        esp32Connected = false;
-                        updateConnectionStatus('❌ ESP32 não conectado', 'disconnected');
+                        updateConnectionStatus('❌ ESP32 desconectado', 'disconnected');
                     }
                     break;
                     
                 default:
-                    // Qualquer outra mensagem indica que ESP32 está conectado
-                    esp32Connected = true;
-                    updateConnectionStatus('✅ Conectado ao ESP32', 'connected');
-                    document.getElementById('connectionAlert').style.display = 'none';
+                    console.log('📨 Mensagem não tratada:', data.type);
             }
         }
 
@@ -1157,6 +982,7 @@
                     if (!sensorOk) {
                         status = '🚨 ERRO NO SENSOR';
                         statusClass = 'sensor-error';
+                        document.getElementById('sensorAlertBanner').style.display = 'block';
                     } else if(percentage < 10) { 
                         status = '🔴 NÍVEL CRÍTICO'; 
                         statusClass = 'critical'; 
@@ -1173,7 +999,9 @@
                         status = '🔵 NÍVEL CHEIO'; 
                         statusClass = 'full'; 
                     }
-                    document.getElementById('sensorAlertBanner').style.display = 'none';
+                    if (sensorOk) {
+                        document.getElementById('sensorAlertBanner').style.display = 'none';
+                    }
             }
             
             document.getElementById('statusText').textContent = status;
@@ -1200,17 +1028,25 @@
         function updateSystemStatus(data) {
             document.getElementById('wifiStatusMini').textContent = data.wifi_connected ? '✅' : '❌';
             document.getElementById('wifiStatusMini').className = data.wifi_connected ? 'status-online' : 'status-offline';
-            document.getElementById('memoryMini').textContent = data.free_memory || '0';
+            
+            // CORREÇÃO: Exibir memória de forma legível
+            const freeMemory = data.free_memory || 0;
+            document.getElementById('memoryMini').textContent = formatMemory(freeMemory);
             
             // Mostrar/ocultar alertas baseado no status
             if (data.system_status === 'ALERTA_SENSOR') {
                 document.getElementById('sensorAlertBanner').style.display = 'block';
-            } else {
-                document.getElementById('sensorAlertBanner').style.display = 'none';
             }
         }
 
-        // ====== NOVA FUNÇÃO PARA GRÁFICO HORIZONTAL DE 24H ======
+        function formatMemory(bytes) {
+            if (bytes >= 1024) {
+                return (bytes / 1024).toFixed(1) + ' KB';
+            }
+            return bytes + ' B';
+        }
+
+        // ====== GRÁFICOS ======
         function updateConsumoCharts(data) {
             if (data.consumo_diario) {
                 create24hHorizontalChart(data.consumo_diario);
@@ -1228,39 +1064,31 @@
             const maxConsumo = Math.max(...consumoData, 10);
             let total24h = 0;
 
-            // Criar barras horizontais para cada hora
             for (let i = 0; i < 24; i++) {
                 const consumo = consumoData[i] || 0;
                 total24h += consumo;
                 
-                // Calcular largura da barra (mínimo 1% para visualização)
                 const larguraPercent = Math.max((consumo / maxConsumo) * 100, 1);
                 
-                // Criar item da barra horizontal
                 const barraItem = document.createElement('div');
                 barraItem.className = 'barra-horizontal-item';
                 
-                // Label da hora
                 const horaLabel = document.createElement('div');
                 horaLabel.className = 'hora-label';
                 horaLabel.textContent = `${i.toString().padStart(2, '0')}h`;
                 
-                // Container da barra
                 const barraContainer = document.createElement('div');
                 barraContainer.className = 'barra-horizontal';
                 
-                // Barra de progresso
                 const barraProgresso = document.createElement('div');
                 barraProgresso.className = 'barra-progresso';
                 barraProgresso.style.width = larguraPercent + '%';
                 barraProgresso.title = `${consumo}L consumidos às ${i}h`;
                 
-                // Valor do consumo
                 const consumoValor = document.createElement('div');
                 consumoValor.className = 'consumo-valor';
                 consumoValor.textContent = consumo > 0 ? consumo + 'L' : '0L';
                 
-                // Montar a estrutura
                 barraContainer.appendChild(barraProgresso);
                 barraItem.appendChild(horaLabel);
                 barraItem.appendChild(barraContainer);
@@ -1270,7 +1098,6 @@
             }
 
             document.getElementById('total24h').textContent = total24h;
-            console.log('✅ Gráfico horizontal 24h criado. Total:', total24h + 'L');
         }
 
         function updateConsumoSemanalCharts(data) {
@@ -1289,8 +1116,6 @@
             const labelsContainer = document.getElementById('labels5s');
             if (!container || !labelsContainer) return;
             
-            console.log('📅 Atualizando gráfico semanas:', consumoData, semanas);
-            
             container.innerHTML = '';
             labelsContainer.innerHTML = '';
 
@@ -1298,7 +1123,6 @@
             let total5s = 0;
             const maxBarHeight = 85;
 
-            // Gerar barras
             for (let i = 0; i < 5; i++) {
                 total5s += consumoData[i];
                 const alturaPercent = Math.min((consumoData[i] / maxConsumo) * maxBarHeight, maxBarHeight);
@@ -1323,7 +1147,6 @@
                 container.appendChild(barContainer);
             }
 
-            // Gerar labels das semanas
             for (let i = 0; i < 5; i++) {
                 const label = document.createElement('div');
                 label.className = 'barra-hora';
@@ -1333,7 +1156,6 @@
             }
 
             document.getElementById('total5s').textContent = total5s;
-            console.log('✅ Gráfico semanas atualizado. Total:', total5s);
         }
 
         function updateResumoConsumo(consumoAcumuladoHora, consumoAcumuladoHoje, consumoSemanal) {
@@ -1344,6 +1166,7 @@
             document.getElementById('consumoSemanas').textContent = consumoSemanas + ' L';
         }
 
+        // ====== FUNÇÕES DE COMUNICAÇÃO ======
         function sendCommand(command) {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(command);
@@ -1351,59 +1174,34 @@
             } else {
                 console.log('❌ WebSocket não conectado, tentando reconectar...');
                 connectWebSocket();
-                
-                // Tentar enviar novamente após 2 segundos se reconectar
-                setTimeout(() => {
-                    if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.send(command);
-                    }
-                }, 2000);
             }
         }
 
-        // ====== FUNÇÃO CORRIGIDA PARA RESET DE CONSUMO ======
+        // CORREÇÃO: Função de reset de consumo melhorada
         function resetConsumo() {
             if (confirm('🗑️ Tem certeza que deseja resetar TODO o histórico de consumo?\n\nEsta ação não pode ser desfeita!')) {
                 console.log('🔄 Solicitando reset de consumo...');
                 sendCommand('reset_consumo');
+                
+                // Feedback visual
+                updateConnectionStatus('🔄 Resetando consumo...', 'connecting');
                 
                 // Forçar atualização dos dados após reset
                 setTimeout(() => {
                     sendCommand('get_data');
                     sendCommand('get_consumo');
                     sendCommand('get_consumo_semanal');
-                }, 1000);
+                    updateConnectionStatus('✅ Reset concluído', 'connected');
+                }, 2000);
             }
         }
 
-        // ====== MODAL DE CONFIGURAÇÃO ======
-        function openConfigModal() {
-            const modal = document.getElementById('configModal');
-            modal.style.display = 'block';
-            
-            // Preencher valores atuais
-            if (lastData) {
-                document.getElementById('configAltura').value = lastData.altura_caixa || 100;
-                document.getElementById('configVolume').value = lastData.volume_total || 1000;
-                document.getElementById('configFator').value = 1.0;
-                document.getElementById('configDistancia').value = 10.0;
-            }
-        }
-
-        function closeConfigModal() {
-            document.getElementById('configModal').style.display = 'none';
-        }
-
-        function saveConfig() {
-            const altura = document.getElementById('configAltura').value;
-            const volume = document.getElementById('configVolume').value;
-            const fator = document.getElementById('configFator').value;
-            const distancia = document.getElementById('configDistancia').value;
-            
-            const configCommand = `config:altura=${altura}&volume=${volume}&fator=${fator}&distancia=${distancia}`;
-            sendCommand(configCommand);
-            closeConfigModal();
-            alert('⚙️ Configurações enviadas para o ESP32!');
+        function refreshData() {
+            console.log('🔄 Atualizando dados manualmente...');
+            sendCommand('get_data');
+            sendCommand('get_consumo');
+            sendCommand('get_consumo_semanal');
+            sendCommand('get_status');
         }
 
         // ====== FUNÇÕES GERAIS ======
@@ -1413,14 +1211,6 @@
             const timeStr = now.toLocaleTimeString('pt-BR');
             document.getElementById('currentDate').textContent = dateStr;
             document.getElementById('currentTime').textContent = timeStr;
-        }
-
-        // Fechar modal ao clicar fora
-        window.onclick = function(event) {
-            const modal = document.getElementById('configModal');
-            if (event.target === modal) {
-                closeConfigModal();
-            }
         }
 
         // Inicializar quando a página carregar
