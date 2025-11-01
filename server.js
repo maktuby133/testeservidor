@@ -56,7 +56,7 @@ app.get('/health', (req, res) => {
 wss.on('connection', function connection(ws, req) {
   const clientId = generateClientId(req);
   const clientIP = getClientIP(req);
-  const isESP32 = isESP32Connection(req);
+  const isESP32 = isESP32Connection(req, clientIP);
   
   console.log(`✅ Nova conexão: ${clientId} - IP: ${clientIP} - Tipo: ${isESP32 ? 'ESP32' : 'WEB'}`);
   
@@ -66,7 +66,7 @@ wss.on('connection', function connection(ws, req) {
   ws.isESP32 = isESP32;
   ws.connectedAt = new Date();
   
-  // Detectar se é o ESP32
+  // CORREÇÃO CRÍTICA: Detectar se é o ESP32
   if (isESP32) {
     // Se já tem um ESP32 conectado, fechar a conexão anterior
     if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
@@ -75,6 +75,14 @@ wss.on('connection', function connection(ws, req) {
     }
     esp32Client = ws;
     console.log(`🎯 ESP32 registrado: ${clientId}`);
+    
+    // Notificar todos os clientes web que o ESP32 conectou
+    broadcastToWebClients({
+      type: 'esp32_connected',
+      message: 'ESP32 conectado',
+      clientId: clientId,
+      timestamp: new Date().toISOString()
+    });
   }
   
   // Enviar confirmação de conexão
@@ -92,6 +100,17 @@ wss.on('connection', function connection(ws, req) {
   ws.on('message', function message(data) {
     try {
       const messageString = data.toString();
+      
+      // CORREÇÃO: Tentar detectar se é ESP32 pela mensagem
+      if (!ws.isESP32 && isESP32Message(messageString)) {
+        console.log(`🎯 Detectado ESP32 pela mensagem: ${clientId}`);
+        ws.isESP32 = true;
+        
+        if (esp32Client && esp32Client !== ws) {
+          esp32Client.close(1000, 'Novo ESP32 detectado');
+        }
+        esp32Client = ws;
+      }
       
       // Tentar parsear como JSON primeiro (mensagens do ESP32)
       try {
@@ -133,21 +152,44 @@ wss.on('connection', function connection(ws, req) {
   logConnectionStats();
 });
 
+// CORREÇÃO CRÍTICA: Detectar se é conexão do ESP32
+function isESP32Connection(req, clientIP) {
+  const userAgent = req.headers['user-agent'] || '';
+  
+  // ESP32 geralmente não envia User-Agent ou envia string específica
+  const isESP = userAgent.includes('ESP32') || 
+                userAgent.includes('Arduino') ||
+                userAgent.includes('WiFiClient') ||
+                userAgent === '' || // ESP32 muitas vezes não envia User-Agent
+                userAgent.includes('ESP8266') ||
+                // Nova detecção: verificar por padrão de IP ou origem
+                req.headers['origin'] === '' || // ESP32 não envia origin
+                clientIP.includes('192.168.') || // IP local comum do ESP32
+                clientIP.includes('10.0.') || // Outro IP local
+                req.headers['sec-websocket-protocol'] === 'arduino';
+  
+  console.log(`🔍 Detecção ESP32 - UserAgent: "${userAgent}", Origin: "${req.headers['origin']}", IP: ${clientIP}, Resultado: ${isESP}`);
+  return isESP;
+}
+
+// CORREÇÃO CRÍTICA: Detectar ESP32 pelo conteúdo da mensagem
+function isESP32Message(message) {
+  // Verificar se a mensagem contém padrões típicos do ESP32
+  return message.includes('"type":"all_data"') ||
+         message.includes('"type":"status"') ||
+         message.includes('"distance":') ||
+         message.includes('"liters":') ||
+         message.includes('"percentage":') ||
+         (message.startsWith('{') && message.includes('sensor_ok'));
+}
+
 // Gerar ID único para cliente
 function generateClientId(req) {
-  const isESP32 = isESP32Connection(req);
+  const isESP32 = isESP32Connection(req, getClientIP(req));
   const prefix = isESP32 ? 'ESP32' : 'WEB';
   const timestamp = Date.now();
   const random = Math.random().toString(36).substr(2, 9);
   return `${prefix}_${timestamp}_${random}`;
-}
-
-// Detectar se é conexão do ESP32
-function isESP32Connection(req) {
-  const userAgent = req.headers['user-agent'] || '';
-  return userAgent.includes('ESP32') || 
-         userAgent.includes('Arduino') ||
-         req.headers['x-esp32'] === 'true';
 }
 
 // Obter IP do cliente
@@ -181,15 +223,22 @@ function handleWebSocketMessage(ws, message) {
     console.log(`📊 Status: WiFi ${message.wifi_connected ? '✅' : '❌'} | Sensor ${message.sensor_ok ? '✅' : '❌'} | Mem: ${message.free_memory}`);
   }
   
-  // Se a mensagem é do ESP32, retransmitir para todos os clientes web
+  // CORREÇÃO: Se a mensagem é do ESP32, retransmitir para todos os clientes web
   if (ws.isESP32) {
     broadcastToWebClients(enhancedMessage);
   } else {
     // Se é do frontend e temos ESP32, repassar para o ESP32
-    if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
+    if (esp32Client && esp32Client.readyState === WebSocket.OPEN && esp32Client !== ws) {
       // Remover metadados antes de enviar para ESP32
       const { clientId, origin, timestamp, serverTime, ...cleanMessage } = enhancedMessage;
       sendToClient(esp32Client, cleanMessage);
+    } else if (!esp32Client) {
+      // CORREÇÃO: Se não há ESP32, responder ao frontend
+      sendToClient(ws, {
+        type: 'error',
+        message: 'ESP32 não conectado',
+        timestamp: new Date().toISOString()
+      });
     }
   }
 }
@@ -198,7 +247,7 @@ function handleWebSocketMessage(ws, message) {
 function handleTextCommand(ws, command) {
   console.log(`📤 Comando de ${ws.clientId}: ${command}`);
   
-  // Comandos que não precisam do ESP32
+  // CORREÇÃO: Comandos que não precisam do ESP32
   if (command === 'get_status' || command === 'health') {
     const statusMessage = {
       type: 'server_status',
@@ -222,7 +271,7 @@ function handleTextCommand(ws, command) {
       timestamp: new Date().toISOString()
     });
   } else {
-    // Avisar frontend que ESP32 não está conectado
+    // CORREÇÃO MELHORADA: Avisar frontend que ESP32 não está conectado
     sendToClient(ws, {
       type: 'error',
       message: 'ESP32 não conectado',
