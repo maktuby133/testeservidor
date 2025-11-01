@@ -826,6 +826,14 @@
         let connectionAttempts = 0;
         const MAX_CONNECTION_ATTEMPTS = 5;
 
+        // 🎯 VARIÁVEIS PARA EVITAR OSCILAÇÃO
+        let currentConsumoData = {
+            consumo_diario: new Array(24).fill(0),
+            valores_consumo: new Array(24).fill(0),
+            consumo_acumulado_ultima_hora: 0,
+            consumo_acumulado_hoje: 0
+        };
+
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws`;
@@ -925,7 +933,10 @@
                     
                 case 'consumo_data':
                     console.log('📊 Dados de consumo recebidos');
-                    updateConsumoCharts(data);
+                    // 🎯 CORREÇÃO: Atualizar apenas se houver dados válidos
+                    if (data.valores_consumo && data.valores_consumo.length > 0) {
+                        updateConsumoData(data);
+                    }
                     break;
                     
                 case 'consumo_semanal_data':
@@ -949,6 +960,36 @@
             }
         }
 
+        // 🎯 FUNÇÃO CORRIGIDA PARA ATUALIZAR DADOS DE CONSUMO SEM OSCILAÇÃO
+        function updateConsumoData(data) {
+            // Atualizar apenas se os dados forem válidos
+            if (data.valores_consumo && Array.isArray(data.valores_consumo)) {
+                // 🎯 MESCLAR DADOS: manter valores existentes se novos forem zero/vazios
+                for (let i = 0; i < 24; i++) {
+                    if (data.valores_consumo[i] > 0) {
+                        currentConsumoData.valores_consumo[i] = data.valores_consumo[i];
+                    }
+                }
+                
+                // Atualizar consumo acumulado apenas se for maior que zero
+                if (data.consumo_acumulado_ultima_hora >= 0) {
+                    currentConsumoData.consumo_acumulado_ultima_hora = data.consumo_acumulado_ultima_hora;
+                }
+                
+                if (data.consumo_acumulado_hoje >= 0) {
+                    currentConsumoData.consumo_acumulado_hoje = data.consumo_acumulado_hoje;
+                }
+                
+                // Atualizar gráficos com dados mesclados
+                updateConsumoCharts(currentConsumoData);
+                updateResumoConsumo(
+                    currentConsumoData.consumo_acumulado_ultima_hora,
+                    currentConsumoData.consumo_acumulado_hoje,
+                    data.consumo_semanal
+                );
+            }
+        }
+
         function updateInterface(data) {
             // Atualizar nível da água
             const percentage = data.percentage || 0;
@@ -958,8 +999,11 @@
             // Atualizar valores
             document.getElementById('levelValue').textContent = (data.height || 0) + ' cm';
             document.getElementById('litersValue').textContent = (data.liters || 0) + ' L';
-            document.getElementById('consumoAcumuladoHora').textContent = (data.consumo_hora || 0) + ' L';
-            document.getElementById('consumoAcumuladoHoje').textContent = (data.consumo_hoje || 0) + ' L';
+            
+            // 🎯 CORREÇÃO: Usar dados do consumo atual, não zerar
+            document.getElementById('consumoAcumuladoHora').textContent = currentConsumoData.consumo_acumulado_ultima_hora + ' L';
+            document.getElementById('consumoAcumuladoHoje').textContent = currentConsumoData.consumo_acumulado_hoje + ' L';
+            
             document.getElementById('volumeTotalDisplay').textContent = data.volume_total || 1000;
             document.getElementById('alturaCaixaDisplay').textContent = data.altura_caixa || 100;
             
@@ -986,7 +1030,7 @@
                     status = '🟡 MEMÓRIA BAIXA';
                     statusClass = 'warning';
                     break;
-                case 'ALERTA_NIVEL_BAIXO':
+                case 'ALERTA_NÍVEL_BAIXO':
                     status = '🟡 NÍVEL BAIXO';
                     statusClass = 'warning';
                     break;
@@ -1063,8 +1107,8 @@
 
         // ====== GRÁFICOS ======
         function updateConsumoCharts(data) {
-            if (data.consumo_diario) {
-                create24hHorizontalChart(data.consumo_diario);
+            if (data.valores_consumo) {
+                create24hHorizontalChart(data.valores_consumo);
             }
         }
 
@@ -1100,6 +1144,7 @@
                 
                 const consumoValor = document.createElement('div');
                 consumoValor.className = 'consumo-valor';
+                // 🎯 CORREÇÃO: Mostrar valor REAL acumulado
                 consumoValor.textContent = consumo > 0 ? consumo + 'L' : '0L';
                 
                 barraContainer.appendChild(barraProgresso);
@@ -1117,8 +1162,8 @@
             if (data.consumo_semanal && data.semanas_consumo) {
                 updateGraficoSemanas(data.consumo_semanal, data.semanas_consumo);
                 updateResumoConsumo(
-                    data.consumo_acumulado_ultima_hora || 0, 
-                    data.consumo_acumulado_hoje || 0, 
+                    currentConsumoData.consumo_acumulado_ultima_hora, 
+                    currentConsumoData.consumo_acumulado_hoje, 
                     data.consumo_semanal
                 );
             }
@@ -1152,6 +1197,7 @@
                 if (consumoData[i] > 0) {
                     const valorLabel = document.createElement('div');
                     valorLabel.className = 'barra-valor-acima';
+                    // 🎯 CORREÇÃO: Mostrar valor REAL acumulado
                     valorLabel.textContent = consumoData[i] + 'L';
                     valorLabel.style.bottom = (alturaPercent + 2) + '%';
                     barContainer.appendChild(valorLabel);
@@ -1193,6 +1239,14 @@
             if (confirm('🗑️ Tem certeza que deseja resetar TODO o histórico de consumo?\n\nEsta ação não pode ser desfeita!')) {
                 console.log('🔄 Solicitando reset de consumo...');
                 sendCommand('reset_consumo');
+                
+                // 🎯 CORREÇÃO: Resetar também os dados locais
+                currentConsumoData = {
+                    consumo_diario: new Array(24).fill(0),
+                    valores_consumo: new Array(24).fill(0),
+                    consumo_acumulado_ultima_hora: 0,
+                    consumo_acumulado_hoje: 0
+                };
                 
                 updateConnectionStatus('🔄 Resetando consumo...', 'connecting');
                 
