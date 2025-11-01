@@ -389,6 +389,70 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
 
+        /* NOVO ESTILO PARA GRÁFICO HORIZONTAL DE 24H */
+        .grafico-horizontal {
+            width: 100%;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .barra-horizontal-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            height: 100%;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .barra-horizontal-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .hora-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #1a2a6c;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .barra-horizontal {
+            flex: 1;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .barra-progresso {
+            height: 100%;
+            background: linear-gradient(90deg, #1a2a6c, #4169E1);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+            min-width: 3px;
+        }
+
+        .consumo-valor {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #1a2a6c;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        /* Estilo para gráfico semanal (mantido vertical) */
         .grafico-content {
             width: 100%;
             height: 200px;
@@ -403,7 +467,7 @@
             overflow: visible;
         }
 
-        .barra-horizontal {
+        .barra-vertical {
             display: flex;
             align-items: end;
             gap: 2px;
@@ -414,16 +478,6 @@
         }
 
         .barra {
-            flex: 1;
-            background: linear-gradient(to top, #1a2a6c, #2a3a9c);
-            border-radius: 3px 3px 0 0;
-            position: relative;
-            min-height: 3px;
-            transition: all 0.5s ease;
-            max-height: 100% !important;
-        }
-
-        .barra-semana {
             flex: 1;
             background: linear-gradient(to top, #32CD32, #228B22);
             border-radius: 3px 3px 0 0;
@@ -572,6 +626,24 @@
             font-weight: 700;
             animation: pulse 1s infinite;
             border: 2px solid #ff4444;
+        }
+
+        .connection-status {
+            text-align: center;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
+            font-weight: 700;
+        }
+
+        .connected {
+            background: linear-gradient(135deg, #32CD32, #228B22);
+            color: white;
+        }
+
+        .disconnected {
+            background: linear-gradient(135deg, #FF4500, #DC143C);
+            color: white;
         }
 
         /* MODAL CONFIGURAÇÃO */
@@ -733,6 +805,11 @@
             📅 <span id="currentDate">--/--/----</span> | 🕒 <span id="currentTime">--:--:--</span>
         </div>
 
+        <!-- Status de conexão melhorado -->
+        <div class="connection-status" id="connectionStatus">
+            🔄 Conectando ao ESP32...
+        </div>
+
         <div id="connectionAlert" class="alert-banner" style="display:none;">
             🚨 ALERTA: ESP32 NÃO CONECTADO! Verifique a conexão do dispositivo.
         </div>
@@ -835,29 +912,28 @@
                 <div class="consumo-section">
                     <div class="consumo-title">📊 VISÃO GERAL DO CONSUMO</div>
                     <div class="graficos-container">
+                        <!-- GRÁFICO HORIZONTAL DE 24H -->
                         <div class="grafico-box">
                             <div class="grafico-header">
-                                <h3>⏰ Últimas 24 Horas</h3>
+                                <h3>⏰ Consumo por Hora (24h)</h3>
                                 <div class="grafico-stats">Total: <span id="total24h">0</span>L</div>
                             </div>
-                            <div class="grafico-content">
-                                <div class="barra-horizontal" id="grafico24h">
-                                    <!-- Barras serão geradas dinamicamente -->
+                            <div class="grafico-horizontal">
+                                <div class="barra-horizontal-container" id="grafico24h">
+                                    <!-- Barras horizontais serão geradas aqui -->
                                 </div>
-                            </div>
-                            <div class="horas-labels" id="horasLabels24h">
-                                <!-- Labels serão gerados dinamicamente -->
                             </div>
                         </div>
 
+                        <!-- GRÁFICO VERTICAL DE SEMANAS -->
                         <div class="grafico-box">
                             <div class="grafico-header">
                                 <h3>📅 Últimas 5 Semanas</h3>
                                 <div class="grafico-stats">Total: <span id="total5s">0</span>L</div>
                             </div>
                             <div class="grafico-content">
-                                <div class="barra-horizontal" id="grafico5s">
-                                    <!-- Barras serão geradas dinamicamente -->
+                                <div class="barra-vertical" id="grafico5s">
+                                    <!-- Barras verticais serão geradas aqui -->
                                 </div>
                             </div>
                             <div class="semanas-labels" id="labels5s">
@@ -914,22 +990,28 @@
         let clientId = null;
         let lastData = null;
         let esp32Connected = false;
+        let connectionEstablished = false;
 
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws`;
             
+            console.log('🔄 Tentando conectar WebSocket...');
+            updateConnectionStatus('🔄 Conectando ao ESP32...', 'disconnected');
+            
             ws = new WebSocket(wsUrl);
             
             ws.onopen = function() {
-                console.log('✅ Conectado ao servidor WebSocket');
-                updateConnectionStatus('Conectado', 'connected');
+                console.log('✅ WebSocket conectado com sucesso!');
+                connectionEstablished = true;
+                updateConnectionStatus('✅ Conectado ao ESP32', 'connected');
+                document.getElementById('connectionAlert').style.display = 'none';
             };
             
             ws.onmessage = function(event) {
                 try {
                     const data = JSON.parse(event.data);
-                    console.log('📨 Dados recebidos:', data.type, data);
+                    console.log('📨 Dados recebidos:', data.type);
                     handleWebSocketMessage(data);
                 } catch (error) {
                     console.error('❌ Erro ao processar mensagem:', error);
@@ -938,14 +1020,31 @@
             
             ws.onclose = function() {
                 console.log('❌ Conexão WebSocket fechada');
-                updateConnectionStatus('Desconectado', 'disconnected');
-                setTimeout(connectWebSocket, 5000);
+                connectionEstablished = false;
+                esp32Connected = false;
+                updateConnectionStatus('❌ Desconectado do ESP32', 'disconnected');
+                
+                // Tentar reconectar após 3 segundos
+                setTimeout(connectWebSocket, 3000);
             };
             
             ws.onerror = function(error) {
                 console.error('❌ Erro WebSocket:', error);
-                updateConnectionStatus('Erro de Conexão', 'error');
+                updateConnectionStatus('❌ Erro de conexão', 'disconnected');
             };
+        }
+
+        function updateConnectionStatus(message, status) {
+            const element = document.getElementById('connectionStatus');
+            element.textContent = message;
+            element.className = `connection-status ${status}`;
+            
+            // Mostrar/ocultar alerta de conexão
+            if (status === 'connected') {
+                document.getElementById('connectionAlert').style.display = 'none';
+            } else {
+                document.getElementById('connectionAlert').style.display = 'block';
+            }
         }
 
         function handleWebSocketMessage(data) {
@@ -954,22 +1053,29 @@
             switch(data.type) {
                 case 'connected':
                     clientId = data.clientId;
-                    esp32Connected = data.isESP32 || false;
-                    console.log('🆔 Client ID:', clientId, 'ESP32:', esp32Connected);
+                    // Considerar conectado se recebemos qualquer mensagem do ESP32
+                    esp32Connected = true;
+                    console.log('🆔 Client ID:', clientId, 'ESP32 Conectado:', esp32Connected);
                     
-                    if (esp32Connected) {
-                        document.getElementById('connectionAlert').style.display = 'none';
-                        // Solicitar dados do ESP32
+                    updateConnectionStatus('✅ Conectado ao ESP32', 'connected');
+                    document.getElementById('connectionAlert').style.display = 'none';
+                    
+                    // Solicitar dados do ESP32
+                    setTimeout(() => {
                         sendCommand('get_data');
                         sendCommand('get_consumo');
                         sendCommand('get_consumo_semanal');
                         sendCommand('get_status');
-                    }
+                    }, 1000);
                     break;
                     
                 case 'all_data':
                     lastData = data;
                     updateInterface(data);
+                    // Se recebemos dados, ESP32 está conectado
+                    esp32Connected = true;
+                    updateConnectionStatus('✅ Conectado ao ESP32', 'connected');
+                    document.getElementById('connectionAlert').style.display = 'none';
                     break;
                     
                 case 'status':
@@ -988,10 +1094,16 @@
 
                 case 'error':
                     if (data.message === 'ESP32 não conectado') {
-                        document.getElementById('connectionAlert').style.display = 'block';
                         esp32Connected = false;
+                        updateConnectionStatus('❌ ESP32 não conectado', 'disconnected');
                     }
                     break;
+                    
+                default:
+                    // Qualquer outra mensagem indica que ESP32 está conectado
+                    esp32Connected = true;
+                    updateConnectionStatus('✅ Conectado ao ESP32', 'connected');
+                    document.getElementById('connectionAlert').style.display = 'none';
             }
         }
 
@@ -1098,10 +1210,67 @@
             }
         }
 
+        // ====== NOVA FUNÇÃO PARA GRÁFICO HORIZONTAL DE 24H ======
         function updateConsumoCharts(data) {
             if (data.consumo_diario) {
-                updateGrafico24h(data.consumo_diario);
+                create24hHorizontalChart(data.consumo_diario);
             }
+        }
+
+        function create24hHorizontalChart(consumoData) {
+            const container = document.getElementById('grafico24h');
+            if (!container) return;
+            
+            console.log('📊 Criando gráfico horizontal 24h:', consumoData);
+            
+            container.innerHTML = '';
+            
+            const maxConsumo = Math.max(...consumoData, 10);
+            let total24h = 0;
+
+            // Criar barras horizontais para cada hora
+            for (let i = 0; i < 24; i++) {
+                const consumo = consumoData[i] || 0;
+                total24h += consumo;
+                
+                // Calcular largura da barra (mínimo 1% para visualização)
+                const larguraPercent = Math.max((consumo / maxConsumo) * 100, 1);
+                
+                // Criar item da barra horizontal
+                const barraItem = document.createElement('div');
+                barraItem.className = 'barra-horizontal-item';
+                
+                // Label da hora
+                const horaLabel = document.createElement('div');
+                horaLabel.className = 'hora-label';
+                horaLabel.textContent = `${i.toString().padStart(2, '0')}h`;
+                
+                // Container da barra
+                const barraContainer = document.createElement('div');
+                barraContainer.className = 'barra-horizontal';
+                
+                // Barra de progresso
+                const barraProgresso = document.createElement('div');
+                barraProgresso.className = 'barra-progresso';
+                barraProgresso.style.width = larguraPercent + '%';
+                barraProgresso.title = `${consumo}L consumidos às ${i}h`;
+                
+                // Valor do consumo
+                const consumoValor = document.createElement('div');
+                consumoValor.className = 'consumo-valor';
+                consumoValor.textContent = consumo > 0 ? consumo + 'L' : '0L';
+                
+                // Montar a estrutura
+                barraContainer.appendChild(barraProgresso);
+                barraItem.appendChild(horaLabel);
+                barraItem.appendChild(barraContainer);
+                barraItem.appendChild(consumoValor);
+                
+                container.appendChild(barraItem);
+            }
+
+            document.getElementById('total24h').textContent = total24h;
+            console.log('✅ Gráfico horizontal 24h criado. Total:', total24h + 'L');
         }
 
         function updateConsumoSemanalCharts(data) {
@@ -1113,92 +1282,6 @@
                     data.consumo_semanal
                 );
             }
-        }
-
-        function updateConnectionStatus(message, status) {
-            // Atualizar no status mini
-            const element = document.getElementById('wifiStatusMini');
-            if (element) {
-                element.textContent = status === 'connected' ? '✅' : '❌';
-                element.className = status === 'connected' ? 'status-online' : 'status-offline';
-            }
-        }
-
-        function sendCommand(command) {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(command);
-                console.log('📤 Comando enviado:', command);
-            } else {
-                console.log('❌ WebSocket não conectado, tentando reconectar...');
-                connectWebSocket();
-            }
-        }
-
-        // ====== FUNÇÃO CORRIGIDA PARA RESET DE CONSUMO ======
-        function resetConsumo() {
-            if (confirm('🗑️ Tem certeza que deseja resetar TODO o histórico de consumo?\n\nEsta ação não pode ser desfeita!')) {
-                console.log('🔄 Solicitando reset de consumo...');
-                sendCommand('reset_consumo');
-                
-                // Forçar atualização dos dados após reset
-                setTimeout(() => {
-                    sendCommand('get_data');
-                    sendCommand('get_consumo');
-                    sendCommand('get_consumo_semanal');
-                }, 1000);
-            }
-        }
-
-        // ====== FUNÇÕES DE GRÁFICOS CORRIGIDAS ======
-        function updateGrafico24h(consumoData) {
-            const container = document.getElementById('grafico24h');
-            const labelsContainer = document.getElementById('horasLabels24h');
-            if (!container || !labelsContainer) return;
-            
-            console.log('📊 Atualizando gráfico 24h:', consumoData);
-            
-            container.innerHTML = '';
-            labelsContainer.innerHTML = '';
-            
-            const maxConsumo = Math.max(...consumoData, 50, 1);
-            let total24h = 0;
-            const maxBarHeight = 85;
-
-            // Gerar labels das horas
-            for (let i = 0; i < 24; i++) {
-                const label = document.createElement('div');
-                label.className = 'barra-hora';
-                label.textContent = i + 'h';
-                labelsContainer.appendChild(label);
-            }
-
-            // Gerar barras
-            consumoData.forEach((consumo, index) => {
-                total24h += consumo;
-                const alturaPercent = Math.min((consumo / maxConsumo) * maxBarHeight, maxBarHeight);
-                
-                const barContainer = document.createElement('div');
-                barContainer.className = 'barra-container';
-                
-                const barra = document.createElement('div');
-                barra.className = 'barra';
-                barra.style.height = Math.max(alturaPercent, 3) + '%';
-                
-                barContainer.appendChild(barra);
-                
-                if (consumo > 0) {
-                    const valorLabel = document.createElement('div');
-                    valorLabel.className = 'barra-valor-acima';
-                    valorLabel.textContent = consumo + 'L';
-                    valorLabel.style.bottom = (alturaPercent + 2) + '%';
-                    barContainer.appendChild(valorLabel);
-                }
-                
-                container.appendChild(barContainer);
-            });
-
-            document.getElementById('total24h').textContent = total24h;
-            console.log('✅ Gráfico 24h atualizado. Total:', total24h);
         }
 
         function updateGraficoSemanas(consumoData, semanas) {
@@ -1224,7 +1307,7 @@
                 barContainer.className = 'barra-container';
                 
                 const barra = document.createElement('div');
-                barra.className = 'barra-semana';
+                barra.className = 'barra';
                 barra.style.height = Math.max(alturaPercent, 3) + '%';
                 
                 barContainer.appendChild(barra);
@@ -1259,6 +1342,38 @@
                 
             const consumoSemanas = consumoSemanal ? consumoSemanal.reduce((a, b) => a + b, 0) : 0;
             document.getElementById('consumoSemanas').textContent = consumoSemanas + ' L';
+        }
+
+        function sendCommand(command) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(command);
+                console.log('📤 Comando enviado:', command);
+            } else {
+                console.log('❌ WebSocket não conectado, tentando reconectar...');
+                connectWebSocket();
+                
+                // Tentar enviar novamente após 2 segundos se reconectar
+                setTimeout(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(command);
+                    }
+                }, 2000);
+            }
+        }
+
+        // ====== FUNÇÃO CORRIGIDA PARA RESET DE CONSUMO ======
+        function resetConsumo() {
+            if (confirm('🗑️ Tem certeza que deseja resetar TODO o histórico de consumo?\n\nEsta ação não pode ser desfeita!')) {
+                console.log('🔄 Solicitando reset de consumo...');
+                sendCommand('reset_consumo');
+                
+                // Forçar atualização dos dados após reset
+                setTimeout(() => {
+                    sendCommand('get_data');
+                    sendCommand('get_consumo');
+                    sendCommand('get_consumo_semanal');
+                }, 1000);
+            }
         }
 
         // ====== MODAL DE CONFIGURAÇÃO ======
@@ -1310,6 +1425,12 @@
 
         // Inicializar quando a página carregar
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Inicializando Monitor Caixa dÁgua...');
+            
+            // Inicializar gráficos vazios
+            create24hHorizontalChart(new Array(24).fill(0));
+            updateGraficoSemanas(new Array(5).fill(0), ['S1', 'S2', 'S3', 'S4', 'S5']);
+            
             connectWebSocket();
             updateDateTime();
             
@@ -1318,17 +1439,13 @@
             
             // Atualizar dados a cada 5 segundos
             setInterval(() => {
-                if (ws && ws.readyState === WebSocket.OPEN && esp32Connected) {
+                if (ws && ws.readyState === WebSocket.OPEN) {
                     sendCommand('get_data');
                     sendCommand('get_consumo');
                     sendCommand('get_consumo_semanal');
                     sendCommand('get_status');
                 }
             }, 5000);
-
-            // Inicializar gráficos vazios
-            updateGrafico24h(new Array(24).fill(0));
-            updateGraficoSemanas(new Array(5).fill(0), ['S1', 'S2', 'S3', 'S4', 'S5']);
         });
     </script>
 </body>
