@@ -4,6 +4,9 @@ const http = require('http');
 const path = require('path');
 const axios = require('axios');
 
+// 🎯 CARREGAR VARIÁVEIS DE AMBIENTE
+require('dotenv').config();
+
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ 
@@ -12,13 +15,21 @@ const wss = new WebSocket.Server({
   clientTracking: true
 });
 
-// 🎯 CONFIGURAÇÃO ANTI-INATIVIDADE
+// 🎯 CONFIGURAÇÃO VIA VARIÁVEIS DE AMBIENTE
 const HEALTH_CHECK_URL = process.env.HEALTH_CHECK_URL || `https://testeservidor-6opr.onrender.com/health`;
-const HEALTH_CHECK_INTERVAL = 14 * 60 * 1000; // 14 minutos
+const HEALTH_CHECK_INTERVAL = parseInt(process.env.HEALTH_CHECK_INTERVAL) || 14 * 60 * 1000;
+const ESP32_TOKEN = process.env.ESP32_TOKEN || 'esp32_token_secreto_2024';
+const MAX_REQUESTS_PER_MINUTE = parseInt(process.env.MAX_REQUESTS_PER_MINUTE) || 60;
+const PORT = process.env.PORT || 3000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// 🎯 CONFIGURAÇÕES DE SEGURANÇA
-const ESP32_TOKEN = process.env.ESP32_TOKEN || 'default_esp32_token_2024';
-const MAX_REQUESTS_PER_MINUTE = 60;
+// 🎯 LOG DE CONFIGURAÇÃO CARREGADA
+console.log('🔧 Configuração do Servidor:');
+console.log(`   Porta: ${PORT}`);
+console.log(`   Ambiente: ${NODE_ENV}`);
+console.log(`   Health Check: ${HEALTH_CHECK_URL}`);
+console.log(`   Token ESP32: ${ESP32_TOKEN ? '✅ Configurado' : '❌ Não configurado'}`);
+console.log(`   Rate Limit: ${MAX_REQUESTS_PER_MINUTE} req/minuto`);
 
 // Armazenar conexões
 const clients = new Map();
@@ -75,6 +86,7 @@ app.get('/health', (req, res) => {
     status: 'OK', 
     service: 'Caixa dÁgua WebSocket',
     timestamp: new Date().toISOString(),
+    environment: NODE_ENV,
     uptime: Math.floor(process.uptime()),
     memory: {
       used: Math.round(memoryUsage.heapUsed / 1024 / 1024) + ' MB',
@@ -89,6 +101,11 @@ app.get('/health', (req, res) => {
       ...metrics,
       historicalDataPoints: historicalData.length
     },
+    config: {
+      health_check_interval: `${HEALTH_CHECK_INTERVAL / 60000} minutos`,
+      rate_limit: `${MAX_REQUESTS_PER_MINUTE} req/minuto`,
+      token_configured: !!ESP32_TOKEN
+    },
     render_keepalive: 'ACTIVE'
   });
 });
@@ -98,7 +115,8 @@ app.get('/ping', (req, res) => {
   res.json({ 
     status: 'pong', 
     timestamp: new Date().toISOString(),
-    service: 'active'
+    service: 'active',
+    environment: NODE_ENV
   });
 });
 
@@ -110,7 +128,8 @@ app.get('/metrics', (req, res) => {
     ...metrics,
     averageMessageRate: metrics.messagesReceived / uptimeMinutes,
     historicalDataPoints: historicalData.length,
-    rateLimitSize: rateLimit.size
+    rateLimitSize: rateLimit.size,
+    environment: NODE_ENV
   });
 });
 
@@ -127,7 +146,32 @@ app.get('/historical-data', (req, res) => {
     success: true,
     data: filteredData,
     total: filteredData.length,
-    timeRange: `${hours} horas`
+    timeRange: `${hours} horas`,
+    environment: NODE_ENV
+  });
+});
+
+// 🎯 NOVA ROTA PARA CONFIGURAÇÃO DO SISTEMA
+app.get('/config', (req, res) => {
+  res.json({
+    success: true,
+    config: {
+      environment: NODE_ENV,
+      port: PORT,
+      health_check: {
+        url: HEALTH_CHECK_URL,
+        interval: `${HEALTH_CHECK_INTERVAL / 60000} minutos`
+      },
+      security: {
+        token_configured: !!ESP32_TOKEN,
+        rate_limit: MAX_REQUESTS_PER_MINUTE
+      },
+      server: {
+        uptime: Math.floor(process.uptime()),
+        node_version: process.version,
+        platform: process.platform
+      }
+    }
   });
 });
 
@@ -137,7 +181,7 @@ wss.on('connection', function connection(ws, req) {
   const clientIP = getClientIP(req);
   const isESP32 = isESP32Connection(req, clientIP);
   
-  console.log(`✅ Nova conexão: ${clientId} - IP: ${clientIP} - Tipo: ${isESP32 ? 'ESP32' : 'WEB'}`);
+  console.log(`✅ Nova conexão: ${clientId} - IP: ${clientIP} - Tipo: ${isESP32 ? 'ESP32' : 'WEB'} - Ambiente: ${NODE_ENV}`);
   
   clients.set(clientId, ws);
   ws.clientId = clientId;
@@ -169,7 +213,8 @@ wss.on('connection', function connection(ws, req) {
       type: 'esp32_connected',
       message: 'ESP32 conectado',
       clientId: clientId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
     });
   } else {
     metrics.webClientsConnected++;
@@ -181,7 +226,8 @@ wss.on('connection', function connection(ws, req) {
     message: 'Conectado ao servidor WebSocket',
     clientId: clientId,
     isESP32: isESP32,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    environment: NODE_ENV
   };
   
   sendToClient(ws, welcomeMessage);
@@ -234,7 +280,7 @@ wss.on('connection', function connection(ws, req) {
   });
   
   ws.on('close', function close(code, reason) {
-    console.log(`❌ Conexão fechada: ${clientId} - Código: ${code} - Motivo: ${reason || 'Nenhum'}`);
+    console.log(`❌ Conexão fechada: ${clientId} - Código: ${code} - Motivo: ${reason || 'Nenhum'} - Ambiente: ${NODE_ENV}`);
     
     if (esp32Client === ws) {
       console.log('🎯 ESP32 desconectado');
@@ -244,7 +290,8 @@ wss.on('connection', function connection(ws, req) {
       broadcastToWebClients({
         type: 'esp32_disconnected',
         message: 'ESP32 desconectado',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        environment: NODE_ENV
       });
     } else {
       metrics.webClientsConnected = Math.max(0, metrics.webClientsConnected - 1);
@@ -273,14 +320,15 @@ function authenticateESP32(req) {
   }
   
   // Verificar token no query parameter
-  const tokenParam = req.url.split('token=')[1];
+  const url = require('url');
+  const parsedUrl = url.parse(req.url, true);
+  const tokenParam = parsedUrl.query.token;
   if (tokenParam) {
-    const token = tokenParam.split('&')[0];
-    return token === ESP32_TOKEN;
+    return tokenParam === ESP32_TOKEN;
   }
   
   // Para desenvolvimento, permitir sem token se não estiver em produção
-  if (process.env.NODE_ENV !== 'production') {
+  if (NODE_ENV !== 'production') {
     console.log('⚠️  Modo desenvolvimento: Autenticação ESP32 bypassada');
     return true;
   }
@@ -317,7 +365,8 @@ function saveSensorData(data) {
     liters: data.liters,
     percentage: data.percentage,
     consumption: data.consumo_hoje,
-    distance: data.distance
+    distance: data.distance,
+    environment: NODE_ENV
   };
   
   historicalData.push(dataPoint);
@@ -392,10 +441,11 @@ function handleWebSocketMessage(ws, message) {
     clientId: ws.clientId,
     origin: ws.isESP32 ? 'esp32' : 'web',
     timestamp: new Date().toISOString(),
-    serverTime: Date.now()
+    serverTime: Date.now(),
+    environment: NODE_ENV
   };
   
-  console.log(`📨 ${clientInfo} - ${message.type}`);
+  console.log(`📨 ${clientInfo} - ${message.type} - Ambiente: ${NODE_ENV}`);
   
   // Log específico para dados importantes
   if (message.type === 'all_data') {
@@ -411,7 +461,7 @@ function handleWebSocketMessage(ws, message) {
     // Se é do frontend e temos ESP32, repassar para o ESP32
     if (esp32Client && esp32Client.readyState === WebSocket.OPEN && esp32Client !== ws) {
       // Remover metadados antes de enviar para ESP32
-      const { clientId, origin, timestamp, serverTime, ...cleanMessage } = enhancedMessage;
+      const { clientId, origin, timestamp, serverTime, environment, ...cleanMessage } = enhancedMessage;
       sendToClient(esp32Client, cleanMessage);
       metrics.messagesSent++;
     } else if (!esp32Client) {
@@ -419,7 +469,8 @@ function handleWebSocketMessage(ws, message) {
       sendToClient(ws, {
         type: 'error',
         message: 'ESP32 não conectado',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        environment: NODE_ENV
       });
     }
   }
@@ -427,7 +478,7 @@ function handleWebSocketMessage(ws, message) {
 
 // Processar comandos de texto (do frontend)
 function handleTextCommand(ws, command) {
-  console.log(`📤 Comando de ${ws.clientId}: ${command}`);
+  console.log(`📤 Comando de ${ws.clientId}: ${command} - Ambiente: ${NODE_ENV}`);
   
   // CORREÇÃO: Comandos que não precisam do ESP32
   if (command === 'get_status' || command === 'health') {
@@ -436,6 +487,7 @@ function handleTextCommand(ws, command) {
       clients: clients.size,
       esp32Connected: !!esp32Client,
       timestamp: new Date().toISOString(),
+      environment: NODE_ENV,
       metrics: metrics
     };
     return sendToClient(ws, statusMessage);
@@ -452,7 +504,8 @@ function handleTextCommand(ws, command) {
       type: 'command_ack',
       command: command,
       status: 'sent_to_esp32',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
     });
   } else {
     // CORREÇÃO MELHORADA: Avisar frontend que ESP32 não está conectado
@@ -460,7 +513,8 @@ function handleTextCommand(ws, command) {
       type: 'error',
       message: 'ESP32 não conectado',
       command: command,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
     });
     console.log('⚠️ Comando ignorado - ESP32 não conectado:', command);
   }
@@ -499,14 +553,14 @@ function broadcastToWebClients(message) {
   });
   
   if (sentCount > 0) {
-    console.log(`📡 Mensagem ${message.type} transmitida para ${sentCount} cliente(s) web`);
+    console.log(`📡 Mensagem ${message.type} transmitida para ${sentCount} cliente(s) web - Ambiente: ${NODE_ENV}`);
   }
 }
 
 // Log estatísticas de conexão
 function logConnectionStats() {
   const webClients = Array.from(clients.values()).filter(client => !client.isESP32).length;
-  console.log(`📊 Estatísticas: Total: ${clients.size} | ESP32: ${esp32Client ? 1 : 0} | Web: ${webClients}`);
+  console.log(`📊 Estatísticas: Total: ${clients.size} | ESP32: ${esp32Client ? 1 : 0} | Web: ${webClients} | Ambiente: ${NODE_ENV}`);
 }
 
 // ====== API REST ======
@@ -518,6 +572,7 @@ app.get('/status', (req, res) => {
   res.json({
     status: 'operational',
     serverTime: new Date().toISOString(),
+    environment: NODE_ENV,
     uptime: Math.floor(process.uptime()),
     memory: process.memoryUsage(),
     metrics: metrics,
@@ -552,7 +607,8 @@ app.get('/clients', (req, res) => {
   res.json({ 
     clients: clientList, 
     total: clientList.length,
-    esp32Connected: !!esp32Client
+    esp32Connected: !!esp32Client,
+    environment: NODE_ENV
   });
 });
 
@@ -564,20 +620,22 @@ app.post('/command/:command', express.json(), (req, res) => {
     return res.status(404).json({ 
       success: false, 
       message: 'ESP32 não conectado',
-      command: command 
+      command: command,
+      environment: NODE_ENV
     });
   }
   
   try {
     esp32Client.send(command);
     metrics.messagesSent++;
-    console.log(`📤 Comando HTTP enviado: ${command}`);
+    console.log(`📤 Comando HTTP enviado: ${command} - Ambiente: ${NODE_ENV}`);
     
     res.json({ 
       success: true, 
       message: `Comando enviado para ESP32`,
       command: command,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
     });
   } catch (error) {
     console.error('❌ Erro ao enviar comando:', error);
@@ -585,7 +643,8 @@ app.post('/command/:command', express.json(), (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Erro ao enviar comando',
-      error: error.message 
+      error: error.message,
+      environment: NODE_ENV
     });
   }
 });
@@ -595,7 +654,8 @@ app.post('/consumo/reset', (req, res) => {
   if (!esp32Client || esp32Client.readyState !== WebSocket.OPEN) {
     return res.status(404).json({ 
       success: false, 
-      message: 'ESP32 não conectado' 
+      message: 'ESP32 não conectado',
+      environment: NODE_ENV
     });
   }
   
@@ -607,7 +667,8 @@ app.post('/consumo/reset', (req, res) => {
     res.json({ 
       success: true, 
       message: 'Reset de consumo enviado para ESP32',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
     });
   } catch (error) {
     console.error('❌ Erro ao enviar reset:', error);
@@ -615,7 +676,8 @@ app.post('/consumo/reset', (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Erro ao enviar comando de reset',
-      error: error.message 
+      error: error.message,
+      environment: NODE_ENV
     });
   }
 });
@@ -628,7 +690,7 @@ app.get('/system/info', (req, res) => {
     architecture: process.arch,
     uptime: process.uptime(),
     memory: process.memoryUsage(),
-    env: process.env.NODE_ENV || 'development',
+    environment: NODE_ENV,
     metrics: metrics
   });
 });
@@ -640,7 +702,8 @@ app.use((error, req, res, next) => {
   res.status(500).json({ 
     success: false, 
     message: 'Erro interno do servidor',
-    error: process.env.NODE_ENV === 'production' ? 'Internal error' : error.message
+    error: NODE_ENV === 'production' ? 'Internal error' : error.message,
+    environment: NODE_ENV
   });
 });
 
@@ -649,7 +712,8 @@ app.use('*', (req, res) => {
   res.status(404).json({ 
     success: false, 
     message: 'Rota não encontrada',
-    path: req.originalUrl 
+    path: req.originalUrl,
+    environment: NODE_ENV
   });
 });
 
@@ -657,20 +721,19 @@ app.use('*', (req, res) => {
 async function healthCheck() {
     try {
         const response = await axios.get(HEALTH_CHECK_URL);
-        console.log(`✅ Health check realizado: ${response.status} - ${new Date().toLocaleTimeString('pt-BR')}`);
+        console.log(`✅ Health check realizado: ${response.status} - ${new Date().toLocaleTimeString('pt-BR')} - Ambiente: ${NODE_ENV}`);
     } catch (error) {
-        console.log(`❌ Erro no health check: ${error.message}`);
+        console.log(`❌ Erro no health check: ${error.message} - Ambiente: ${NODE_ENV}`);
         metrics.errors++;
     }
 }
 
-const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
-  console.log(`🌐 Acesse: http://localhost:${PORT}`);
+  console.log(`🌐 Ambiente: ${NODE_ENV}`);
   console.log(`📊 Health: http://localhost:${PORT}/health`);
   console.log(`📋 Status: http://localhost:${PORT}/status`);
-  console.log(`📈 Metrics: http://localhost:${PORT}/metrics`);
+  console.log(`🔧 Config: http://localhost:${PORT}/config`);
   console.log(`🎯 Aguardando conexões ESP32 e Web...`);
   console.log(`🔐 Token ESP32: ${ESP32_TOKEN}`);
   
@@ -709,7 +772,7 @@ setInterval(() => {
   });
   
   if (cleanedCount > 0) {
-    console.log(`🧹 Limpeza: ${cleanedCount} cliente(s) removido(s)`);
+    console.log(`🧹 Limpeza: ${cleanedCount} cliente(s) removido(s) - Ambiente: ${NODE_ENV}`);
   }
 }, 60000);
 
@@ -730,7 +793,7 @@ setInterval(() => {
 
 // Graceful shutdown
 function gracefulShutdown(signal) {
-  console.log(`\n🔄 Recebido ${signal}, encerrando servidor...`);
+  console.log(`\n🔄 Recebido ${signal}, encerrando servidor... - Ambiente: ${NODE_ENV}`);
   
   // Fechar todas as conexões WebSocket
   clients.forEach((client, id) => {
@@ -754,3 +817,4 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Log inicial
 console.log('✅ Servidor WebSocket inicializado com sucesso!');
+console.log('🎯 Variáveis de ambiente carregadas com sucesso!');
