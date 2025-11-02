@@ -33,7 +33,8 @@
   "homepage": "https://github.com/seuusuario/caixa-dagua-monitor#readme",
   "dependencies": {
     "express": "^4.18.2",
-    "ws": "^8.14.2"
+    "ws": "^8.14.2",
+    "axios": "^1.6.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
