@@ -1,1296 +1,899 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor Caixa de Compensação - Chillers</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a2a6c, #2d1a6c, #6c1a2a);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 15px;
-        }
-
-        .container {
-            max-width: 1400px;
-            width: 100%;
-            background: rgba(255, 255, 255, 0.98);
-            border-radius: 25px;
-            padding: 25px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(10px);
-        }
-
-        h1 {
-            color: #1a2a6c;
-            text-align: center;
-            margin-bottom: 15px;
-            font-size: 2.4rem;
-            font-weight: 900;
-            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.2);
-            letter-spacing: 1px;
-        }
-
-        /* 🎯 AFINADO: Header mais compacto */
-        .header-compact {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .date-time-compact {
-            font-size: 0.9rem;
-            color: #1a2a6c;
-            font-weight: 700;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.6));
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: 1px solid rgba(26, 42, 108, 0.2);
-            min-width: 200px;
-        }
-
-        .connection-status-compact {
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 0.85rem;
-            min-width: 180px;
-            text-align: center;
-        }
-
-        .connected {
-            background: linear-gradient(135deg, #32CD32, #228B22);
-            color: white;
-        }
-
-        .disconnected {
-            background: linear-gradient(135deg, #FF4500, #DC143C);
-            color: white;
-        }
-
-        .connecting {
-            background: linear-gradient(135deg, #FFA500, #FF8C00);
-            color: white;
-        }
-
-        .capacity-info {
-            text-align: center;
-            margin: 15px 0;
-            font-size: 1.1rem;
-            color: #1a2a6c;
-            background: linear-gradient(135deg, rgba(26, 42, 108, 0.1), rgba(42, 58, 156, 0.1));
-            padding: 10px 15px;
-            border-radius: 10px;
-            border: 1px solid rgba(26, 42, 108, 0.2);
-            font-weight: 600;
-        }
-
-        .dashboard {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 25px;
-            margin-top: 20px;
-        }
-
-        .tank-section {
-            flex: 1;
-            min-width: 400px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .tank-container {
-            position: relative;
-            width: 450px;
-            height: 550px;
-            margin-bottom: 15px;
-        }
-
-        /* IMAGEM DA CAIXA DE COMPENSAÇÃO */
-        .tank-image {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            z-index: 2;
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
-            object-fit: contain;
-            background: transparent;
-        }
-
-        /* 🎯 CORREÇÃO DA BARRA DE NÍVEL PARA CELULAR VERTICAL */
-        .water-container {
-            position: absolute;
-            top: 95px;
-            left: 192px;
-            width: 70px;
-            height: 120px;
-            z-index: 3;
-            overflow: hidden;
-            border-radius: 3px;
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        /* BARRA DE NÍVEL VERTICAL E FINA */
-        .water-level {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            border-radius: 3px 3px 0 0;
-            transition: height 2s ease-in-out;
-            background: linear-gradient(to top, rgba(0, 119, 255, 0.9), rgba(0, 200, 255, 0.95));
-            box-shadow: 
-                inset 0 0 10px rgba(255, 255, 255, 0.5),
-                0 0 10px rgba(0, 100, 255, 0.6);
-        }
-
-        .water-effect {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, 
-                transparent 10%, 
-                rgba(255, 255, 255, 0.3) 50%, 
-                transparent 90%);
-            animation: waterShine 3s infinite linear;
-            border-radius: 3px 3px 0 0;
-        }
-
-        .water-bubbles {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            height: 8px;
-            background: radial-gradient(circle at 30% 50%, rgba(255, 255, 255, 0.4) 1px, transparent 2px),
-                radial-gradient(circle at 70% 50%, rgba(255, 255, 255, 0.3) 1px, transparent 2px);
-            animation: bubbles 2s infinite ease-in-out;
-        }
-
-        .percentage-display {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 2.2rem;
-            font-weight: 900;
-            color: #1a2a6c;
-            text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.8);
-            z-index: 4;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 8px 16px;
-            border-radius: 10px;
-            border: 2px solid #1a2a6c;
-        }
-
-        .info-section {
-            flex: 2;
-            min-width: 600px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .data-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-        }
-
-        .card {
-            background: linear-gradient(135deg, #1a2a6c, #2a3a9c);
-            color: white;
-            padding: 20px 15px;
-            border-radius: 15px;
-            box-shadow: 0 8px 20px rgba(26, 42, 108, 0.4);
-            text-align: center;
-            transition: all 0.3s ease;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 25px rgba(26, 42, 108, 0.6);
-        }
-
-        .card-value {
-            font-size: 2rem;
-            font-weight: 800;
-            margin: 10px 0;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        }
-
-        .card-label {
-            font-size: 1rem;
-            font-weight: 600;
-            opacity: 0.9;
-        }
-
-        .status-container {
-            padding: 15px;
-            border-radius: 12px;
-            margin-top: 8px;
-            text-align: center;
-            font-size: 1.2rem;
-            font-weight: 700;
-            border: 2px solid;
-            transition: all 0.3s ease;
-        }
-
-        .critical {
-            background: linear-gradient(135deg, rgba(255, 50, 50, 0.25), rgba(255, 100, 100, 0.25));
-            color: #cc0000;
-            border-color: #cc0000;
-            animation: pulse 1.5s infinite;
-        }
-
-        .warning {
-            background: linear-gradient(135deg, rgba(255, 165, 0, 0.25), rgba(255, 200, 0, 0.25));
-            color: #cc8800;
-            border-color: #cc8800;
-        }
-
-        .normal {
-            background: linear-gradient(135deg, rgba(50, 205, 50, 0.25), rgba(144, 238, 144, 0.25));
-            color: #008000;
-            border-color: #008000;
-        }
-
-        .full {
-            background: linear-gradient(135deg, rgba(30, 144, 255, 0.25), rgba(135, 206, 250, 0.25));
-            color: #0066cc;
-            border-color: #0066cc;
-        }
-
-        .sensor-error {
-            background: linear-gradient(135deg, rgba(255, 0, 0, 0.25), rgba(255, 100, 100, 0.25));
-            color: #ff0000;
-            border-color: #ff0000;
-            animation: pulse 1s infinite;
-        }
-
-        /* 🎯 AFINADO: Sistema de status mini mais compacto */
-        .system-status-mini {
-            background: linear-gradient(135deg, rgba(50, 50, 50, 0.1), rgba(100, 100, 100, 0.1));
-            padding: 8px 15px;
-            border-radius: 10px;
-            margin-bottom: 12px;
-            font-size: 0.8rem;
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 6px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .status-online {
-            color: #008000;
-            font-weight: 700;
-        }
-
-        .status-offline {
-            color: #cc0000;
-            font-weight: 700;
-        }
-
-        .alert-active {
-            color: #ff0000;
-            font-weight: 700;
-            animation: blink 1s infinite;
-        }
-
-        .status-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            padding: 4px 8px;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 6px;
-        }
-
-        .config-buttons {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            margin-top: 15px;
-        }
-
-        .btn-reset {
-            background: linear-gradient(135deg, #FF4500, #DC143C);
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            text-decoration: none;
-            font-weight: 700;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(255, 69, 0, 0.4);
-        }
-
-        .btn-reset:hover {
-            background: linear-gradient(135deg, #DC143C, #FF4500);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(255, 69, 0, 0.6);
-        }
-
-        .btn-refresh {
-            background: linear-gradient(135deg, #4169E1, #1E90FF);
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            text-decoration: none;
-            font-weight: 700;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(65, 105, 225, 0.4);
-        }
-
-        .btn-refresh:hover {
-            background: linear-gradient(135deg, #1E90FF, #4169E1);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(65, 105, 225, 0.6);
-        }
-
-        .consumo-section {
-            margin-top: 20px;
-            padding: 15px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(240, 240, 240, 0.9));
-            border-radius: 15px;
-            border: 2px solid rgba(26, 42, 108, 0.15);
-        }
-
-        .consumo-title {
-            font-size: 1.2rem;
-            color: #1a2a6c;
-            margin-bottom: 12px;
-            text-align: center;
-            font-weight: 800;
-            border-bottom: 2px solid #1a2a6c;
-            padding-bottom: 6px;
-        }
-
-        .graficos-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .grafico-box {
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 12px;
-            padding: 12px;
-            border: 1px solid rgba(26, 42, 108, 0.15);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        }
-
-        .grafico-horizontal {
-            width: 100%;
-            height: 180px;
-            background: rgba(255, 255, 255, 0.8);
-            border-radius: 8px;
-            padding: 12px;
-            border: 1px solid #ddd;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .barra-horizontal-container {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            height: 100%;
-            overflow-y: auto;
-            padding-right: 5px;
-        }
-
-        .barra-horizontal-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 4px 0;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .hora-label {
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: #1a2a6c;
-            min-width: 35px;
-            text-align: center;
-        }
-
-        .barra-horizontal {
-            flex: 1;
-            height: 16px;
-            background: #e0e0e0;
-            border-radius: 8px;
-            overflow: hidden;
-            position: relative;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
-        }
-
-        .barra-progresso {
-            height: 100%;
-            background: linear-gradient(90deg, #1a2a6c, #4169E1);
-            border-radius: 8px;
-            transition: width 0.5s ease;
-            min-width: 3px;
-        }
-
-        .consumo-valor {
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: #1a2a6c;
-            min-width: 35px;
-            text-align: right;
-        }
-
-        .grafico-content {
-            width: 100%;
-            height: 180px;
-            background: rgba(255, 255, 255, 0.8);
-            border-radius: 8px;
-            padding: 8px;
-            border: 1px solid #ddd;
-            display: flex;
-            align-items: end;
-            gap: 2px;
-            position: relative;
-            overflow: visible;
-        }
-
-        .barra-vertical {
-            display: flex;
-            align-items: end;
-            gap: 2px;
-            height: 130px;
-            padding: 8px 0;
-            width: 100%;
-            position: relative;
-        }
-
-        .barra {
-            flex: 1;
-            background: linear-gradient(to top, #32CD32, #228B22);
-            border-radius: 3px 3px 0 0;
-            position: relative;
-            min-height: 3px;
-            transition: all 0.5s ease;
-            max-height: 100% !important;
-        }
-
-        .barra-valor-acima {
-            position: absolute;
-            font-size: 0.55rem;
-            font-weight: 600;
-            white-space: nowrap;
-            z-index: 10;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 1px 3px;
-            border-radius: 3px;
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-        }
-
-        .semanas-labels {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 6px;
-            font-size: 0.65rem;
-            color: #666;
-            font-weight: 600;
-        }
-
-        .consumo-resumo {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 12px;
-            margin-top: 12px;
-        }
-
-        .resumo-card {
-            background: linear-gradient(135deg, #32CD32, #228B22);
-            color: white;
-            padding: 12px;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 4px 12px rgba(50, 205, 50, 0.3);
-        }
-
-        .resumo-card.warning {
-            background: linear-gradient(135deg, #FFA500, #FF8C00);
-        }
-
-        .resumo-card.alert {
-            background: linear-gradient(135deg, #FF4500, #DC143C);
-        }
-
-        .resumo-value {
-            font-size: 1.6rem;
-            font-weight: 800;
-            margin: 6px 0;
-        }
-
-        .resumo-label {
-            font-size: 0.85rem;
-            font-weight: 600;
-            opacity: 0.9;
-        }
-
-        .grafico-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-
-        .grafico-stats {
-            font-size: 0.75rem;
-            color: #666;
-            font-weight: 600;
-        }
-
-        .barra-container {
-            position: relative;
-            height: 100%;
-            flex: 1;
-            display: flex;
-            align-items: end;
-        }
-
-        .tolerancia-info {
-            text-align: center;
-            margin-top: 8px;
-            font-size: 0.75rem;
-            color: #666;
-            font-style: italic;
-        }
-
-        .alert-banner {
-            background: linear-gradient(135deg, #ff0000, #cc0000);
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            text-align: center;
-            font-weight: 700;
-            animation: pulse 1s infinite;
-            border: 2px solid #ff4444;
-            font-size: 0.9rem;
-        }
-
-        /* 🎯 AFINADO: Sistema de Notificações mais discreto */
-        .notification-container {
-            position: fixed;
-            top: 15px;
-            right: 15px;
-            z-index: 1000;
-            max-width: 350px;
-        }
-
-        .notification {
-            background: linear-gradient(135deg, #ff6b35, #ff8e53);
-            color: white;
-            padding: 12px 15px;
-            margin-bottom: 8px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-            border-left: 4px solid #ff4444;
-            animation: slideIn 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.85rem;
-        }
-
-        .notification.success {
-            background: linear-gradient(135deg, #32CD32, #228B22);
-            border-left-color: #008000;
-        }
-
-        .notification.warning {
-            background: linear-gradient(135deg, #FFA500, #FF8C00);
-            border-left-color: #cc8800;
-        }
-
-        .notification.info {
-            background: linear-gradient(135deg, #4169E1, #1E90FF);
-            border-left-color: #0066cc;
-        }
-
-        .notification-icon {
-            font-size: 1.3rem;
-        }
-
-        .notification-content {
-            flex: 1;
-        }
-
-        .notification-title {
-            font-weight: 800;
-            margin-bottom: 3px;
-            font-size: 0.9rem;
-        }
-
-        .notification-message {
-            font-size: 0.8rem;
-            opacity: 0.9;
-        }
-
-        .notification-close {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 1.1rem;
-            cursor: pointer;
-            padding: 3px;
-        }
-
-        /* 🎯 AFINADO: Timeline mais compacta */
-        .connection-timeline {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.85), rgba(240, 240, 240, 0.85));
-            border-radius: 10px;
-            padding: 10px;
-            margin-top: 10px;
-            border: 1px solid rgba(26, 42, 108, 0.15);
-            max-height: 120px;
-            overflow-y: auto;
-        }
-
-        .timeline-title {
-            font-size: 0.9rem;
-            color: #1a2a6c;
-            margin-bottom: 8px;
-            font-weight: 800;
-        }
-
-        .timeline-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px;
-            border-bottom: 1px solid #e0e0e0;
-            font-size: 0.75rem;
-        }
-
-        .timeline-item:last-child {
-            border-bottom: none;
-        }
-
-        .timeline-time {
-            color: #666;
-            min-width: 70px;
-            font-weight: 600;
-            font-size: 0.7rem;
-        }
-
-        .timeline-event {
-            flex: 1;
-            font-size: 0.75rem;
-        }
-
-        .timeline-status {
-            font-weight: 700;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.65rem;
-        }
-
-        .status-connected {
-            background: #32CD32;
-            color: white;
-        }
-
-        .status-disconnected {
-            background: #FF4500;
-            color: white;
-        }
-
-        .status-timeout {
-            background: #FFA500;
-            color: white;
-        }
-
-        .update-info {
-            text-align: center;
-            margin-top: 15px;
-            font-size: 0.8rem;
-            color: #666;
-            font-weight: 600;
-        }
-
-        @keyframes waterShine {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-        }
-
-        @keyframes bubbles {
-            0%, 100% { transform: translateY(0); opacity: 0.7; }
-            50% { transform: translateY(-3px); opacity: 1; }
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; box-shadow: 0 0 15px rgba(204, 0, 0, 0.4); }
-            50% { opacity: 0.8; box-shadow: 0 0 20px rgba(204, 0, 0, 0.6); }
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
+const WebSocket = require('ws');
+const express = require('express');
+const http = require('http');
+const path = require('path');
+const axios = require('axios');
+
+// 🎯 CARREGAR VARIÁVEIS DE AMBIENTE
+require('dotenv').config();
+
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ 
+  server,
+  perMessageDeflate: false,
+  clientTracking: true
+});
+
+// 🎯 CONFIGURAÇÃO VIA VARIÁVEIS DE AMBIENTE
+const HEALTH_CHECK_URL = process.env.HEALTH_CHECK_URL || `https://testeservidor-6opr.onrender.com/health`;
+const HEALTH_CHECK_INTERVAL = parseInt(process.env.HEALTH_CHECK_INTERVAL) || 14 * 60 * 1000;
+const ESP32_TOKEN = process.env.ESP32_TOKEN || 'esp32_token_secreto_2024';
+const MAX_REQUESTS_PER_MINUTE = parseInt(process.env.MAX_REQUESTS_PER_MINUTE) || 60;
+const PORT = process.env.PORT || 3000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+// 🎯 SISTEMA DE NOTIFICAÇÃO DE DESCONEXÃO
+const DISCONNECTION_TIMEOUT = 20000;
+const clientHeartbeats = new Map();
+
+// 🎯 LOG DE CONFIGURAÇÃO CARREGADA
+console.log('🔧 Configuração do Servidor:');
+console.log(`   Porta: ${PORT}`);
+console.log(`   Ambiente: ${NODE_ENV}`);
+console.log(`   Health Check: ${HEALTH_CHECK_URL}`);
+console.log(`   Token ESP32: ${ESP32_TOKEN ? '✅ Configurado' : '❌ Não configurado'}`);
+console.log(`   Rate Limit: ${MAX_REQUESTS_PER_MINUTE} req/minuto`);
+console.log(`   Timeout Desconexão: ${DISCONNECTION_TIMEOUT/1000} segundos`);
+
+// Armazenar conexões
+const clients = new Map();
+let esp32Client = null;
+
+// 🎯 Armazenamento de dados históricos
+const historicalData = [];
+const metrics = {
+  messagesReceived: 0,
+  messagesSent: 0,
+  errors: 0,
+  esp32Reconnects: 0,
+  webClientsConnected: 0,
+  esp32Disconnections: 0,
+  esp32Timeouts: 0
+};
+
+// 🎯 Rate limiting
+const rateLimit = new Map();
+
+// 🎯 NOVA FUNÇÃO: Sistema de heartbeat para ESP32
+function setupESP32Heartbeat(clientId, ws) {
+    console.log(`💓 Iniciando heartbeat para ESP32: ${clientId}`);
+    
+    clientHeartbeats.set(clientId, {
+        lastHeartbeat: Date.now(),
+        isConnected: true,
+        heartbeatInterval: setInterval(() => {
+            const clientData = clientHeartbeats.get(clientId);
+            if (clientData && Date.now() - clientData.lastHeartbeat > DISCONNECTION_TIMEOUT) {
+                console.log(`🚨 ESP32 ${clientId} considerado DESCONECTADO (timeout heartbeat)`);
+                clientData.isConnected = false;
+                metrics.esp32Timeouts++;
+                
+                // Notificar TODOS os clientes web sobre a desconexão
+                broadcastToWebClients({
+                    type: 'esp32_disconnected',
+                    message: 'ESP32 desconectado - Sem comunicação',
+                    clientId: clientId,
+                    reason: 'heartbeat_timeout',
+                    timestamp: new Date().toISOString(),
+                    environment: NODE_ENV,
+                    urgent: true
+                });
+                
+                // Limpar intervalos
+                clearInterval(clientData.heartbeatInterval);
+                clientHeartbeats.delete(clientId);
             }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
+        }, 5000)
+    });
+}
 
-        /* 🎯 CORREÇÃO ESPECÍFICA PARA CELULAR VERTICAL */
-        @media (max-width: 768px) {
-            .dashboard {
-                flex-direction: column;
-            }
-            
-            .tank-container {
-                width: 100%;
-                max-width: 350px;
-                height: 400px;
-            }
-            
-            .water-container {
-                top: 80px;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 25px;
-                height: 180px;
-            }
-            
-            .percentage-display {
-                font-size: 1.8rem;
-                top: 15px;
-                padding: 6px 12px;
-            }
-            
-            .system-status-mini {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .card-value {
-                font-size: 1.8rem;
-            }
-            
-            h1 {
-                font-size: 2rem;
-            }
-            
-            .header-compact {
-                flex-direction: column;
-                gap: 8px;
-            }
-            
-            .date-time-compact, .connection-status-compact {
-                width: 100%;
-                text-align: center;
-            }
-            
-            .consumo-resumo {
-                grid-template-columns: 1fr;
-            }
-            
-            .info-section {
-                min-width: 100%;
-            }
-            
-            .grafico-content {
-                height: 150px;
-            }
-            
-            .barra-valor-acima {
-                font-size: 0.5rem;
-            }
-            
-            .config-buttons {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .btn-reset, .btn-refresh {
-                width: 180px;
-            }
-            
-            .graficos-container {
-                grid-template-columns: 1fr;
-            }
-
-            .notification-container {
-                top: 10px;
-                right: 10px;
-                left: 10px;
-                max-width: none;
-            }
+// 🎯 NOVA FUNÇÃO: Atualizar heartbeat do ESP32
+function updateESP32Heartbeat(clientId) {
+    const heartbeatData = clientHeartbeats.get(clientId);
+    if (heartbeatData) {
+        heartbeatData.lastHeartbeat = Date.now();
+        if (!heartbeatData.isConnected) {
+            heartbeatData.isConnected = true;
+            console.log(`💓 ESP32 ${clientId} reconectado (heartbeat atualizado)`);
         }
+    }
+}
 
-        @media (max-width: 480px) {
-            .tank-container {
-                height: 350px;
-            }
-            
-            .water-container {
-                top: 70px;
-                width: 20px;
-                height: 160px;
-            }
-            
-            .percentage-display {
-                font-size: 1.5rem;
-                top: 10px;
-            }
-            
-            h1 {
-                font-size: 1.6rem;
-            }
-            
-            .capacity-info {
-                font-size: 1rem;
-                padding: 8px;
-            }
-        }
+// Middleware para CORS
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  next();
+});
 
-        @media (max-width: 1200px) {
-            .graficos-container {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>❄️ MONITOR CAIXA DE COMPENSAÇÃO - CHILLERS</h1>
+app.use(express.json());
+app.use(express.static('public'));
+
+// 🎯 Middleware de rate limiting
+app.use((req, res, next) => {
+  const clientIP = getClientIP(req);
+  
+  if (!checkRateLimit(clientIP)) {
+    return res.status(429).json({
+      success: false,
+      message: 'Muitas requisições. Tente novamente em 1 minuto.'
+    });
+  }
+  
+  next();
+});
+
+// Rota principal - serve o HTML
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Health check melhorado
+app.get('/health', (req, res) => {
+  const memoryUsage = process.memoryUsage();
+  
+  res.json({ 
+    status: 'OK', 
+    service: 'Caixa dÁgua WebSocket',
+    timestamp: new Date().toISOString(),
+    environment: NODE_ENV,
+    uptime: Math.floor(process.uptime()),
+    memory: {
+      used: Math.round(memoryUsage.heapUsed / 1024 / 1024) + ' MB',
+      total: Math.round(memoryUsage.heapTotal / 1024 / 1024) + ' MB'
+    },
+    connections: {
+      total: clients.size,
+      esp32: esp32Client ? 1 : 0,
+      web: Array.from(clients.values()).filter(client => client !== esp32Client).length
+    },
+    metrics: {
+      ...metrics,
+      historicalDataPoints: historicalData.length
+    },
+    config: {
+      health_check_interval: `${HEALTH_CHECK_INTERVAL / 60000} minutos`,
+      rate_limit: `${MAX_REQUESTS_PER_MINUTE} req/minuto`,
+      token_configured: !!ESP32_TOKEN,
+      disconnection_timeout: `${DISCONNECTION_TIMEOUT/1000} segundos`
+    },
+    render_keepalive: 'ACTIVE'
+  });
+});
+
+// 🎯 NOVA ROTA PARA PING SIMPLES (mais leve)
+app.get('/ping', (req, res) => {
+  res.json({ 
+    status: 'pong', 
+    timestamp: new Date().toISOString(),
+    service: 'active',
+    environment: NODE_ENV
+  });
+});
+
+// 🎯 NOVA ROTA PARA MÉTRICAS
+app.get('/metrics', (req, res) => {
+  const uptimeMinutes = process.uptime() / 60;
+  
+  res.json({
+    ...metrics,
+    averageMessageRate: metrics.messagesReceived / uptimeMinutes,
+    historicalDataPoints: historicalData.length,
+    rateLimitSize: rateLimit.size,
+    environment: NODE_ENV
+  });
+});
+
+// 🎯 NOVA ROTA PARA DADOS HISTÓRICOS
+app.get('/historical-data', (req, res) => {
+  const { hours = 24 } = req.query;
+  const cutoffTime = new Date(Date.now() - (hours * 60 * 60 * 1000));
+  
+  const filteredData = historicalData.filter(entry => 
+    new Date(entry.timestamp) >= cutoffTime
+  );
+  
+  res.json({
+    success: true,
+    data: filteredData,
+    total: filteredData.length,
+    timeRange: `${hours} horas`,
+    environment: NODE_ENV
+  });
+});
+
+// 🎯 NOVA ROTA PARA CONFIGURAÇÃO DO SISTEMA
+app.get('/config', (req, res) => {
+  res.json({
+    success: true,
+    config: {
+      environment: NODE_ENV,
+      port: PORT,
+      health_check: {
+        url: HEALTH_CHECK_URL,
+        interval: `${HEALTH_CHECK_INTERVAL / 60000} minutos`
+      },
+      security: {
+        token_configured: !!ESP32_TOKEN,
+        rate_limit: MAX_REQUESTS_PER_MINUTE,
+        disconnection_timeout: `${DISCONNECTION_TIMEOUT/1000} segundos`
+      },
+      server: {
+        uptime: Math.floor(process.uptime()),
+        node_version: process.version,
+        platform: process.platform
+      }
+    }
+  });
+});
+
+// WebSocket connection - CORRIGIDO
+wss.on('connection', function connection(ws, req) {
+  const clientId = generateClientId(req);
+  const clientIP = getClientIP(req);
+  const isESP32 = isESP32Connection(req, clientIP);
+  
+  console.log(`✅ Nova conexão: ${clientId} - IP: ${clientIP} - Tipo: ${isESP32 ? 'ESP32' : 'WEB'} - Ambiente: ${NODE_ENV}`);
+  
+  clients.set(clientId, ws);
+  ws.clientId = clientId;
+  ws.clientIP = clientIP;
+  ws.isESP32 = isESP32;
+  ws.connectedAt = new Date();
+  
+  // 🎯 CORREÇÃO CRÍTICA: Detectar se é o ESP32 com autenticação
+  if (isESP32) {
+    const authenticated = authenticateESP32(req);
+    if (!authenticated) {
+      console.log(`❌ Tentativa de conexão ESP32 não autenticada: ${clientId}`);
+      ws.close(1008, 'Autenticação falhou');
+      clients.delete(clientId);
+      return;
+    }
+    
+    // Se já tem um ESP32 conectado, fechar a conexão anterior
+    if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
+      console.log(`🔄 Substituindo ESP32 anterior: ${esp32Client.clientId}`);
+      
+      // Notificar sobre a substituição
+      broadcastToWebClients({
+        type: 'esp32_connection_change',
+        message: 'Novo ESP32 conectado - Substituindo anterior',
+        oldClientId: esp32Client.clientId,
+        newClientId: clientId,
+        timestamp: new Date().toISOString(),
+        environment: NODE_ENV
+      });
+      
+      esp32Client.close(1000, 'Novo ESP32 conectado');
+      metrics.esp32Reconnects++;
+      
+      // Limpar heartbeat do anterior
+      if (clientHeartbeats.has(esp32Client.clientId)) {
+        clearInterval(clientHeartbeats.get(esp32Client.clientId).heartbeatInterval);
+        clientHeartbeats.delete(esp32Client.clientId);
+      }
+    }
+    
+    esp32Client = ws;
+    console.log(`🎯 ESP32 registrado: ${clientId}`);
+    
+    // 🎯 NOVO: Iniciar sistema de heartbeat para este ESP32
+    setupESP32Heartbeat(clientId, ws);
+    
+    // Notificar todos os clientes web que o ESP32 conectou
+    broadcastToWebClients({
+      type: 'esp32_connected',
+      message: 'ESP32 conectado',
+      clientId: clientId,
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
+    });
+  } else {
+    metrics.webClientsConnected++;
+  }
+  
+  // Enviar confirmação de conexão
+  const welcomeMessage = {
+    type: 'connected',
+    message: 'Conectado ao servidor WebSocket',
+    clientId: clientId,
+    isESP32: isESP32,
+    timestamp: new Date().toISOString(),
+    environment: NODE_ENV
+  };
+  
+  sendToClient(ws, welcomeMessage);
+  
+  // Mensagens do cliente - CORREÇÃO CRÍTICA
+  ws.on('message', function message(data) {
+    try {
+      const messageString = data.toString();
+      metrics.messagesReceived++;
+      
+      console.log(`📨 Mensagem de ${clientId}: ${messageString.substring(0, 100)}...`);
+      
+      // 🎯 CORREÇÃO: Atualizar heartbeat do ESP32 quando receber mensagem
+      if (ws.isESP32) {
+        updateESP32Heartbeat(ws.clientId);
         
-        <!-- 🎯 AFINADO: Header compacto com data/hora e status -->
-        <div class="header-compact">
-            <div class="date-time-compact">
-                📅 <span id="currentDate">--/--/----</span> | 🕒 <span id="currentTime">--:--:--</span>
-            </div>
-            <div class="connection-status-compact connecting" id="connectionStatus">
-                🔄 Conectando...
-            </div>
-        </div>
-
-        <!-- 🎯 AFINADO: Alertas mais compactos -->
-        <div id="connectionAlert" class="alert-banner" style="display:none;">
-            🚨 ESP32 NÃO CONECTADO!
-        </div>
-
-        <div id="sensorAlertBanner" class="alert-banner" style="display:none;">
-            🚨 FALHA NO SENSOR!
-        </div>
-
-        <!-- 🎯 AFINADO: Sistema de status mini mais compacto -->
-        <div class="system-status-mini">
-            <div class="status-item">
-                📶 <span id="wifiStatusMini" class="status-offline">--</span>
-            </div>
-            <div class="status-item">
-                📡 <span id="sensorStatusMini" class="status-offline">--</span>
-            </div>
-            <div class="status-item">
-                🎯 <span id="sensorStableMini" class="status-offline">--</span>
-            </div>
-            <div class="status-item">
-                💾 <span id="memoryMini">--</span>
-            </div>
-            <div class="status-item">
-                🔄 <span id="lastUpdateMini">--:--</span>
-            </div>
-        </div>
-
-        <div class="capacity-info">
-            Capacidade: <span id="volumeTotalDisplay">1000</span> L | Altura: <span id="alturaCaixaDisplay">100</span> cm
-        </div>
-
-        <!-- 🎯 AFINADO: Timeline mais compacta -->
-        <div class="connection-timeline">
-            <div class="timeline-title">📊 Histórico de Conexão</div>
-            <div id="connectionTimeline">
-                <div class="timeline-item">
-                    <div class="timeline-time">--:--:--</div>
-                    <div class="timeline-event">Sistema iniciado</div>
-                    <div class="timeline-status status-connected">OK</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="tolerancia-info">
-            🎯 Sistema Anti-Falsos Consumos Ativo | Mínimo: <span id="minimoConsumo">10</span> L
-        </div>
-
-        <!-- 🎯 DESTAQUE: Dashboard principal mantido -->
-        <div class="dashboard">
-            <div class="tank-section">
-                <div class="tank-container">
-                    <img src='https://ik.imagekit.io/o7q7lmyva/ChatGPT%20Image%201%20de%20nov.%20de%202025,%2013_58_04.png?updatedAt=1762016341141' 
-                         alt='Sistema de Chillers e Caixa de Compensação' 
-                         class="tank-image">
-                    
-                    <div class="water-container">
-                        <div class="water-level" id="waterLevel">
-                            <div class="water-effect"></div>
-                            <div class="water-bubbles"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="percentage-display" id="percentageDisplay">0%</div>
-                </div>
-            </div>
-            
-            <div class="info-section">
-                <div class="data-cards">
-                    <div class="card">
-                        <div class="card-value" id="levelValue">0 cm</div>
-                        <div class="card-label">Nível Água</div>
-                    </div>
-                    <div class="card">
-                        <div class="card-value" id="litersValue">0 L</div>
-                        <div class="card-label">Volume Atual</div>
-                    </div>
-                </div>
-                
-                <div class="status-container" id="statusContainer">
-                    <div id="statusText">Carregando...</div>
-                </div>
-
-                <div class="consumo-resumo">
-                    <div class="resumo-card">
-                        <div class="resumo-label">📊 Consumo Hora</div>
-                        <div class="resumo-value" id="consumoAcumuladoHora">0 L</div>
-                    </div>
-                    <div class="resumo-card">
-                        <div class="resumo-label">📈 Consumo Hoje</div>
-                        <div class="resumo-value" id="consumoAcumuladoHoje">0 L</div>
-                    </div>
-                    <div class="resumo-card">
-                        <div class="resumo-label">📅 Consumo Mês</div>
-                        <div class="resumo-value" id="consumoMensal">0 L</div>
-                    </div>
-                </div>
-
-                <div class="consumo-section">
-                    <div class="consumo-title">📊 VISÃO GERAL DO CONSUMO</div>
-                    <div class="graficos-container">
-                        <div class="grafico-box">
-                            <div class="grafico-header">
-                                <h3>⏰ Consumo por Hora (24h)</h3>
-                                <div class="grafico-stats">Total: <span id="total24h">0</span>L</div>
-                            </div>
-                            <div class="grafico-horizontal">
-                                <div class="barra-horizontal-container" id="grafico24h"></div>
-                            </div>
-                        </div>
-
-                        <div class="grafico-box">
-                            <div class="grafico-header">
-                                <h3>📅 Últimas 4 Semanas</h3>
-                                <div class="grafico-stats">Total: <span id="totalSemanas">0</span>L</div>
-                            </div>
-                            <div class="grafico-content">
-                                <div class="barra-vertical" id="graficoSemanas"></div>
-                            </div>
-                            <div class="semanas-labels" id="labelsSemanas"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="config-buttons">
-            <button class="btn-reset" onclick="resetConsumo()">🔄 Resetar Consumo</button>
-            <button class="btn-refresh" onclick="refreshData()">🔄 Atualizar</button>
-        </div>
-
-        <div class="update-info">
-            🔄 Atualização automática | Última: <span id="lastUpdate">--:--:--</span>
-        </div>
-    </div>
-
-    <!-- 🎯 AFINADO: Notificações mais discretas -->
-    <div class="notification-container" id="notificationContainer"></div>
-
-    <script>
-        // ====== CONEXÃO WEBSOCKET ======
-        let ws = null;
-        let isConnected = false;
-        let lastData = null;
-        let connectionAttempts = 0;
-        const MAX_CONNECTION_ATTEMPTS = 5;
-
-        // 🎯 VARIÁVEIS PARA EVITAR OSCILAÇÃO
-        let currentConsumoData = {
-            consumo_diario: new Array(24).fill(0),
-            valores_consumo: new Array(24).fill(0),
-            consumo_acumulado_ultima_hora: 0,
-            consumo_acumulado_hoje: 0,
-            consumo_mensal: 0
-        };
-
-        // 🎯 AFINADO: Histórico de conexões
-        let connectionHistory = [];
-
-        // 🎯 AFINADO: Sistema de Notificações mais discreto
-        function showNotification(title, message, type = 'info') {
-            const container = document.getElementById('notificationContainer');
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.innerHTML = `
-                <div class="notification-icon">
-                    ${type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '🚨'}
-                </div>
-                <div class="notification-content">
-                    <div class="notification-title">${title}</div>
-                    <div class="notification-message">${message}</div>
-                </div>
-                <button class="notification-close" onclick="this.parentElement.remove()">×</button>
-            `;
-            
-            container.appendChild(notification);
-            
-            // Auto-remover após 6 segundos (reduzido)
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    notification.remove();
-                }
-            }, 6000);
+        // 🎯 CORREÇÃO CRÍTICA: Se é ESP32, processar e retransmitir IMEDIATAMENTE
+        try {
+          const parsedMessage = JSON.parse(messageString);
+          console.log(`🎯 Dados do ESP32 (${parsedMessage.type}):`, 
+            parsedMessage.liters !== undefined ? `${parsedMessage.liters}L` : 'sem dados');
+          
+          handleWebSocketMessage(ws, parsedMessage);
+        } catch (jsonError) {
+          console.log(`❌ Mensagem do ESP32 não é JSON: ${messageString}`);
+          // Mesmo se não for JSON, tentar processar como texto
+          handleTextCommand(ws, messageString);
         }
-
-        // 🎯 AFINADO: Adicionar evento ao histórico
-        function addConnectionEvent(event, reason = '') {
-            const now = new Date();
-            const eventData = {
-                time: now.toLocaleTimeString('pt-BR'),
-                event: event,
-                reason: reason,
-                timestamp: now
-            };
-            
-            connectionHistory.unshift(eventData);
-            
-            // Manter apenas últimos 8 eventos
-            if (connectionHistory.length > 8) {
-                connectionHistory = connectionHistory.slice(0, 8);
-            }
-            
-            updateConnectionTimeline();
+      } else {
+        // 🎯 CORREÇÃO: Para clientes web, processar comandos
+        try {
+          const parsedMessage = JSON.parse(messageString);
+          handleWebSocketMessage(ws, parsedMessage);
+        } catch (jsonError) {
+          handleTextCommand(ws, messageString);
         }
+      }
+    } catch (error) {
+      console.error(`❌ Erro ao processar mensagem de ${clientId}:`, error);
+      metrics.errors++;
+    }
+  });
+  
+  ws.on('close', function close(code, reason) {
+    console.log(`❌ Conexão fechada: ${clientId} - Código: ${code} - Motivo: ${reason || 'Nenhum'} - Ambiente: ${NODE_ENV}`);
+    
+    if (esp32Client === ws) {
+      console.log('🎯 ESP32 desconectado');
+      esp32Client = null;
+      metrics.esp32Disconnections++;
+      
+      // Limpar heartbeat
+      if (clientHeartbeats.has(clientId)) {
+        clearInterval(clientHeartbeats.get(clientId).heartbeatInterval);
+        clientHeartbeats.delete(clientId);
+      }
+      
+      // Notificar todos os clientes web que o ESP32 desconectou
+      broadcastToWebClients({
+        type: 'esp32_disconnected',
+        message: 'ESP32 desconectado',
+        clientId: clientId,
+        reason: 'connection_closed',
+        code: code,
+        timestamp: new Date().toISOString(),
+        environment: NODE_ENV
+      });
+    } else {
+      metrics.webClientsConnected = Math.max(0, metrics.webClientsConnected - 1);
+    }
+    
+    clients.delete(clientId);
+    logConnectionStats();
+  });
+  
+  ws.on('error', function error(err) {
+    console.error(`❌ Erro WebSocket ${clientId}:`, err.message);
+    metrics.errors++;
+  });
+  
+  // Log estatísticas de conexão
+  logConnectionStats();
+});
 
-        // 🎯 AFINADO: Atualizar timeline
-        function updateConnectionTimeline() {
-            const container = document.getElementById('connectionTimeline');
-            container.innerHTML = '';
-            
-            connectionHistory.forEach(event => {
-                const item = document.createElement('div');
-                item.className = 'timeline-item';
-                
-                let statusClass = 'status-connected';
-                let statusText = 'OK';
-                
-                if (event.event.includes('desconectado')) {
-                    statusClass = 'status-disconnected';
-                    statusText = 'OFF';
-                } else if (event.event.includes('timeout')) {
-                    statusClass = 'status-timeout';
-                    statusText = 'TO';
-                }
-                
-                item.innerHTML = `
-                    <div class="timeline-time">${event.time}</div>
-                    <div class="timeline-event">${event.event}</div>
-                    <div class="timeline-status ${statusClass}">${statusText}</div>
-                `;
-                
-                container.appendChild(item);
-            });
-        }
+// 🎯 FUNÇÃO: Autenticação ESP32
+function authenticateESP32(req) {
+  // Verificar token no header Authorization
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    return token === ESP32_TOKEN;
+  }
+  
+  // Verificar token no query parameter
+  const url = require('url');
+  const parsedUrl = url.parse(req.url, true);
+  const tokenParam = parsedUrl.query.token;
+  if (tokenParam) {
+    return tokenParam === ESP32_TOKEN;
+  }
+  
+  // Para desenvolvimento, permitir sem token se não estiver em produção
+  if (NODE_ENV !== 'production') {
+    console.log('⚠️  Modo desenvolvimento: Autenticação ESP32 bypassada');
+    return true;
+  }
+  
+  return false;
+}
 
-        function connectWebSocket() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/ws`;
-            
-            console.log('🔄 Conectando WebSocket...');
-            updateConnectionStatus('🔄 Conectando...', 'connecting');
-            
-            try {
-                ws = new WebSocket(wsUrl);
-                
-                ws.onopen = function() {
-                    console.log('✅ WebSocket conectado!');
-                    isConnected = true;
-                    connectionAttempts = 0;
-                    updateConnectionStatus('✅ Conectado', 'connected');
-                    document.getElementById('connectionAlert').style.display = 'none';
-                    
-                    // 🎯 AFINADO: Notificação mais discreta
-                    showNotification('Conectado', 'Servidor conectado', 'success');
-                    addConnectionEvent('Servidor conectado');
-                    
-                    setTimeout(() => {
-                        sendCommand('get_data');
-                        sendCommand('get_consumo');
-                        sendCommand('get_consumo_semanal');
-                        sendCommand('get_status');
-                    }, 1000);
-                };
-                
-                ws.onmessage = function(event) {
-                    try {
-                        const data = JSON.parse(event.data);
-                        handleWebSocketMessage(data);
-                    } catch (error) {
-                        console.error('❌ Erro ao processar mensagem:', error);
-                    }
-                };
-                
-                ws.onclose = function(event) {
-                    console.log('❌ Conexão WebSocket fechada');
-                    isConnected = false;
-                    updateConnectionStatus('❌ Desconectado', 'disconnected');
-                    
-                    if (event.code !== 1000) {
-                        showNotification('Desconectado', 'Conexão perdida', 'warning');
-                        addConnectionEvent('Servidor desconectado');
-                    }
-                    
-                    const reconnectDelay = Math.min(1000 * Math.pow(2, connectionAttempts), 30000);
-                    connectionAttempts++;
-                    
-                    if (connectionAttempts <= MAX_CONNECTION_ATTEMPTS) {
-                        setTimeout(connectWebSocket, reconnectDelay);
-                    } else {
-                        updateConnectionStatus('❌ Falha conexão', 'disconnected');
-                        document.getElementById('connectionAlert').style.display = 'block';
-                        showNotification('Falha Conexão', 'Não foi possível conectar', 'warning');
-                    }
-                };
-                
-                ws.onerror = function(error) {
-                    console.error('❌ Erro WebSocket:', error);
-                    updateConnectionStatus('❌ Erro conexão', 'disconnected');
-                };
-                
-            } catch (error) {
-                console.error('❌ Erro ao criar WebSocket:', error);
-                updateConnectionStatus('❌ Erro conexão', 'disconnected');
-            }
-        }
+// 🎯 FUNÇÃO: Rate limiting
+function checkRateLimit(clientIP) {
+  const now = Date.now();
+  const windowStart = now - 60000; // 1 minuto
+  
+  if (!rateLimit.has(clientIP)) {
+    rateLimit.set(clientIP, []);
+  }
+  
+  const requests = rateLimit.get(clientIP).filter(time => time > windowStart);
+  rateLimit.set(clientIP, requests);
+  
+  if (requests.length >= MAX_REQUESTS_PER_MINUTE) {
+    console.log(`🚫 Rate limit excedido para IP: ${clientIP}`);
+    return false;
+  }
+  
+  requests.push(now);
+  rateLimit.set(clientIP, requests);
+  return true;
+}
 
-        function updateConnectionStatus(message, status) {
-            const element = document.getElementById('connectionStatus');
-            element.textContent = message;
-            element.className = `connection-status-compact ${status}`;
-            
-            if (status === 'connected') {
-                document.getElementById('connectionAlert').style.display = 'none';
-            } else if (status === 'disconnected') {
-                document.getElementById('connectionAlert').style.display = 'block';
-            }
-        }
+// 🎯 FUNÇÃO: Salvar dados históricos
+function saveSensorData(data) {
+  const dataPoint = {
+    timestamp: new Date().toISOString(),
+    liters: data.liters,
+    percentage: data.percentage,
+    consumption: data.consumo_hoje,
+    distance: data.distance,
+    environment: NODE_ENV
+  };
+  
+  historicalData.push(dataPoint);
+  
+  // Manter apenas últimas 48h (aproximadamente 2880 pontos se enviar a cada minuto)
+  if (historicalData.length > 2880) {
+    historicalData.shift();
+  }
+}
 
-        function handleWebSocketMessage(data) {
-            switch(data.type) {
-                case 'connected':
-                    updateConnectionStatus('✅ Conectado', 'connected');
-                    break;
-                    
-                case 'all_data':
-                    lastData = data;
-                    updateInterface(data);
-                    updateConnectionStatus('✅ Conectado', 'connected');
-                    break;
-                    
-                case 'status':
-                    updateSystemStatus(data);
-                    break;
-                    
-                case 'consumo_data':
-                    if (data.valores_consumo && data.valores_consumo.length > 0) {
-                        updateConsumoData(data);
-                    }
-                    break;
-                    
-                case 'consumo_semanal_data':
-                    updateConsumoSemanalCharts(data);
-                    break;
+// CORREÇÃO CRÍTICA: Detectar se é conexão do ESP32
+function isESP32Connection(req, clientIP) {
+  const userAgent = req.headers['user-agent'] || '';
+  
+  // ESP32 geralmente não envia User-Agent ou envia string específica
+  const isESP = userAgent.includes('ESP32') || 
+                userAgent.includes('Arduino') ||
+                userAgent.includes('WiFiClient') ||
+                userAgent === '' || // ESP32 muitas vezes não envia User-Agent
+                userAgent.includes('ESP8266') ||
+                // Nova detecção: verificar por padrão de IP ou origem
+                req.headers['origin'] === '' || // ESP32 não envia origin
+                clientIP.includes('192.168.') || // IP local comum do ESP32
+                clientIP.includes('10.0.') || // Outro IP local
+                req.headers['sec-websocket-protocol'] === 'arduino';
+  
+  console.log(`🔍 Detecção ESP32 - UserAgent: "${userAgent}", Origin: "${req.headers['origin']}", IP: ${clientIP}, Resultado: ${isESP}`);
+  return isESP;
+}
 
-                case 'command_ack':
-                    break;
+// CORREÇÃO CRÍTICA: Detectar ESP32 pelo conteúdo da mensagem
+function isESP32Message(message) {
+  // Verificar se a mensagem contém padrões típicos do ESP32
+  return message.includes('"type":"all_data"') ||
+         message.includes('"type":"status"') ||
+         message.includes('"distance":') ||
+         message.includes('"liters":') ||
+         message.includes('"percentage":') ||
+         (message.startsWith('{') && message.includes('sensor_ok'));
+}
 
-                // 🎯 AFINADO: Notificações mais discretas para eventos ESP32
-                case 'esp32_connected':
-                    showNotification('ESP32 Conectado', 'Dispositivo conectado', 'success');
-                    addConnectionEvent('ESP32 conectado');
-                    updateConnectionStatus('✅ ESP32 OK', 'connected');
-                    document.getElementById('connectionAlert').style.display = 'none';
-                    break;
-                    
-                case 'esp32_disconnected':
-                    showNotification('ESP32 Desconectado', data.reason || 'Sem comunicação', 'warning');
-                    addConnectionEvent('ESP32 desconectado');
-                    updateConnectionStatus('❌ ESP32 OFF', 'disconnected');
-                    document.getElementById('connectionAlert').style.display = 'block';
-                    break;
-                    
-                case 'esp32_reconnected':
-                    showNotification('ESP32 Reconectado', 'Dispositivo recuperado', 'success');
-                    addConnectionEvent('ESP32 reconectado');
-                    updateConnectionStatus('✅ ESP32 OK', 'connected');
-                    document.getElementById('connectionAlert').style.display = 'none';
-                    break;
-                    
-                case 'esp32_connection_change':
-                    showNotification('ESP32 Substituído', 'Novo dispositivo', 'info');
-                    addConnectionEvent('ESP32 substituído');
-                    break;
-                    
-                case 'error':
-                    if (data.message === 'ESP32 não conectado') {
-                        updateConnectionStatus('❌ ESP32 OFF', 'disconnected');
-                        showNotification('ESP32 Offline', 'Nenhum dispositivo', 'warning');
-                    }
-                    break;
-            }
-        }
+// Gerar ID único para cliente
+function generateClientId(req) {
+  const isESP32 = isESP32Connection(req, getClientIP(req));
+  const prefix = isESP32 ? 'ESP32' : 'WEB';
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substr(2, 9);
+  return `${prefix}_${timestamp}_${random}`;
+}
 
-        // 🎯 RESTANTE DO CÓDIGO JavaScript PERMANECE IGUAL
-        // (As funções updateConsumoData, updateInterface, updateSystemStatus, etc.)
-        // ... [O restante do código JavaScript permanece exatamente igual] ...
+// Obter IP do cliente
+function getClientIP(req) {
+  return req.headers['x-forwarded-for'] || 
+         req.headers['x-real-ip'] ||
+         req.connection.remoteAddress || 
+         req.socket.remoteAddress ||
+         (req.connection.socket ? req.connection.socket.remoteAddress : 'unknown');
+}
 
-    </script>
-</body>
-</html>
+// 🎯 CORREÇÃO CRÍTICA: Processar mensagens JSON (do ESP32)
+function handleWebSocketMessage(ws, message) {
+  const clientInfo = `${ws.clientId} (${ws.clientIP})`;
+  
+  console.log(`📨 Processando mensagem ${message.type} de ${clientInfo}`);
+  
+  // 🎯 CORREÇÃO: Salvar dados históricos para mensagens de sensor
+  if (message.type === 'all_data' || message.type === 'status') {
+    saveSensorData(message);
+  }
+  
+  // Adicionar metadados à mensagem
+  const enhancedMessage = {
+    ...message,
+    clientId: ws.clientId,
+    origin: ws.isESP32 ? 'esp32' : 'web',
+    timestamp: new Date().toISOString(),
+    serverTime: Date.now(),
+    environment: NODE_ENV
+  };
+  
+  // Log específico para dados importantes
+  if (message.type === 'all_data') {
+    console.log(`💧 Dados ESP32: ${message.liters}L (${message.percentage}%) | Consumo H: ${message.consumo_hora}L D: ${message.consumo_hoje}L`);
+  } else if (message.type === 'status') {
+    console.log(`📊 Status ESP32: WiFi ${message.wifi_connected ? '✅' : '❌'} | Sensor ${message.sensor_ok ? '✅' : '❌'} | Mem: ${message.free_memory}`);
+  }
+  
+  // 🎯 CORREÇÃO CRÍTICA: Se a mensagem é do ESP32, retransmitir para todos os clientes web
+  if (ws.isESP32) {
+    console.log(`📡 Retransmitindo mensagem ${message.type} para ${Array.from(clients.values()).filter(client => !client.isESP32).length} clientes web`);
+    broadcastToWebClients(enhancedMessage);
+  } else {
+    // Se é do frontend e temos ESP32, repassar para o ESP32
+    if (esp32Client && esp32Client.readyState === WebSocket.OPEN && esp32Client !== ws) {
+      // Remover metadados antes de enviar para ESP32
+      const { clientId, origin, timestamp, serverTime, environment, ...cleanMessage } = enhancedMessage;
+      sendToClient(esp32Client, cleanMessage);
+      metrics.messagesSent++;
+    } else if (!esp32Client) {
+      // CORREÇÃO: Se não há ESP32, responder ao frontend
+      sendToClient(ws, {
+        type: 'error',
+        message: 'ESP32 não conectado',
+        timestamp: new Date().toISOString(),
+        environment: NODE_ENV
+      });
+    }
+  }
+}
+
+// Processar comandos de texto (do frontend)
+function handleTextCommand(ws, command) {
+  console.log(`📤 Comando de ${ws.clientId}: ${command} - Ambiente: ${NODE_ENV}`);
+  
+  // CORREÇÃO: Comandos que não precisam do ESP32
+  if (command === 'get_status' || command === 'health') {
+    const statusMessage = {
+      type: 'server_status',
+      clients: clients.size,
+      esp32Connected: !!esp32Client,
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV,
+      metrics: metrics
+    };
+    return sendToClient(ws, statusMessage);
+  }
+  
+  // Se o comando precisa do ESP32
+  if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
+    console.log(`🔄 Repassando comando para ESP32: ${command}`);
+    esp32Client.send(command);
+    metrics.messagesSent++;
+    
+    // Confirmar para o frontend
+    sendToClient(ws, {
+      type: 'command_ack',
+      command: command,
+      status: 'sent_to_esp32',
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
+    });
+  } else {
+    // CORREÇÃO MELHORADA: Avisar frontend que ESP32 não está conectado
+    sendToClient(ws, {
+      type: 'error',
+      message: 'ESP32 não conectado',
+      command: command,
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
+    });
+    console.log('⚠️ Comando ignorado - ESP32 não conectado:', command);
+  }
+}
+
+// ====== FUNÇÕES AUXILIARES ======
+
+// Enviar mensagem para um cliente específico
+function sendToClient(client, message) {
+  if (client.readyState === WebSocket.OPEN) {
+    try {
+      client.send(JSON.stringify(message));
+      metrics.messagesSent++;
+    } catch (error) {
+      console.error(`❌ Erro ao enviar para ${client.clientId}:`, error.message);
+      metrics.errors++;
+    }
+  }
+}
+
+// Transmitir para todos os clientes web (exceto ESP32)
+function broadcastToWebClients(message) {
+  let sentCount = 0;
+  
+  clients.forEach((client, id) => {
+    if (client.readyState === WebSocket.OPEN && !client.isESP32) {
+      try {
+        client.send(JSON.stringify(message));
+        sentCount++;
+        metrics.messagesSent++;
+      } catch (error) {
+        console.error(`❌ Erro ao transmitir para ${id}:`, error.message);
+        metrics.errors++;
+      }
+    }
+  });
+  
+  if (sentCount > 0) {
+    console.log(`📡 Mensagem ${message.type} transmitida para ${sentCount} cliente(s) web`);
+  }
+}
+
+// Log estatísticas de conexão
+function logConnectionStats() {
+  const webClients = Array.from(clients.values()).filter(client => !client.isESP32).length;
+  console.log(`📊 Estatísticas: Total: ${clients.size} | ESP32: ${esp32Client ? 1 : 0} | Web: ${webClients} | Ambiente: ${NODE_ENV}`);
+}
+
+// ====== API REST ======
+
+// Status do sistema
+app.get('/status', (req, res) => {
+  const webClients = Array.from(clients.values()).filter(client => !client.isESP32);
+  
+  res.json({
+    status: 'operational',
+    serverTime: new Date().toISOString(),
+    environment: NODE_ENV,
+    uptime: Math.floor(process.uptime()),
+    memory: process.memoryUsage(),
+    metrics: metrics,
+    connections: {
+      total: clients.size,
+      esp32: esp32Client ? {
+        connected: true,
+        clientId: esp32Client.clientId,
+        ip: esp32Client.clientIP,
+        connectedAt: esp32Client.connectedAt
+      } : { connected: false },
+      web: webClients.map(client => ({
+        clientId: client.clientId,
+        ip: client.clientIP,
+        connectedAt: client.connectedAt
+      }))
+    }
+  });
+});
+
+// Listar clientes conectados
+app.get('/clients', (req, res) => {
+  const clientList = Array.from(clients.entries()).map(([id, ws]) => ({
+    id,
+    ip: ws.clientIP,
+    type: ws.isESP32 ? 'ESP32' : 'WEB',
+    connected: ws.readyState === WebSocket.OPEN,
+    connectedAt: ws.connectedAt,
+    isActiveESP32: ws === esp32Client
+  }));
+  
+  res.json({ 
+    clients: clientList, 
+    total: clientList.length,
+    esp32Connected: !!esp32Client,
+    environment: NODE_ENV
+  });
+});
+
+// Enviar comando para ESP32 via HTTP
+app.post('/command/:command', express.json(), (req, res) => {
+  const { command } = req.params;
+  
+  if (!esp32Client || esp32Client.readyState !== WebSocket.OPEN) {
+    return res.status(404).json({ 
+      success: false, 
+      message: 'ESP32 não conectado',
+      command: command,
+      environment: NODE_ENV
+    });
+  }
+  
+  try {
+    esp32Client.send(command);
+    metrics.messagesSent++;
+    console.log(`📤 Comando HTTP enviado: ${command} - Ambiente: ${NODE_ENV}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Comando enviado para ESP32`,
+      command: command,
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
+    });
+  } catch (error) {
+    console.error('❌ Erro ao enviar comando:', error);
+    metrics.errors++;
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erro ao enviar comando',
+      error: error.message,
+      environment: NODE_ENV
+    });
+  }
+});
+
+// Reset de consumo via API
+app.post('/consumo/reset', (req, res) => {
+  if (!esp32Client || esp32Client.readyState !== WebSocket.OPEN) {
+    return res.status(404).json({ 
+      success: false, 
+      message: 'ESP32 não conectado',
+      environment: NODE_ENV
+    });
+  }
+  
+  try {
+    esp32Client.send('reset_consumo');
+    metrics.messagesSent++;
+    console.log('🔄 Comando de reset de consumo enviado via API');
+    
+    res.json({ 
+      success: true, 
+      message: 'Reset de consumo enviado para ESP32',
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
+    });
+  } catch (error) {
+    console.error('❌ Erro ao enviar reset:', error);
+    metrics.errors++;
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erro ao enviar comando de reset',
+      error: error.message,
+      environment: NODE_ENV
+    });
+  }
+});
+
+// Informações do sistema
+app.get('/system/info', (req, res) => {
+  res.json({
+    nodeVersion: process.version,
+    platform: process.platform,
+    architecture: process.arch,
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    environment: NODE_ENV,
+    metrics: metrics
+  });
+});
+
+// Middleware de erro
+app.use((error, req, res, next) => {
+  console.error('❌ Erro no servidor:', error);
+  metrics.errors++;
+  res.status(500).json({ 
+    success: false, 
+    message: 'Erro interno do servidor',
+    error: NODE_ENV === 'production' ? 'Internal error' : error.message,
+    environment: NODE_ENV
+  });
+});
+
+// Rota 404
+app.use('*', (req, res) => {
+  res.status(404).json({ 
+    success: false, 
+    message: 'Rota não encontrada',
+    path: req.originalUrl,
+    environment: NODE_ENV
+  });
+});
+
+// 🎯 FUNÇÃO DE HEALTH CHECK
+async function healthCheck() {
+    try {
+        const response = await axios.get(HEALTH_CHECK_URL);
+        console.log(`✅ Health check realizado: ${response.status} - ${new Date().toLocaleTimeString('pt-BR')} - Ambiente: ${NODE_ENV}`);
+    } catch (error) {
+        console.log(`❌ Erro no health check: ${error.message} - Ambiente: ${NODE_ENV}`);
+        metrics.errors++;
+    }
+}
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`🌐 Ambiente: ${NODE_ENV}`);
+  console.log(`📊 Health: http://localhost:${PORT}/health`);
+  console.log(`📋 Status: http://localhost:${PORT}/status`);
+  console.log(`🔧 Config: http://localhost:${PORT}/config`);
+  console.log(`🎯 Aguardando conexões ESP32 e Web...`);
+  console.log(`🔐 Token ESP32: ${ESP32_TOKEN}`);
+  console.log(`💓 Sistema de heartbeat ativo: ${DISCONNECTION_TIMEOUT/1000}s timeout`);
+  
+  // 🎯 INICIAR HEALTH CHECK AUTOMÁTICO
+  console.log(`🔄 Health Check configurado a cada ${HEALTH_CHECK_INTERVAL / 60000} minutos`);
+  setInterval(healthCheck, HEALTH_CHECK_INTERVAL);
+  healthCheck(); // Executar imediatamente
+});
+
+// Heartbeat para manter conexões ativas
+setInterval(() => {
+  if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
+    try {
+      esp32Client.ping();
+    } catch (error) {
+      console.error('❌ Erro no heartbeat do ESP32:', error.message);
+      metrics.errors++;
+    }
+  }
+}, 30000);
+
+// Limpeza de conexões mortas
+setInterval(() => {
+  let cleanedCount = 0;
+  
+  clients.forEach((client, id) => {
+    if (client.readyState !== WebSocket.OPEN) {
+      clients.delete(id);
+      cleanedCount++;
+      
+      if (client === esp32Client) {
+        esp32Client = null;
+        console.log('🧹 ESP32 removido (conexão fechada)');
+      }
+    }
+  });
+  
+  if (cleanedCount > 0) {
+    console.log(`🧹 Limpeza: ${cleanedCount} cliente(s) removido(s) - Ambiente: ${NODE_ENV}`);
+  }
+}, 60000);
+
+// 🎯 NOVO: Limpeza periódica do rate limit
+setInterval(() => {
+  const now = Date.now();
+  const windowStart = now - 120000; // 2 minutos
+  
+  rateLimit.forEach((requests, ip) => {
+    const filteredRequests = requests.filter(time => time > windowStart);
+    if (filteredRequests.length === 0) {
+      rateLimit.delete(ip);
+    } else {
+      rateLimit.set(ip, filteredRequests);
+    }
+  });
+}, 60000); // A cada minuto
+
+// Graceful shutdown
+function gracefulShutdown(signal) {
+  console.log(`\n🔄 Recebido ${signal}, encerrando servidor... - Ambiente: ${NODE_ENV}`);
+  
+  // Fechar todas as conexões WebSocket
+  clients.forEach((client, id) => {
+    client.close(1000, 'Servidor sendo encerrado');
+  });
+  
+  server.close(() => {
+    console.log('✅ Servidor encerrado com sucesso');
+    process.exit(0);
+  });
+  
+  // Force close após 10 segundos
+  setTimeout(() => {
+    console.log('❌ Forçando encerramento...');
+    process.exit(1);
+  }, 10000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Log inicial
+console.log('✅ Servidor WebSocket inicializado com sucesso!');
+console.log('🎯 Sistema de notificação de desconexão ATIVADO!');
