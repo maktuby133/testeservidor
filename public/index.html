@@ -1279,6 +1279,10 @@
 
                 case 'command_ack':
                     console.log('✅ Comando confirmado:', data.command);
+                    if (data.command === 'reset_consumo') {
+                        showNotification('✅ Reset Concluído', 'Histórico de consumo resetado com sucesso', 'success');
+                        updateConnectionStatus('✅ Reset concluído', 'connected');
+                    }
                     break;
 
                 case 'esp32_connected':
@@ -1600,11 +1604,13 @@
             }
         }
 
+        // ====== FUNÇÃO RESET CONSUMO CORRIGIDA ======
         function resetConsumo() {
             if (confirm('🗑️ Tem certeza que deseja resetar TODO o histórico de consumo?\n\nEsta ação não pode ser desfeita!')) {
                 console.log('🔄 Solicitando reset de consumo...');
                 sendCommand('reset_consumo');
                 
+                // Resetar dados locais
                 currentConsumoData = {
                     consumo_diario: new Array(24).fill(0),
                     valores_consumo: new Array(24).fill(0),
@@ -1613,16 +1619,25 @@
                     consumo_mensal: 0
                 };
                 
-                updateConnectionStatus('🔄 Resetando consumo...', 'connecting');
+                // Atualizar interface imediatamente
+                updateConsumoCharts(currentConsumoData);
+                updateResumoConsumo(0, 0, new Array(4).fill(0), 0);
                 
+                // Mostrar notificação de processamento
                 showNotification('🔄 Resetando', 'Resetando todo o histórico de consumo...', 'info');
                 
+                // Atualizar status
+                updateConnectionStatus('🔄 Resetando consumo...', 'connecting');
+                
+                // Recarregar dados após um tempo
                 setTimeout(() => {
                     sendCommand('get_data');
                     sendCommand('get_consumo');
                     sendCommand('get_consumo_semanal');
-                    updateConnectionStatus('✅ Reset concluído', 'connected');
+                    
+                    // Mostrar notificação de sucesso
                     showNotification('✅ Reset Concluído', 'Histórico de consumo resetado com sucesso', 'success');
+                    updateConnectionStatus('✅ Reset concluído', 'connected');
                 }, 2000);
             }
         }
