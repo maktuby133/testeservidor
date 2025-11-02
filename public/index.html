@@ -596,6 +596,131 @@
             border: 2px solid #ff4444;
         }
 
+        /* 🎯 NOVO: Sistema de Notificações */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            max-width: 400px;
+        }
+
+        .notification {
+            background: linear-gradient(135deg, #ff6b35, #ff8e53);
+            color: white;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            border-left: 5px solid #ff4444;
+            animation: slideIn 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .notification.success {
+            background: linear-gradient(135deg, #32CD32, #228B22);
+            border-left-color: #008000;
+        }
+
+        .notification.warning {
+            background: linear-gradient(135deg, #FFA500, #FF8C00);
+            border-left-color: #cc8800;
+        }
+
+        .notification.info {
+            background: linear-gradient(135deg, #4169E1, #1E90FF);
+            border-left-color: #0066cc;
+        }
+
+        .notification-icon {
+            font-size: 1.5rem;
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-weight: 800;
+            margin-bottom: 5px;
+        }
+
+        .notification-message {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .connection-timeline {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(240, 240, 240, 0.9));
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 15px;
+            border: 2px solid rgba(26, 42, 108, 0.2);
+        }
+
+        .timeline-title {
+            font-size: 1.1rem;
+            color: #1a2a6c;
+            margin-bottom: 10px;
+            font-weight: 800;
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 0.85rem;
+        }
+
+        .timeline-item:last-child {
+            border-bottom: none;
+        }
+
+        .timeline-time {
+            color: #666;
+            min-width: 80px;
+            font-weight: 600;
+        }
+
+        .timeline-event {
+            flex: 1;
+        }
+
+        .timeline-status {
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 5px;
+            font-size: 0.75rem;
+        }
+
+        .status-connected {
+            background: #32CD32;
+            color: white;
+        }
+
+        .status-disconnected {
+            background: #FF4500;
+            color: white;
+        }
+
+        .status-timeout {
+            background: #FFA500;
+            color: white;
+        }
+
         @keyframes waterShine {
             0% { transform: translateX(-100%); }
             100% { transform: translateX(100%); }
@@ -614,6 +739,17 @@
         @keyframes blink {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
 
         /* 🎯 CORREÇÃO ESPECÍFICA PARA CELULAR VERTICAL */
@@ -684,6 +820,13 @@
             .graficos-container {
                 grid-template-columns: 1fr;
             }
+
+            .notification-container {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
         }
 
         /* 🎯 CORREÇÃO ADICIONAL PARA CELULARES MUITO PEQUENOS */
@@ -739,6 +882,18 @@
 
         <div id="sensorAlertBanner" class="alert-banner" style="display:none;">
             🚨 ALERTA: FALHA NO SENSOR DETECTADA! Verifique a conexão do sensor.
+        </div>
+
+        <!-- 🎯 NOVO: Timeline de Conexão -->
+        <div class="connection-timeline">
+            <div class="timeline-title">📊 Histórico de Conexão ESP32</div>
+            <div id="connectionTimeline">
+                <div class="timeline-item">
+                    <div class="timeline-time">--:--:--</div>
+                    <div class="timeline-event">Sistema iniciado</div>
+                    <div class="timeline-status status-connected">INICIADO</div>
+                </div>
+            </div>
         </div>
 
         <div class="system-status-mini">
@@ -872,6 +1027,9 @@
         </div>
     </div>
 
+    <!-- 🎯 NOVO: Container de Notificações -->
+    <div class="notification-container" id="notificationContainer"></div>
+
     <script>
         // ====== CONEXÃO WEBSOCKET ======
         let ws = null;
@@ -889,6 +1047,85 @@
             consumo_mensal: 0 // 🎯 NOVO CAMPO
         };
 
+        // 🎯 NOVO: Histórico de conexões
+        let connectionHistory = [];
+
+        // 🎯 NOVO: Sistema de Notificações
+        function showNotification(title, message, type = 'info') {
+            const container = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <div class="notification-icon">
+                    ${type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '🚨'}
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">${title}</div>
+                    <div class="notification-message">${message}</div>
+                </div>
+                <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+            `;
+            
+            container.appendChild(notification);
+            
+            // Auto-remover após 8 segundos
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 8000);
+        }
+
+        // 🎯 NOVO: Adicionar evento ao histórico
+        function addConnectionEvent(event, reason = '') {
+            const now = new Date();
+            const eventData = {
+                time: now.toLocaleTimeString('pt-BR'),
+                event: event,
+                reason: reason,
+                timestamp: now
+            };
+            
+            connectionHistory.unshift(eventData);
+            
+            // Manter apenas últimos 10 eventos
+            if (connectionHistory.length > 10) {
+                connectionHistory = connectionHistory.slice(0, 10);
+            }
+            
+            updateConnectionTimeline();
+        }
+
+        // 🎯 NOVO: Atualizar timeline
+        function updateConnectionTimeline() {
+            const container = document.getElementById('connectionTimeline');
+            container.innerHTML = '';
+            
+            connectionHistory.forEach(event => {
+                const item = document.createElement('div');
+                item.className = 'timeline-item';
+                
+                let statusClass = 'status-connected';
+                let statusText = 'CONECTADO';
+                
+                if (event.event.includes('desconectado')) {
+                    statusClass = 'status-disconnected';
+                    statusText = 'DESCONECTADO';
+                } else if (event.event.includes('timeout')) {
+                    statusClass = 'status-timeout';
+                    statusText = 'TIMEOUT';
+                }
+                
+                item.innerHTML = `
+                    <div class="timeline-time">${event.time}</div>
+                    <div class="timeline-event">${event.event} ${event.reason ? `- ${event.reason}` : ''}</div>
+                    <div class="timeline-status ${statusClass}">${statusText}</div>
+                `;
+                
+                container.appendChild(item);
+            });
+        }
+
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws`;
@@ -905,6 +1142,10 @@
                     connectionAttempts = 0;
                     updateConnectionStatus('✅ Conectado ao servidor', 'connected');
                     document.getElementById('connectionAlert').style.display = 'none';
+                    
+                    // 🎯 NOVO: Notificar conexão
+                    showNotification('✅ Conectado', 'Conexão com servidor estabelecida com sucesso', 'success');
+                    addConnectionEvent('Servidor conectado');
                     
                     // Solicitar dados iniciais
                     setTimeout(() => {
@@ -930,6 +1171,12 @@
                     isConnected = false;
                     updateConnectionStatus('❌ Desconectado do servidor', 'disconnected');
                     
+                    // 🎯 NOVO: Notificar desconexão
+                    if (event.code !== 1000) { // Não notificar desconexões normais
+                        showNotification('❌ Desconectado', `Conexão com servidor perdida: ${event.reason || 'Código ' + event.code}`, 'warning');
+                        addConnectionEvent('Servidor desconectado', event.reason || `Código ${event.code}`);
+                    }
+                    
                     // Tentar reconectar com backoff exponencial
                     const reconnectDelay = Math.min(1000 * Math.pow(2, connectionAttempts), 30000);
                     connectionAttempts++;
@@ -941,17 +1188,20 @@
                         console.error('❌ Máximo de tentativas de conexão atingido');
                         updateConnectionStatus('❌ Falha na conexão', 'disconnected');
                         document.getElementById('connectionAlert').style.display = 'block';
+                        showNotification('🚨 Falha na Conexão', 'Não foi possível conectar ao servidor após várias tentativas', 'warning');
                     }
                 };
                 
                 ws.onerror = function(error) {
                     console.error('❌ Erro WebSocket:', error);
                     updateConnectionStatus('❌ Erro de conexão', 'disconnected');
+                    showNotification('❌ Erro de Conexão', 'Erro ao tentar conectar com o servidor', 'warning');
                 };
                 
             } catch (error) {
                 console.error('❌ Erro ao criar WebSocket:', error);
                 updateConnectionStatus('❌ Erro de conexão', 'disconnected');
+                showNotification('❌ Erro de Conexão', 'Erro ao criar conexão WebSocket', 'warning');
             }
         }
 
@@ -1002,11 +1252,43 @@
                 case 'command_ack':
                     console.log('✅ Comando confirmado:', data.command);
                     break;
+
+                // 🎯 NOVO: Tratamento de eventos ESP32
+                case 'esp32_connected':
+                    console.log('🎯 ESP32 conectado:', data.clientId);
+                    showNotification('✅ ESP32 Conectado', 'Dispositivo ESP32 conectado com sucesso', 'success');
+                    addConnectionEvent('ESP32 conectado', data.clientId);
+                    updateConnectionStatus('✅ ESP32 Conectado', 'connected');
+                    document.getElementById('connectionAlert').style.display = 'none';
+                    break;
+                    
+                case 'esp32_disconnected':
+                    console.log('🎯 ESP32 desconectado:', data.reason);
+                    showNotification('🚨 ESP32 Desconectado', `Dispositivo desconectado: ${data.reason || 'Sem comunicação'}`, 'warning');
+                    addConnectionEvent('ESP32 desconectado', data.reason || 'Sem comunicação');
+                    updateConnectionStatus('❌ ESP32 Desconectado', 'disconnected');
+                    document.getElementById('connectionAlert').style.display = 'block';
+                    break;
+                    
+                case 'esp32_reconnected':
+                    console.log('🎯 ESP32 reconectado');
+                    showNotification('✅ ESP32 Reconectado', 'Dispositivo ESP32 reconectado com sucesso', 'success');
+                    addConnectionEvent('ESP32 reconectado');
+                    updateConnectionStatus('✅ ESP32 Reconectado', 'connected');
+                    document.getElementById('connectionAlert').style.display = 'none';
+                    break;
+                    
+                case 'esp32_connection_change':
+                    console.log('🎯 Mudança de ESP32:', data.oldClientId, '→', data.newClientId);
+                    showNotification('🔄 ESP32 Substituído', 'Novo dispositivo ESP32 conectado', 'info');
+                    addConnectionEvent('ESP32 substituído', `Novo: ${data.newClientId}`);
+                    break;
                     
                 case 'error':
                     console.error('❌ Erro do servidor:', data.message);
                     if (data.message === 'ESP32 não conectado') {
                         updateConnectionStatus('❌ ESP32 desconectado', 'disconnected');
+                        showNotification('🚨 ESP32 Não Conectado', 'Nenhum dispositivo ESP32 está conectado', 'warning');
                     }
                     break;
                     
@@ -1330,11 +1612,15 @@
                 
                 updateConnectionStatus('🔄 Resetando consumo...', 'connecting');
                 
+                // 🎯 NOVO: Notificar reset
+                showNotification('🔄 Resetando', 'Resetando todo o histórico de consumo...', 'info');
+                
                 setTimeout(() => {
                     sendCommand('get_data');
                     sendCommand('get_consumo');
                     sendCommand('get_consumo_semanal');
                     updateConnectionStatus('✅ Reset concluído', 'connected');
+                    showNotification('✅ Reset Concluído', 'Histórico de consumo resetado com sucesso', 'success');
                 }, 2000);
             }
         }
@@ -1345,6 +1631,7 @@
             sendCommand('get_consumo');
             sendCommand('get_consumo_semanal');
             sendCommand('get_status');
+            showNotification('🔄 Atualizando', 'Solicitando dados atualizados do servidor...', 'info');
         }
 
         function updateDateTime() {
@@ -1361,6 +1648,9 @@
             
             create24hHorizontalChart(new Array(24).fill(0));
             updateGraficoSemanas(new Array(4).fill(0), ['S1', 'S2', 'S3', 'S4']);
+            
+            // 🎯 NOVO: Adicionar evento inicial
+            addConnectionEvent('Sistema iniciado');
             
             connectWebSocket();
             updateDateTime();
