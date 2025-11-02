@@ -26,7 +26,7 @@
             width: 100%;
             background: rgba(255, 255, 255, 0.98);
             border-radius: 25px;
-            padding: 20px;
+            padding: 30px;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
             backdrop-filter: blur(10px);
         }
@@ -34,8 +34,8 @@
         h1 {
             color: #1a2a6c;
             text-align: center;
-            margin-bottom: 15px;
-            font-size: 2.2rem;
+            margin-bottom: 25px;
+            font-size: 2.8rem;
             font-weight: 900;
             text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.2);
             letter-spacing: 1px;
@@ -43,12 +43,12 @@
 
         .capacity-info {
             text-align: center;
-            margin: 10px 0;
-            font-size: 1.1rem;
+            margin: 20px 0;
+            font-size: 1.3rem;
             color: #1a2a6c;
             background: linear-gradient(135deg, rgba(26, 42, 108, 0.15), rgba(42, 58, 156, 0.15));
-            padding: 10px;
-            border-radius: 10px;
+            padding: 15px;
+            border-radius: 15px;
             border: 2px solid rgba(26, 42, 108, 0.3);
             font-weight: 600;
         }
@@ -56,8 +56,8 @@
         .dashboard {
             display: flex;
             flex-wrap: wrap;
-            gap: 20px;
-            margin-top: 20px;
+            gap: 30px;
+            margin-top: 30px;
         }
 
         .tank-section {
@@ -71,8 +71,8 @@
         .tank-container {
             position: relative;
             width: 450px;
-            height: 450px; /* Reduzida para compactar o espaço */
-            margin-bottom: 15px;
+            height: 550px;
+            margin-bottom: 20px;
         }
 
         /* IMAGEM DA CAIXA DE COMPENSAÇÃO */
@@ -87,11 +87,11 @@
             background: transparent;
         }
 
-        /* BARRA DE NÍVEL VERTICAL AJUSTADA */
+        /* 🎯 CORREÇÃO DA BARRA DE NÍVEL PARA CELULAR VERTICAL */
         .water-container {
             position: absolute;
-            top: 75px;   /* Ajustado para nova altura */
-            left: 192px;  /* Mantido conforme imagem */
+            top: 95px;   /* Ajuste conforme a imagem */
+            left: 192px;  /* Ajuste conforme a imagem */
             width: 70px;  /* Barra fina e vertical */
             height: 120px; /* Altura da área de água */
             z-index: 3;
@@ -140,16 +140,16 @@
 
         .percentage-display {
             position: absolute;
-            top: 15px; /* Ajustado para nova altura */
+            top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 2rem;
+            font-size: 2.2rem;
             font-weight: 900;
             color: #1a2a6c;
             text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.8);
             z-index: 4;
             background: rgba(255, 255, 255, 0.9);
-            padding: 6px 12px;
+            padding: 8px 16px;
             border-radius: 10px;
             border: 2px solid #1a2a6c;
         }
@@ -159,20 +159,20 @@
             min-width: 600px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 20px;
         }
 
         .data-cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
+            gap: 20px;
         }
 
         .card {
             background: linear-gradient(135deg, #1a2a6c, #2a3a9c);
             color: white;
-            padding: 20px 15px;
-            border-radius: 15px;
+            padding: 25px 20px;
+            border-radius: 20px;
             box-shadow: 0 10px 25px rgba(26, 42, 108, 0.4);
             text-align: center;
             transition: all 0.3s ease;
@@ -185,24 +185,24 @@
         }
 
         .card-value {
-            font-size: 1.8rem;
+            font-size: 2.2rem;
             font-weight: 800;
-            margin: 10px 0;
+            margin: 12px 0;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         .card-label {
-            font-size: 1rem;
+            font-size: 1.1rem;
             font-weight: 600;
             opacity: 0.9;
         }
 
         .status-container {
-            padding: 15px;
-            border-radius: 12px;
-            margin-top: 8px;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 10px;
             text-align: center;
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             font-weight: 700;
             border: 2px solid;
             transition: all 0.3s ease;
@@ -242,7 +242,7 @@
 
         .update-info {
             text-align: center;
-            margin-top: 20px;
+            margin-top: 25px;
             font-size: 0.9rem;
             color: #666;
             font-weight: 600;
@@ -250,9 +250,9 @@
 
         .system-status-mini {
             background: linear-gradient(135deg, rgba(50, 50, 50, 0.15), rgba(100, 100, 100, 0.15));
-            padding: 10px 15px;
-            border-radius: 10px;
-            margin-bottom: 12px;
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
             font-size: 0.85rem;
             display: flex;
             justify-content: space-between;
@@ -290,15 +290,15 @@
             display: flex;
             gap: 15px;
             justify-content: center;
-            margin-top: 15px;
+            margin-top: 20px;
         }
 
         .btn-reset {
             background: linear-gradient(135deg, #FF4500, #DC143C);
             color: white;
-            padding: 10px 20px;
+            padding: 12px 25px;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 0.9rem;
             cursor: pointer;
             text-decoration: none;
@@ -316,9 +316,9 @@
         .btn-refresh {
             background: linear-gradient(135deg, #4169E1, #1E90FF);
             color: white;
-            padding: 10px 20px;
+            padding: 12px 25px;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 0.9rem;
             cursor: pointer;
             text-decoration: none;
@@ -335,55 +335,55 @@
 
         .date-time {
             text-align: center;
-            margin: 10px 0;
-            font-size: 1rem;
+            margin: 15px 0;
+            font-size: 1.1rem;
             color: #1a2a6c;
             font-weight: 800;
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.5));
-            padding: 10px;
-            border-radius: 10px;
+            padding: 12px;
+            border-radius: 12px;
             border: 2px solid rgba(26, 42, 108, 0.3);
         }
 
         .consumo-section {
-            margin-top: 20px;
-            padding: 15px;
+            margin-top: 25px;
+            padding: 20px;
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(240, 240, 240, 0.9));
-            border-radius: 15px;
+            border-radius: 20px;
             border: 2px solid rgba(26, 42, 108, 0.2);
         }
 
         .consumo-title {
-            font-size: 1.2rem;
+            font-size: 1.4rem;
             color: #1a2a6c;
-            margin-bottom: 12px;
+            margin-bottom: 15px;
             text-align: center;
             font-weight: 800;
             border-bottom: 3px solid #1a2a6c;
-            padding-bottom: 6px;
+            padding-bottom: 8px;
         }
 
         .graficos-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 15px;
+            gap: 20px;
+            margin-top: 20px;
         }
 
         .grafico-box {
             background: rgba(255, 255, 255, 0.9);
-            border-radius: 12px;
-            padding: 12px;
+            border-radius: 15px;
+            padding: 15px;
             border: 2px solid rgba(26, 42, 108, 0.2);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
 
         .grafico-horizontal {
             width: 100%;
-            height: 180px;
+            height: 200px;
             background: rgba(255, 255, 255, 0.8);
-            border-radius: 8px;
-            padding: 12px;
+            border-radius: 10px;
+            padding: 15px;
             border: 1px solid #ddd;
             position: relative;
             overflow: hidden;
@@ -392,7 +392,7 @@
         .barra-horizontal-container {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 8px;
             height: 100%;
             overflow-y: auto;
             padding-right: 5px;
@@ -401,24 +401,24 @@
         .barra-horizontal-item {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 4px 0;
+            gap: 10px;
+            padding: 5px 0;
             border-bottom: 1px solid #f0f0f0;
         }
 
         .hora-label {
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             font-weight: 700;
             color: #1a2a6c;
-            min-width: 35px;
+            min-width: 40px;
             text-align: center;
         }
 
         .barra-horizontal {
             flex: 1;
-            height: 18px;
+            height: 20px;
             background: #e0e0e0;
-            border-radius: 8px;
+            border-radius: 10px;
             overflow: hidden;
             position: relative;
             box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
@@ -427,25 +427,25 @@
         .barra-progresso {
             height: 100%;
             background: linear-gradient(90deg, #1a2a6c, #4169E1);
-            border-radius: 8px;
+            border-radius: 10px;
             transition: width 0.5s ease;
             min-width: 3px;
         }
 
         .consumo-valor {
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             font-weight: 700;
             color: #1a2a6c;
-            min-width: 35px;
+            min-width: 40px;
             text-align: right;
         }
 
         .grafico-content {
             width: 100%;
-            height: 180px;
+            height: 200px;
             background: rgba(255, 255, 255, 0.8);
-            border-radius: 8px;
-            padding: 8px;
+            border-radius: 10px;
+            padding: 10px;
             border: 1px solid #ddd;
             display: flex;
             align-items: end;
@@ -458,8 +458,8 @@
             display: flex;
             align-items: end;
             gap: 2px;
-            height: 130px;
-            padding: 8px 0;
+            height: 150px;
+            padding: 10px 0;
             width: 100%;
             position: relative;
         }
@@ -476,7 +476,7 @@
 
         .barra-valor-acima {
             position: absolute;
-            font-size: 0.55rem;
+            font-size: 0.6rem;
             font-weight: 600;
             white-space: nowrap;
             z-index: 10;
@@ -490,24 +490,24 @@
         .semanas-labels {
             display: flex;
             justify-content: space-between;
-            margin-top: 6px;
-            font-size: 0.65rem;
+            margin-top: 8px;
+            font-size: 0.7rem;
             color: #666;
             font-weight: 600;
         }
 
         .consumo-resumo {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 12px;
-            margin-top: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
         }
 
         .resumo-card {
             background: linear-gradient(135deg, #32CD32, #228B22);
             color: white;
-            padding: 12px;
-            border-radius: 12px;
+            padding: 15px;
+            border-radius: 15px;
             text-align: center;
             box-shadow: 0 5px 15px rgba(50, 205, 50, 0.3);
         }
@@ -521,13 +521,13 @@
         }
 
         .resumo-value {
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             font-weight: 800;
-            margin: 6px 0;
+            margin: 8px 0;
         }
 
         .resumo-label {
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             font-weight: 600;
             opacity: 0.9;
         }
@@ -536,11 +536,11 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
 
         .grafico-stats {
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             color: #666;
             font-weight: 600;
         }
@@ -555,17 +555,17 @@
 
         .tolerancia-info {
             text-align: center;
-            margin-top: 8px;
-            font-size: 0.75rem;
+            margin-top: 10px;
+            font-size: 0.8rem;
             color: #666;
             font-style: italic;
         }
 
         .connection-status {
             text-align: center;
-            margin: 8px 0;
-            padding: 8px;
-            border-radius: 8px;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
             font-weight: 700;
         }
 
@@ -587,13 +587,138 @@
         .alert-banner {
             background: linear-gradient(135deg, #ff0000, #cc0000);
             color: white;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
             text-align: center;
             font-weight: 700;
             animation: pulse 1s infinite;
             border: 2px solid #ff4444;
+        }
+
+        /* 🎯 NOVO: Sistema de Notificações */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            max-width: 400px;
+        }
+
+        .notification {
+            background: linear-gradient(135deg, #ff6b35, #ff8e53);
+            color: white;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            border-left: 5px solid #ff4444;
+            animation: slideIn 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .notification.success {
+            background: linear-gradient(135deg, #32CD32, #228B22);
+            border-left-color: #008000;
+        }
+
+        .notification.warning {
+            background: linear-gradient(135deg, #FFA500, #FF8C00);
+            border-left-color: #cc8800;
+        }
+
+        .notification.info {
+            background: linear-gradient(135deg, #4169E1, #1E90FF);
+            border-left-color: #0066cc;
+        }
+
+        .notification-icon {
+            font-size: 1.5rem;
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-weight: 800;
+            margin-bottom: 5px;
+        }
+
+        .notification-message {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .connection-timeline {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(240, 240, 240, 0.9));
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 15px;
+            border: 2px solid rgba(26, 42, 108, 0.2);
+        }
+
+        .timeline-title {
+            font-size: 1.1rem;
+            color: #1a2a6c;
+            margin-bottom: 10px;
+            font-weight: 800;
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 0.85rem;
+        }
+
+        .timeline-item:last-child {
+            border-bottom: none;
+        }
+
+        .timeline-time {
+            color: #666;
+            min-width: 80px;
+            font-weight: 600;
+        }
+
+        .timeline-event {
+            flex: 1;
+        }
+
+        .timeline-status {
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 5px;
+            font-size: 0.75rem;
+        }
+
+        .status-connected {
+            background: #32CD32;
+            color: white;
+        }
+
+        .status-disconnected {
+            background: #FF4500;
+            color: white;
+        }
+
+        .status-timeout {
+            background: #FFA500;
+            color: white;
         }
 
         @keyframes waterShine {
@@ -616,7 +741,18 @@
             50% { opacity: 0.5; }
         }
 
-        /* CORREÇÃO PARA CELULAR VERTICAL */
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* 🎯 CORREÇÃO ESPECÍFICA PARA CELULAR VERTICAL */
         @media (max-width: 768px) {
             .dashboard {
                 flex-direction: column;
@@ -625,22 +761,22 @@
             .tank-container {
                 width: 100%;
                 max-width: 350px;
-                height: 350px; /* Reduzida para celular */
+                height: 400px; /* Reduzida para celular */
             }
             
-            /* CORREÇÃO DA BARRA PARA CELULAR VERTICAL */
+            /* 🎯 CORREÇÃO DA BARRA PARA CELULAR VERTICAL */
             .water-container {
-                top: 60px;   /* Ajuste para celular */
+                top: 80px;   /* Ajuste para celular */
                 left: 50%;   /* Centralizar horizontalmente */
                 transform: translateX(-50%);
                 width: 25px;  /* Mais fina para celular */
-                height: 150px; /* Mais alta para melhor visualização */
+                height: 180px; /* Mais alta para melhor visualização */
             }
             
             .percentage-display {
-                font-size: 1.5rem;
-                top: 10px;
-                padding: 5px 10px;
+                font-size: 1.8rem;
+                top: 15px;
+                padding: 6px 12px;
             }
             
             .system-status-mini {
@@ -649,11 +785,11 @@
             }
             
             .card-value {
-                font-size: 1.5rem;
+                font-size: 1.8rem;
             }
             
             h1 {
-                font-size: 1.8rem;
+                font-size: 2.2rem;
             }
             
             .consumo-resumo {
@@ -665,11 +801,11 @@
             }
             
             .grafico-content {
-                height: 130px;
+                height: 150px;
             }
             
             .barra-valor-acima {
-                font-size: 0.45rem;
+                font-size: 0.5rem;
             }
             
             .config-buttons {
@@ -684,32 +820,39 @@
             .graficos-container {
                 grid-template-columns: 1fr;
             }
+
+            .notification-container {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
         }
 
-        /* CORREÇÃO ADICIONAL PARA CELULARES MUITO PEQUENOS */
+        /* 🎯 CORREÇÃO ADICIONAL PARA CELULARES MUITO PEQUENOS */
         @media (max-width: 480px) {
             .tank-container {
-                height: 300px;
+                height: 350px;
             }
             
             .water-container {
-                top: 50px;
+                top: 70px;
                 width: 20px;
-                height: 130px;
+                height: 160px;
             }
             
             .percentage-display {
-                font-size: 1.3rem;
-                top: 8px;
+                font-size: 1.5rem;
+                top: 10px;
             }
             
             h1 {
-                font-size: 1.5rem;
+                font-size: 1.8rem;
             }
             
             .capacity-info {
-                font-size: 0.9rem;
-                padding: 8px;
+                font-size: 1.1rem;
+                padding: 10px;
             }
         }
 
@@ -728,7 +871,7 @@
             📅 <span id="currentDate">--/--/----</span> | 🕒 <span id="currentTime">--:--:--</span>
         </div>
 
-        <!-- Status de conexão -->
+        <!-- Status de conexão melhorado -->
         <div class="connection-status connecting" id="connectionStatus">
             🔄 Conectando ao servidor...
         </div>
@@ -739,6 +882,18 @@
 
         <div id="sensorAlertBanner" class="alert-banner" style="display:none;">
             🚨 ALERTA: FALHA NO SENSOR DETECTADA! Verifique a conexão do sensor.
+        </div>
+
+        <!-- 🎯 NOVO: Timeline de Conexão -->
+        <div class="connection-timeline">
+            <div class="timeline-title">📊 Histórico de Conexão ESP32</div>
+            <div id="connectionTimeline">
+                <div class="timeline-item">
+                    <div class="timeline-time">--:--:--</div>
+                    <div class="timeline-event">Sistema iniciado</div>
+                    <div class="timeline-status status-connected">INICIADO</div>
+                </div>
+            </div>
         </div>
 
         <div class="system-status-mini">
@@ -763,7 +918,7 @@
         </div>
 
         <div class="capacity-info">
-            Capacidade: <span id="volumeTotalDisplay">5000</span> L | 
+            Capacidade: <span id="volumeTotalDisplay">1000</span> L | 
             Altura: <span id="alturaCaixaDisplay">100</span> cm
         </div>
 
@@ -818,6 +973,7 @@
                         <div class="resumo-value" id="consumoAcumuladoHoje">0 L</div>
                     </div>
                     <div class="resumo-card">
+                        <!-- 🎯 ALTERADO: AGORA MOSTRA CONSUMO MENSAL -->
                         <div class="resumo-label">📅 Consumo Mensal Acumulado</div>
                         <div class="resumo-value" id="consumoMensal">0 L</div>
                     </div>
@@ -842,6 +998,7 @@
                         <!-- GRÁFICO VERTICAL DE SEMANAS -->
                         <div class="grafico-box">
                             <div class="grafico-header">
+                                <!-- 🎯 ALTERADO: AGORA MOSTRA 4 SEMANAS -->
                                 <h3>📅 Últimas 4 Semanas</h3>
                                 <div class="grafico-stats">Total: <span id="totalSemanas">0</span>L</div>
                             </div>
@@ -870,35 +1027,311 @@
         </div>
     </div>
 
+    <!-- 🎯 NOVO: Container de Notificações -->
+    <div class="notification-container" id="notificationContainer"></div>
+
     <script>
-        // Simulação de dados para demonstração visual
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Inicializando Monitor Caixa de Compensação - Chillers...');
+        // ====== CONEXÃO WEBSOCKET ======
+        let ws = null;
+        let isConnected = false;
+        let lastData = null;
+        let connectionAttempts = 0;
+        const MAX_CONNECTION_ATTEMPTS = 5;
+
+        // 🎯 VARIÁVEIS PARA EVITAR OSCILAÇÃO
+        let currentConsumoData = {
+            consumo_diario: new Array(24).fill(0),
+            valores_consumo: new Array(24).fill(0),
+            consumo_acumulado_ultima_hora: 0,
+            consumo_acumulado_hoje: 0,
+            consumo_mensal: 0 // 🎯 NOVO CAMPO
+        };
+
+        // 🎯 NOVO: Histórico de conexões
+        let connectionHistory = [];
+
+        // 🎯 NOVO: Sistema de Notificações
+        function showNotification(title, message, type = 'info') {
+            const container = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <div class="notification-icon">
+                    ${type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '🚨'}
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">${title}</div>
+                    <div class="notification-message">${message}</div>
+                </div>
+                <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+            `;
             
-            // Inicializar com dados de exemplo
-            updateInterface({
-                percentage: 65,
-                height: 65,
-                liters: 3250,
-                volume_total: 5000,
-                altura_caixa: 100,
-                sensor_ok: true,
-                status: 'ESTAVEL'
+            container.appendChild(notification);
+            
+            // Auto-remover após 8 segundos
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 8000);
+        }
+
+        // 🎯 NOVO: Adicionar evento ao histórico
+        function addConnectionEvent(event, reason = '') {
+            const now = new Date();
+            const eventData = {
+                time: now.toLocaleTimeString('pt-BR'),
+                event: event,
+                reason: reason,
+                timestamp: now
+            };
+            
+            connectionHistory.unshift(eventData);
+            
+            // Manter apenas últimos 10 eventos
+            if (connectionHistory.length > 10) {
+                connectionHistory = connectionHistory.slice(0, 10);
+            }
+            
+            updateConnectionTimeline();
+        }
+
+        // 🎯 NOVO: Atualizar timeline
+        function updateConnectionTimeline() {
+            const container = document.getElementById('connectionTimeline');
+            container.innerHTML = '';
+            
+            connectionHistory.forEach(event => {
+                const item = document.createElement('div');
+                item.className = 'timeline-item';
+                
+                let statusClass = 'status-connected';
+                let statusText = 'CONECTADO';
+                
+                if (event.event.includes('desconectado')) {
+                    statusClass = 'status-disconnected';
+                    statusText = 'DESCONECTADO';
+                } else if (event.event.includes('timeout')) {
+                    statusClass = 'status-timeout';
+                    statusText = 'TIMEOUT';
+                }
+                
+                item.innerHTML = `
+                    <div class="timeline-time">${event.time}</div>
+                    <div class="timeline-event">${event.event} ${event.reason ? `- ${event.reason}` : ''}</div>
+                    <div class="timeline-status ${statusClass}">${statusText}</div>
+                `;
+                
+                container.appendChild(item);
             });
+        }
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
             
-            // Simular dados de consumo
-            updateConsumoCharts({
-                valores_consumo: [0, 5, 8, 12, 15, 20, 25, 30, 35, 40, 45, 50, 
-                                  55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110]
-            });
+            console.log('🔄 Tentando conectar WebSocket...', wsUrl);
+            updateConnectionStatus('🔄 Conectando ao servidor...', 'connecting');
             
-            updateGraficoSemanas([120, 180, 210, 190], ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4']);
+            try {
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = function() {
+                    console.log('✅ WebSocket conectado com sucesso!');
+                    isConnected = true;
+                    connectionAttempts = 0;
+                    updateConnectionStatus('✅ Conectado ao servidor', 'connected');
+                    document.getElementById('connectionAlert').style.display = 'none';
+                    
+                    // 🎯 NOVO: Notificar conexão
+                    showNotification('✅ Conectado', 'Conexão com servidor estabelecida com sucesso', 'success');
+                    addConnectionEvent('Servidor conectado');
+                    
+                    // Solicitar dados iniciais
+                    setTimeout(() => {
+                        sendCommand('get_data');
+                        sendCommand('get_consumo');
+                        sendCommand('get_consumo_semanal');
+                        sendCommand('get_status');
+                    }, 1000);
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log('📨 Dados recebidos:', data.type);
+                        handleWebSocketMessage(data);
+                    } catch (error) {
+                        console.error('❌ Erro ao processar mensagem:', error);
+                    }
+                };
+                
+                ws.onclose = function(event) {
+                    console.log('❌ Conexão WebSocket fechada:', event.code, event.reason);
+                    isConnected = false;
+                    updateConnectionStatus('❌ Desconectado do servidor', 'disconnected');
+                    
+                    // 🎯 NOVO: Notificar desconexão
+                    if (event.code !== 1000) { // Não notificar desconexões normais
+                        showNotification('❌ Desconectado', `Conexão com servidor perdida: ${event.reason || 'Código ' + event.code}`, 'warning');
+                        addConnectionEvent('Servidor desconectado', event.reason || `Código ${event.code}`);
+                    }
+                    
+                    // Tentar reconectar com backoff exponencial
+                    const reconnectDelay = Math.min(1000 * Math.pow(2, connectionAttempts), 30000);
+                    connectionAttempts++;
+                    
+                    if (connectionAttempts <= MAX_CONNECTION_ATTEMPTS) {
+                        console.log(`🔄 Tentativa ${connectionAttempts}/${MAX_CONNECTION_ATTEMPTS} em ${reconnectDelay}ms`);
+                        setTimeout(connectWebSocket, reconnectDelay);
+                    } else {
+                        console.error('❌ Máximo de tentativas de conexão atingido');
+                        updateConnectionStatus('❌ Falha na conexão', 'disconnected');
+                        document.getElementById('connectionAlert').style.display = 'block';
+                        showNotification('🚨 Falha na Conexão', 'Não foi possível conectar ao servidor após várias tentativas', 'warning');
+                    }
+                };
+                
+                ws.onerror = function(error) {
+                    console.error('❌ Erro WebSocket:', error);
+                    updateConnectionStatus('❌ Erro de conexão', 'disconnected');
+                    showNotification('❌ Erro de Conexão', 'Erro ao tentar conectar com o servidor', 'warning');
+                };
+                
+            } catch (error) {
+                console.error('❌ Erro ao criar WebSocket:', error);
+                updateConnectionStatus('❌ Erro de conexão', 'disconnected');
+                showNotification('❌ Erro de Conexão', 'Erro ao criar conexão WebSocket', 'warning');
+            }
+        }
+
+        function updateConnectionStatus(message, status) {
+            const element = document.getElementById('connectionStatus');
+            element.textContent = message;
+            element.className = `connection-status ${status}`;
             
-            updateResumoConsumo(45, 1100, [120, 180, 210, 190], 4500);
+            if (status === 'connected') {
+                document.getElementById('connectionAlert').style.display = 'none';
+            } else if (status === 'disconnected') {
+                document.getElementById('connectionAlert').style.display = 'block';
+            }
+        }
+
+        function handleWebSocketMessage(data) {
+            console.log('📨 Tipo de mensagem:', data.type);
             
-            updateDateTime();
-            setInterval(updateDateTime, 1000);
-        });
+            switch(data.type) {
+                case 'connected':
+                    console.log('🆔 Conectado ao servidor, Client ID:', data.clientId);
+                    updateConnectionStatus('✅ Conectado ao servidor', 'connected');
+                    break;
+                    
+                case 'all_data':
+                    lastData = data;
+                    updateInterface(data);
+                    updateConnectionStatus('✅ Conectado - Dados recebidos', 'connected');
+                    break;
+                    
+                case 'status':
+                    updateSystemStatus(data);
+                    break;
+                    
+                case 'consumo_data':
+                    console.log('📊 Dados de consumo recebidos');
+                    // 🎯 CORREÇÃO: Atualizar apenas se houver dados válidos
+                    if (data.valores_consumo && data.valores_consumo.length > 0) {
+                        updateConsumoData(data);
+                    }
+                    break;
+                    
+                case 'consumo_semanal_data':
+                    console.log('📅 Dados semanais recebidos');
+                    updateConsumoSemanalCharts(data);
+                    break;
+
+                case 'command_ack':
+                    console.log('✅ Comando confirmado:', data.command);
+                    break;
+
+                // 🎯 NOVO: Tratamento de eventos ESP32
+                case 'esp32_connected':
+                    console.log('🎯 ESP32 conectado:', data.clientId);
+                    showNotification('✅ ESP32 Conectado', 'Dispositivo ESP32 conectado com sucesso', 'success');
+                    addConnectionEvent('ESP32 conectado', data.clientId);
+                    updateConnectionStatus('✅ ESP32 Conectado', 'connected');
+                    document.getElementById('connectionAlert').style.display = 'none';
+                    break;
+                    
+                case 'esp32_disconnected':
+                    console.log('🎯 ESP32 desconectado:', data.reason);
+                    showNotification('🚨 ESP32 Desconectado', `Dispositivo desconectado: ${data.reason || 'Sem comunicação'}`, 'warning');
+                    addConnectionEvent('ESP32 desconectado', data.reason || 'Sem comunicação');
+                    updateConnectionStatus('❌ ESP32 Desconectado', 'disconnected');
+                    document.getElementById('connectionAlert').style.display = 'block';
+                    break;
+                    
+                case 'esp32_reconnected':
+                    console.log('🎯 ESP32 reconectado');
+                    showNotification('✅ ESP32 Reconectado', 'Dispositivo ESP32 reconectado com sucesso', 'success');
+                    addConnectionEvent('ESP32 reconectado');
+                    updateConnectionStatus('✅ ESP32 Reconectado', 'connected');
+                    document.getElementById('connectionAlert').style.display = 'none';
+                    break;
+                    
+                case 'esp32_connection_change':
+                    console.log('🎯 Mudança de ESP32:', data.oldClientId, '→', data.newClientId);
+                    showNotification('🔄 ESP32 Substituído', 'Novo dispositivo ESP32 conectado', 'info');
+                    addConnectionEvent('ESP32 substituído', `Novo: ${data.newClientId}`);
+                    break;
+                    
+                case 'error':
+                    console.error('❌ Erro do servidor:', data.message);
+                    if (data.message === 'ESP32 não conectado') {
+                        updateConnectionStatus('❌ ESP32 desconectado', 'disconnected');
+                        showNotification('🚨 ESP32 Não Conectado', 'Nenhum dispositivo ESP32 está conectado', 'warning');
+                    }
+                    break;
+                    
+                default:
+                    console.log('📨 Mensagem não tratada:', data.type);
+            }
+        }
+
+        // 🎯 FUNÇÃO CORRIGIDA PARA ATUALIZAR DADOS DE CONSUMO SEM OSCILAÇÃO
+        function updateConsumoData(data) {
+            // Atualizar apenas se os dados forem válidos
+            if (data.valores_consumo && Array.isArray(data.valores_consumo)) {
+                // 🎯 MESCLAR DADOS: manter valores existentes se novos forem zero/vazios
+                for (let i = 0; i < 24; i++) {
+                    if (data.valores_consumo[i] > 0) {
+                        currentConsumoData.valores_consumo[i] = data.valores_consumo[i];
+                    }
+                }
+                
+                // Atualizar consumo acumulado apenas se for maior que zero
+                if (data.consumo_acumulado_ultima_hora >= 0) {
+                    currentConsumoData.consumo_acumulado_ultima_hora = data.consumo_acumulado_ultima_hora;
+                }
+                
+                if (data.consumo_acumulado_hoje >= 0) {
+                    currentConsumoData.consumo_acumulado_hoje = data.consumo_acumulado_hoje;
+                }
+                
+                // 🎯 ATUALIZAR CONSUMO MENSAL SE DISPONÍVEL
+                if (data.consumo_mensal !== undefined) {
+                    currentConsumoData.consumo_mensal = data.consumo_mensal;
+                }
+                
+                // Atualizar gráficos com dados mesclados
+                updateConsumoCharts(currentConsumoData);
+                updateResumoConsumo(
+                    currentConsumoData.consumo_acumulado_ultima_hora,
+                    currentConsumoData.consumo_acumulado_hoje,
+                    data.consumo_semanal,
+                    currentConsumoData.consumo_mensal
+                );
+            }
+        }
 
         function updateInterface(data) {
             // Atualizar nível da água
@@ -910,7 +1343,14 @@
             document.getElementById('levelValue').textContent = (data.height || 0) + ' cm';
             document.getElementById('litersValue').textContent = (data.liters || 0) + ' L';
             
-            document.getElementById('volumeTotalDisplay').textContent = data.volume_total || 5000;
+            // 🎯 CORREÇÃO: Usar dados do consumo atual, não zerar
+            document.getElementById('consumoAcumuladoHora').textContent = currentConsumoData.consumo_acumulado_ultima_hora + ' L';
+            document.getElementById('consumoAcumuladoHoje').textContent = currentConsumoData.consumo_acumulado_hoje + ' L';
+            
+            // 🎯 ATUALIZAR CONSUMO MENSAL
+            document.getElementById('consumoMensal').textContent = currentConsumoData.consumo_mensal + ' L';
+            
+            document.getElementById('volumeTotalDisplay').textContent = data.volume_total || 1000;
             document.getElementById('alturaCaixaDisplay').textContent = data.altura_caixa || 100;
             
             // Atualizar status do sensor
@@ -985,8 +1425,39 @@
             const now = new Date();
             document.getElementById('lastUpdate').textContent = now.toLocaleTimeString('pt-BR');
             document.getElementById('lastUpdateMini').textContent = now.toLocaleTimeString('pt-BR');
+
+            // Atualizar estabilidade
+            document.getElementById('sensorStableMini').textContent = data.leituras_estabilidade || '0';
+            document.getElementById('sensorAlertMini').textContent = data.consumo_confirmado ? '🔴' : '✅';
+            document.getElementById('sensorAlertMini').className = data.consumo_confirmado ? 'alert-active' : 'status-online';
         }
 
+        function updateSystemStatus(data) {
+            document.getElementById('wifiStatusMini').textContent = data.wifi_connected ? '✅' : '❌';
+            document.getElementById('wifiStatusMini').className = data.wifi_connected ? 'status-online' : 'status-offline';
+            
+            const freeMemory = data.free_memory || 0;
+            document.getElementById('memoryMini').textContent = formatMemory(freeMemory);
+            
+            // 🎯 ATUALIZAR CONSUMO MENSAL NO STATUS
+            if (data.consumo_mensal !== undefined) {
+                currentConsumoData.consumo_mensal = data.consumo_mensal;
+                document.getElementById('consumoMensal').textContent = data.consumo_mensal + ' L';
+            }
+            
+            if (data.system_status === 'ALERTA_SENSOR') {
+                document.getElementById('sensorAlertBanner').style.display = 'block';
+            }
+        }
+
+        function formatMemory(bytes) {
+            if (bytes >= 1024) {
+                return (bytes / 1024).toFixed(1) + ' KB';
+            }
+            return bytes + ' B';
+        }
+
+        // ====== GRÁFICOS ======
         function updateConsumoCharts(data) {
             if (data.valores_consumo) {
                 create24hHorizontalChart(data.valores_consumo);
@@ -1025,6 +1496,7 @@
                 
                 const consumoValor = document.createElement('div');
                 consumoValor.className = 'consumo-valor';
+                // 🎯 CORREÇÃO: Mostrar valor REAL acumulado
                 consumoValor.textContent = consumo > 0 ? consumo + 'L' : '0L';
                 
                 barraContainer.appendChild(barraProgresso);
@@ -1038,6 +1510,20 @@
             document.getElementById('total24h').textContent = total24h;
         }
 
+        // 🎯 FUNÇÃO ATUALIZADA PARA 4 SEMANAS
+        function updateConsumoSemanalCharts(data) {
+            if (data.consumo_semanal && data.semanas_consumo) {
+                updateGraficoSemanas(data.consumo_semanal, data.semanas_consumo);
+                updateResumoConsumo(
+                    currentConsumoData.consumo_acumulado_ultima_hora, 
+                    currentConsumoData.consumo_acumulado_hoje, 
+                    data.consumo_semanal,
+                    data.consumo_mensal || currentConsumoData.consumo_mensal || 0
+                );
+            }
+        }
+
+        // 🎯 FUNÇÃO ATUALIZADA PARA 4 SEMANAS
         function updateGraficoSemanas(consumoData, semanas) {
             const container = document.getElementById('graficoSemanas');
             const labelsContainer = document.getElementById('labelsSemanas');
@@ -1050,6 +1536,7 @@
             let totalSemanas = 0;
             const maxBarHeight = 85;
 
+            // 🎯 AGORA SÃO 4 SEMANAS
             for (let i = 0; i < 4; i++) {
                 totalSemanas += consumoData[i] || 0;
                 const alturaPercent = Math.min(((consumoData[i] || 0) / maxConsumo) * maxBarHeight, maxBarHeight);
@@ -1066,6 +1553,7 @@
                 if (consumoData[i] > 0) {
                     const valorLabel = document.createElement('div');
                     valorLabel.className = 'barra-valor-acima';
+                    // 🎯 CORREÇÃO: Mostrar valor REAL acumulado
                     valorLabel.textContent = (consumoData[i] || 0) + 'L';
                     valorLabel.style.bottom = (alturaPercent + 2) + '%';
                     barContainer.appendChild(valorLabel);
@@ -1074,6 +1562,7 @@
                 container.appendChild(barContainer);
             }
 
+            // 🎯 AGORA SÃO 4 LABELS
             for (let i = 0; i < 4; i++) {
                 const label = document.createElement('div');
                 label.className = 'barra-hora';
@@ -1085,25 +1574,64 @@
             document.getElementById('totalSemanas').textContent = totalSemanas;
         }
 
+        // 🎯 FUNÇÃO ATUALIZADA COM CONSUMO MENSAL
         function updateResumoConsumo(consumoAcumuladoHora, consumoAcumuladoHoje, consumoSemanal, consumoMensal) {
             document.getElementById('consumoAcumuladoHora').textContent = consumoAcumuladoHora + ' L';
             document.getElementById('consumoAcumuladoHoje').textContent = consumoAcumuladoHoje + ' L';
+            
+            // 🎯 AGORA MOSTRA CONSUMO MENSAL
             document.getElementById('consumoMensal').textContent = (consumoMensal || 0) + ' L';
                 
             const totalSemanas = consumoSemanal ? consumoSemanal.reduce((a, b) => a + b, 0) : 0;
             document.getElementById('totalSemanas').textContent = totalSemanas + 'L';
         }
 
+        function sendCommand(command) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(command);
+                console.log('📤 Comando enviado:', command);
+            } else {
+                console.log('❌ WebSocket não conectado, tentando reconectar...');
+                connectWebSocket();
+            }
+        }
+
         function resetConsumo() {
             if (confirm('🗑️ Tem certeza que deseja resetar TODO o histórico de consumo?\n\nEsta ação não pode ser desfeita!')) {
-                alert('Reset de consumo solicitado!');
-                // Em uma implementação real, aqui seria feita uma chamada para o servidor
+                console.log('🔄 Solicitando reset de consumo...');
+                sendCommand('reset_consumo');
+                
+                // 🎯 CORREÇÃO: Resetar também os dados locais
+                currentConsumoData = {
+                    consumo_diario: new Array(24).fill(0),
+                    valores_consumo: new Array(24).fill(0),
+                    consumo_acumulado_ultima_hora: 0,
+                    consumo_acumulado_hoje: 0,
+                    consumo_mensal: 0
+                };
+                
+                updateConnectionStatus('🔄 Resetando consumo...', 'connecting');
+                
+                // 🎯 NOVO: Notificar reset
+                showNotification('🔄 Resetando', 'Resetando todo o histórico de consumo...', 'info');
+                
+                setTimeout(() => {
+                    sendCommand('get_data');
+                    sendCommand('get_consumo');
+                    sendCommand('get_consumo_semanal');
+                    updateConnectionStatus('✅ Reset concluído', 'connected');
+                    showNotification('✅ Reset Concluído', 'Histórico de consumo resetado com sucesso', 'success');
+                }, 2000);
             }
         }
 
         function refreshData() {
-            alert('Atualizando dados...');
-            // Em uma implementação real, aqui seria feita uma chamada para o servidor
+            console.log('🔄 Atualizando dados manualmente...');
+            sendCommand('get_data');
+            sendCommand('get_consumo');
+            sendCommand('get_consumo_semanal');
+            sendCommand('get_status');
+            showNotification('🔄 Atualizando', 'Solicitando dados atualizados do servidor...', 'info');
         }
 
         function updateDateTime() {
@@ -1113,6 +1641,31 @@
             document.getElementById('currentDate').textContent = dateStr;
             document.getElementById('currentTime').textContent = timeStr;
         }
+
+        // Inicializar quando a página carregar
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Inicializando Monitor Caixa de Compensação - Chillers...');
+            
+            create24hHorizontalChart(new Array(24).fill(0));
+            updateGraficoSemanas(new Array(4).fill(0), ['S1', 'S2', 'S3', 'S4']);
+            
+            // 🎯 NOVO: Adicionar evento inicial
+            addConnectionEvent('Sistema iniciado');
+            
+            connectWebSocket();
+            updateDateTime();
+            
+            setInterval(updateDateTime, 1000);
+            
+            setInterval(() => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    sendCommand('get_data');
+                    sendCommand('get_consumo');
+                    sendCommand('get_consumo_semanal');
+                    sendCommand('get_status');
+                }
+            }, 5000);
+        });
     </script>
 </body>
 </html>
