@@ -2,6 +2,7 @@ const WebSocket = require('ws');
 const express = require('express');
 const http = require('http');
 const path = require('path');
+const axios = require('axios'); // NOVA DEPENDÊNCIA
 
 const app = express();
 const server = http.createServer(app);
@@ -10,6 +11,20 @@ const wss = new WebSocket.Server({
   perMessageDeflate: false,
   clientTracking: true
 });
+
+// 🎯 CONFIGURAÇÃO ANTI-INATIVIDADE
+const HEALTH_CHECK_URL = `https://testeservidor-6opr.onrender.com/health`;
+const HEALTH_CHECK_INTERVAL = 14 * 60 * 1000; // 14 minutos
+
+// Função de auto-ping
+async function healthCheck() {
+    try {
+        const response = await axios.get(HEALTH_CHECK_URL);
+        console.log(`✅ Health check realizado: ${response.status} - ${new Date().toLocaleTimeString('pt-BR')}`);
+    } catch (error) {
+        console.log(`❌ Erro no health check: ${error.message}`);
+    }
+}
 
 // Armazenar conexões
 const clients = new Map();
@@ -48,7 +63,17 @@ app.get('/health', (req, res) => {
       total: clients.size,
       esp32: esp32Client ? 1 : 0,
       web: Array.from(clients.values()).filter(client => client !== esp32Client).length
-    }
+    },
+    render_keepalive: 'ACTIVE' // 🎯 INDICADOR DE ATIVIDADE
+  });
+});
+
+// 🎯 NOVA ROTA PARA PING SIMPLES (mais leve)
+app.get('/ping', (req, res) => {
+  res.json({ 
+    status: 'pong', 
+    timestamp: new Date().toISOString(),
+    service: 'active'
   });
 });
 
@@ -465,6 +490,11 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`📊 Health: http://localhost:${PORT}/health`);
   console.log(`📋 Status: http://localhost:${PORT}/status`);
   console.log(`🎯 Aguardando conexões ESP32 e Web...`);
+  
+  // 🎯 INICIAR HEALTH CHECK AUTOMÁTICO
+  console.log(`🔄 Health Check configurado a cada ${HEALTH_CHECK_INTERVAL / 60000} minutos`);
+  setInterval(healthCheck, HEALTH_CHECK_INTERVAL);
+  healthCheck(); // Executar imediatamente
 });
 
 // Heartbeat para manter conexões ativas
