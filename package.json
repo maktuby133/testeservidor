@@ -1,15 +1,20 @@
 {
   "name": "caixa-agua-websocket-corrigido",
-  "version": "2.1.0",
-  "description": "Sistema corrigido de monitoramento de caixa d'água - Problemas de conexão e reset resolvidos",
+  "version": "2.2.0",
+  "description": "Sistema corrigido de monitoramento de caixa d'água - Com suporte a variáveis de ambiente e autenticação",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "dev:env": "node -r dotenv/config server.js",
     "test": "echo \"✅ Sistema testado e funcionando!\" && exit 0",
+    "test:env": "node -r dotenv/config test-env.js",
     "build": "echo \"📦 Build completo - Pronto para produção!\"",
     "health": "curl -f http://localhost:3000/health || exit 1",
-    "deploy": "npm run test && npm start"
+    "health:env": "node -r dotenv/config health-check.js",
+    "deploy": "npm run test && npm start",
+    "env:setup": "node setup-environment.js",
+    "env:check": "node -r dotenv/config check-environment.js"
   },
   "keywords": [
     "esp32",
@@ -19,7 +24,9 @@
     "iot",
     "sensor-nivel",
     "realtime",
-    "corrigido"
+    "environment-variables",
+    "dotenv",
+    "autenticacao"
   ],
   "author": "Seu Nome",
   "license": "MIT",
@@ -34,7 +41,8 @@
   "dependencies": {
     "express": "^4.18.2",
     "ws": "^8.14.2",
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
