@@ -2,7 +2,7 @@ const WebSocket = require('ws');
 const express = require('express');
 const http = require('http');
 const path = require('path');
-const axios = require('axios'); // NOVA DEPENDÊNCIA
+const axios = require('axios');
 
 const app = express();
 const server = http.createServer(app);
@@ -13,22 +13,29 @@ const wss = new WebSocket.Server({
 });
 
 // 🎯 CONFIGURAÇÃO ANTI-INATIVIDADE
-const HEALTH_CHECK_URL = `https://testeservidor-6opr.onrender.com/health`;
+const HEALTH_CHECK_URL = process.env.HEALTH_CHECK_URL || `https://testeservidor-6opr.onrender.com/health`;
 const HEALTH_CHECK_INTERVAL = 14 * 60 * 1000; // 14 minutos
 
-// Função de auto-ping
-async function healthCheck() {
-    try {
-        const response = await axios.get(HEALTH_CHECK_URL);
-        console.log(`✅ Health check realizado: ${response.status} - ${new Date().toLocaleTimeString('pt-BR')}`);
-    } catch (error) {
-        console.log(`❌ Erro no health check: ${error.message}`);
-    }
-}
+// 🎯 CONFIGURAÇÕES DE SEGURANÇA
+const ESP32_TOKEN = process.env.ESP32_TOKEN || 'default_esp32_token_2024';
+const MAX_REQUESTS_PER_MINUTE = 60;
 
 // Armazenar conexões
 const clients = new Map();
 let esp32Client = null;
+
+// 🎯 NOVO: Armazenamento de dados históricos
+const historicalData = [];
+const metrics = {
+  messagesReceived: 0,
+  messagesSent: 0,
+  errors: 0,
+  esp32Reconnects: 0,
+  webClientsConnected: 0
+};
+
+// 🎯 NOVO: Rate limiting
+const rateLimit = new Map();
 
 // Middleware para CORS
 app.use((req, res, next) => {
@@ -40,6 +47,20 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 app.use(express.static('public'));
+
+// 🎯 NOVO: Middleware de rate limiting
+app.use((req, res, next) => {
+  const clientIP = getClientIP(req);
+  
+  if (!checkRateLimit(clientIP)) {
+    return res.status(429).json({
+      success: false,
+      message: 'Muitas requisições. Tente novamente em 1 minuto.'
+    });
+  }
+  
+  next();
+});
 
 // Rota principal - serve o HTML
 app.get('/', (req, res) => {
@@ -64,7 +85,11 @@ app.get('/health', (req, res) => {
       esp32: esp32Client ? 1 : 0,
       web: Array.from(clients.values()).filter(client => client !== esp32Client).length
     },
-    render_keepalive: 'ACTIVE' // 🎯 INDICADOR DE ATIVIDADE
+    metrics: {
+      ...metrics,
+      historicalDataPoints: historicalData.length
+    },
+    render_keepalive: 'ACTIVE'
   });
 });
 
@@ -74,6 +99,35 @@ app.get('/ping', (req, res) => {
     status: 'pong', 
     timestamp: new Date().toISOString(),
     service: 'active'
+  });
+});
+
+// 🎯 NOVA ROTA PARA MÉTRICAS
+app.get('/metrics', (req, res) => {
+  const uptimeMinutes = process.uptime() / 60;
+  
+  res.json({
+    ...metrics,
+    averageMessageRate: metrics.messagesReceived / uptimeMinutes,
+    historicalDataPoints: historicalData.length,
+    rateLimitSize: rateLimit.size
+  });
+});
+
+// 🎯 NOVA ROTA PARA DADOS HISTÓRICOS
+app.get('/historical-data', (req, res) => {
+  const { hours = 24 } = req.query;
+  const cutoffTime = new Date(Date.now() - (hours * 60 * 60 * 1000));
+  
+  const filteredData = historicalData.filter(entry => 
+    new Date(entry.timestamp) >= cutoffTime
+  );
+  
+  res.json({
+    success: true,
+    data: filteredData,
+    total: filteredData.length,
+    timeRange: `${hours} horas`
   });
 });
 
@@ -91,12 +145,21 @@ wss.on('connection', function connection(ws, req) {
   ws.isESP32 = isESP32;
   ws.connectedAt = new Date();
   
-  // CORREÇÃO CRÍTICA: Detectar se é o ESP32
+  // 🎯 ATUALIZADO: Detectar se é o ESP32 com autenticação
   if (isESP32) {
+    const authenticated = authenticateESP32(req);
+    if (!authenticated) {
+      console.log(`❌ Tentativa de conexão ESP32 não autenticada: ${clientId}`);
+      ws.close(1008, 'Autenticação falhou');
+      clients.delete(clientId);
+      return;
+    }
+    
     // Se já tem um ESP32 conectado, fechar a conexão anterior
     if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
       console.log(`🔄 Substituindo ESP32 anterior: ${esp32Client.clientId}`);
       esp32Client.close(1000, 'Novo ESP32 conectado');
+      metrics.esp32Reconnects++;
     }
     esp32Client = ws;
     console.log(`🎯 ESP32 registrado: ${clientId}`);
@@ -108,6 +171,8 @@ wss.on('connection', function connection(ws, req) {
       clientId: clientId,
       timestamp: new Date().toISOString()
     });
+  } else {
+    metrics.webClientsConnected++;
   }
   
   // Enviar confirmação de conexão
@@ -125,14 +190,31 @@ wss.on('connection', function connection(ws, req) {
   ws.on('message', function message(data) {
     try {
       const messageString = data.toString();
+      metrics.messagesReceived++;
       
-      // CORREÇÃO: Tentar detectar se é ESP32 pela mensagem
+      // 🎯 ATUALIZADO: Tentar detectar se é ESP32 pela mensagem com autenticação
       if (!ws.isESP32 && isESP32Message(messageString)) {
         console.log(`🎯 Detectado ESP32 pela mensagem: ${clientId}`);
+        
+        // Verificar autenticação na mensagem
+        try {
+          const parsedMsg = JSON.parse(messageString);
+          if (parsedMsg.token !== ESP32_TOKEN) {
+            console.log(`❌ ESP32 não autenticado pela mensagem: ${clientId}`);
+            ws.close(1008, 'Token inválido');
+            return;
+          }
+        } catch (e) {
+          console.log(`❌ Mensagem ESP32 sem token válido: ${clientId}`);
+          ws.close(1008, 'Autenticação necessária');
+          return;
+        }
+        
         ws.isESP32 = true;
         
         if (esp32Client && esp32Client !== ws) {
           esp32Client.close(1000, 'Novo ESP32 detectado');
+          metrics.esp32Reconnects++;
         }
         esp32Client = ws;
       }
@@ -147,6 +229,7 @@ wss.on('connection', function connection(ws, req) {
       }
     } catch (error) {
       console.error(`❌ Erro ao processar mensagem de ${clientId}:`, error);
+      metrics.errors++;
     }
   });
   
@@ -163,6 +246,8 @@ wss.on('connection', function connection(ws, req) {
         message: 'ESP32 desconectado',
         timestamp: new Date().toISOString()
       });
+    } else {
+      metrics.webClientsConnected = Math.max(0, metrics.webClientsConnected - 1);
     }
     
     clients.delete(clientId);
@@ -171,11 +256,77 @@ wss.on('connection', function connection(ws, req) {
   
   ws.on('error', function error(err) {
     console.error(`❌ Erro WebSocket ${clientId}:`, err.message);
+    metrics.errors++;
   });
   
   // Log estatísticas de conexão
   logConnectionStats();
 });
+
+// 🎯 NOVA FUNÇÃO: Autenticação ESP32
+function authenticateESP32(req) {
+  // Verificar token no header Authorization
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    return token === ESP32_TOKEN;
+  }
+  
+  // Verificar token no query parameter
+  const tokenParam = req.url.split('token=')[1];
+  if (tokenParam) {
+    const token = tokenParam.split('&')[0];
+    return token === ESP32_TOKEN;
+  }
+  
+  // Para desenvolvimento, permitir sem token se não estiver em produção
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('⚠️  Modo desenvolvimento: Autenticação ESP32 bypassada');
+    return true;
+  }
+  
+  return false;
+}
+
+// 🎯 NOVA FUNÇÃO: Rate limiting
+function checkRateLimit(clientIP) {
+  const now = Date.now();
+  const windowStart = now - 60000; // 1 minuto
+  
+  if (!rateLimit.has(clientIP)) {
+    rateLimit.set(clientIP, []);
+  }
+  
+  const requests = rateLimit.get(clientIP).filter(time => time > windowStart);
+  rateLimit.set(clientIP, requests);
+  
+  if (requests.length >= MAX_REQUESTS_PER_MINUTE) {
+    console.log(`🚫 Rate limit excedido para IP: ${clientIP}`);
+    return false;
+  }
+  
+  requests.push(now);
+  rateLimit.set(clientIP, requests);
+  return true;
+}
+
+// 🎯 NOVA FUNÇÃO: Salvar dados históricos
+function saveSensorData(data) {
+  const dataPoint = {
+    timestamp: new Date().toISOString(),
+    liters: data.liters,
+    percentage: data.percentage,
+    consumption: data.consumo_hoje,
+    distance: data.distance
+  };
+  
+  historicalData.push(dataPoint);
+  
+  // Manter apenas últimas 48h (aproximadamente 2880 pontos se enviar a cada minuto)
+  if (historicalData.length > 2880) {
+    historicalData.shift();
+  }
+}
 
 // CORREÇÃO CRÍTICA: Detectar se é conexão do ESP32
 function isESP32Connection(req, clientIP) {
@@ -230,6 +381,11 @@ function getClientIP(req) {
 function handleWebSocketMessage(ws, message) {
   const clientInfo = `${ws.clientId} (${ws.clientIP})`;
   
+  // 🎯 ATUALIZADO: Salvar dados históricos para mensagens de sensor
+  if (message.type === 'all_data' || message.type === 'status') {
+    saveSensorData(message);
+  }
+  
   // Adicionar metadados à mensagem
   const enhancedMessage = {
     ...message,
@@ -257,6 +413,7 @@ function handleWebSocketMessage(ws, message) {
       // Remover metadados antes de enviar para ESP32
       const { clientId, origin, timestamp, serverTime, ...cleanMessage } = enhancedMessage;
       sendToClient(esp32Client, cleanMessage);
+      metrics.messagesSent++;
     } else if (!esp32Client) {
       // CORREÇÃO: Se não há ESP32, responder ao frontend
       sendToClient(ws, {
@@ -278,7 +435,8 @@ function handleTextCommand(ws, command) {
       type: 'server_status',
       clients: clients.size,
       esp32Connected: !!esp32Client,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      metrics: metrics
     };
     return sendToClient(ws, statusMessage);
   }
@@ -287,6 +445,7 @@ function handleTextCommand(ws, command) {
   if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
     console.log(`🔄 Repassando comando para ESP32: ${command}`);
     esp32Client.send(command);
+    metrics.messagesSent++;
     
     // Confirmar para o frontend
     sendToClient(ws, {
@@ -314,8 +473,10 @@ function sendToClient(client, message) {
   if (client.readyState === WebSocket.OPEN) {
     try {
       client.send(JSON.stringify(message));
+      metrics.messagesSent++;
     } catch (error) {
       console.error(`❌ Erro ao enviar para ${client.clientId}:`, error.message);
+      metrics.errors++;
     }
   }
 }
@@ -329,8 +490,10 @@ function broadcastToWebClients(message) {
       try {
         client.send(JSON.stringify(message));
         sentCount++;
+        metrics.messagesSent++;
       } catch (error) {
         console.error(`❌ Erro ao transmitir para ${id}:`, error.message);
+        metrics.errors++;
       }
     }
   });
@@ -357,6 +520,7 @@ app.get('/status', (req, res) => {
     serverTime: new Date().toISOString(),
     uptime: Math.floor(process.uptime()),
     memory: process.memoryUsage(),
+    metrics: metrics,
     connections: {
       total: clients.size,
       esp32: esp32Client ? {
@@ -406,6 +570,7 @@ app.post('/command/:command', express.json(), (req, res) => {
   
   try {
     esp32Client.send(command);
+    metrics.messagesSent++;
     console.log(`📤 Comando HTTP enviado: ${command}`);
     
     res.json({ 
@@ -416,6 +581,7 @@ app.post('/command/:command', express.json(), (req, res) => {
     });
   } catch (error) {
     console.error('❌ Erro ao enviar comando:', error);
+    metrics.errors++;
     res.status(500).json({ 
       success: false, 
       message: 'Erro ao enviar comando',
@@ -435,6 +601,7 @@ app.post('/consumo/reset', (req, res) => {
   
   try {
     esp32Client.send('reset_consumo');
+    metrics.messagesSent++;
     console.log('🔄 Comando de reset de consumo enviado via API');
     
     res.json({ 
@@ -444,6 +611,7 @@ app.post('/consumo/reset', (req, res) => {
     });
   } catch (error) {
     console.error('❌ Erro ao enviar reset:', error);
+    metrics.errors++;
     res.status(500).json({ 
       success: false, 
       message: 'Erro ao enviar comando de reset',
@@ -460,13 +628,15 @@ app.get('/system/info', (req, res) => {
     architecture: process.arch,
     uptime: process.uptime(),
     memory: process.memoryUsage(),
-    env: process.env.NODE_ENV || 'development'
+    env: process.env.NODE_ENV || 'development',
+    metrics: metrics
   });
 });
 
 // Middleware de erro
 app.use((error, req, res, next) => {
   console.error('❌ Erro no servidor:', error);
+  metrics.errors++;
   res.status(500).json({ 
     success: false, 
     message: 'Erro interno do servidor',
@@ -483,13 +653,26 @@ app.use('*', (req, res) => {
   });
 });
 
+// 🎯 FUNÇÃO DE HEALTH CHECK
+async function healthCheck() {
+    try {
+        const response = await axios.get(HEALTH_CHECK_URL);
+        console.log(`✅ Health check realizado: ${response.status} - ${new Date().toLocaleTimeString('pt-BR')}`);
+    } catch (error) {
+        console.log(`❌ Erro no health check: ${error.message}`);
+        metrics.errors++;
+    }
+}
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
   console.log(`🌐 Acesse: http://localhost:${PORT}`);
   console.log(`📊 Health: http://localhost:${PORT}/health`);
   console.log(`📋 Status: http://localhost:${PORT}/status`);
+  console.log(`📈 Metrics: http://localhost:${PORT}/metrics`);
   console.log(`🎯 Aguardando conexões ESP32 e Web...`);
+  console.log(`🔐 Token ESP32: ${ESP32_TOKEN}`);
   
   // 🎯 INICIAR HEALTH CHECK AUTOMÁTICO
   console.log(`🔄 Health Check configurado a cada ${HEALTH_CHECK_INTERVAL / 60000} minutos`);
@@ -504,6 +687,7 @@ setInterval(() => {
       esp32Client.ping();
     } catch (error) {
       console.error('❌ Erro no heartbeat do ESP32:', error.message);
+      metrics.errors++;
     }
   }
 }, 30000);
@@ -528,6 +712,21 @@ setInterval(() => {
     console.log(`🧹 Limpeza: ${cleanedCount} cliente(s) removido(s)`);
   }
 }, 60000);
+
+// 🎯 NOVO: Limpeza periódica do rate limit
+setInterval(() => {
+  const now = Date.now();
+  const windowStart = now - 120000; // 2 minutos
+  
+  rateLimit.forEach((requests, ip) => {
+    const filteredRequests = requests.filter(time => time > windowStart);
+    if (filteredRequests.length === 0) {
+      rateLimit.delete(ip);
+    } else {
+      rateLimit.set(ip, filteredRequests);
+    }
+  });
+}, 60000); // A cada minuto
 
 // Graceful shutdown
 function gracefulShutdown(signal) {
