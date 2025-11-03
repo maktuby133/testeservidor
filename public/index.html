@@ -1222,6 +1222,7 @@
             }
         }
 
+        // 🎯 FUNÇÃO CORRIGIDA: Processar mensagens WebSocket
         function handleWebSocketMessage(data) {
             console.log('📨 Tipo de mensagem:', data.type);
             
@@ -1256,6 +1257,28 @@
 
                 case 'command_ack':
                     console.log('✅ Comando confirmado:', data.command);
+                    if (data.command === 'reset_consumo') {
+                        showNotification('🔄 Comando Enviado', 'Comando de reset enviado para ESP32', 'info');
+                    }
+                    break;
+
+                // 🎯 NOVO: Confirmação específica de reset do ESP32
+                case 'reset_confirmation':
+                    console.log('✅✅✅ RESET CONFIRMADO PELO ESP32:', data.message);
+                    updateConnectionStatus('✅ Reset concluído', 'connected');
+                    showNotification('✅ Reset Concluído', 'Histórico de consumo resetado com sucesso pelo ESP32', 'success');
+                    
+                    // 🎯 ATUALIZAR IMEDIATAMENTE OS DADOS
+                    setTimeout(() => {
+                        sendCommand('get_consumo');
+                        sendCommand('get_consumo_semanal');
+                        sendCommand('get_data');
+                    }, 500);
+                    break;
+
+                case 'reset_initiated':
+                    console.log('🔄 Reset iniciado no servidor');
+                    showNotification('🔄 Reset Iniciado', 'Processo de reset iniciado no servidor', 'info');
                     break;
 
                 // 🎯 Tratamento de eventos ESP32
@@ -1601,12 +1624,16 @@
             }
         }
 
+        // 🎯 FUNÇÃO CORRIGIDA: Reset de consumo com feedback melhorado
         function resetConsumo() {
-            if (confirm('🗑️ Tem certeza que deseja resetar TODO o histórico de consumo?\n\nEsta ação não pode ser desfeita!')) {
+            if (confirm('🗑️ Tem certeza que deseja resetar TODO o histórico de consumo?\n\n✅ Consumo por Hora (24h)\n✅ Consumo Semanal (4 semanas)\n✅ Consumo Mensal\n\nEsta ação não pode ser desfeita!')) {
                 console.log('🔄 Solicitando reset de consumo...');
-                sendCommand('reset_consumo');
                 
-                // 🎯 CORREÇÃO: Resetar também os dados locais
+                // 🎯 FEEDBACK IMEDIATO MELHORADO
+                updateConnectionStatus('🔄 Enviando comando reset...', 'connecting');
+                showNotification('🔄 Enviando Comando', 'Comando de reset sendo enviado para o ESP32...', 'info');
+                
+                // 🎯 ZERAR DADOS LOCAIS IMEDIATAMENTE PARA FEEDBACK VISUAL
                 currentConsumoData = {
                     consumo_diario: new Array(24).fill(0),
                     valores_consumo: new Array(24).fill(0),
@@ -1615,18 +1642,22 @@
                     consumo_mensal: 0
                 };
                 
-                updateConnectionStatus('🔄 Resetando consumo...', 'connecting');
+                // 🎯 ATUALIZAR INTERFACE IMEDIATAMENTE
+                updateConsumoCharts(currentConsumoData);
+                updateResumoConsumo(0, 0, [0,0,0,0], 0);
                 
-                // 🎯 NOVO: Notificar reset
-                showNotification('🔄 Resetando', 'Resetando todo o histórico de consumo...', 'info');
+                // 🎯 ENVIAR COMANDO
+                sendCommand('reset_consumo');
                 
+                // 🎯 SOLICITAR DADOS ATUALIZADOS APÓS O RESET
                 setTimeout(() => {
-                    sendCommand('get_data');
                     sendCommand('get_consumo');
                     sendCommand('get_consumo_semanal');
-                    updateConnectionStatus('✅ Reset concluído', 'connected');
-                    showNotification('✅ Reset Concluído', 'Histórico de consumo resetado com sucesso', 'success');
-                }, 2000);
+                    sendCommand('get_data');
+                    sendCommand('get_status');
+                }, 1500);
+                
+                console.log('✅ Reset local aplicado - aguardando confirmação do ESP32');
             }
         }
 
