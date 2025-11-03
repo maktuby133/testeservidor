@@ -23,10 +23,6 @@ const MAX_REQUESTS_PER_MINUTE = parseInt(process.env.MAX_REQUESTS_PER_MINUTE) ||
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// 🎯 NOVO: Sistema de notificação de desconexão
-const DISCONNECTION_TIMEOUT = 20000; // 20 segundos
-const clientHeartbeats = new Map();
-
 // 🎯 LOG DE CONFIGURAÇÃO CARREGADA
 console.log('🔧 Configuração do Servidor:');
 console.log(`   Porta: ${PORT}`);
@@ -34,7 +30,6 @@ console.log(`   Ambiente: ${NODE_ENV}`);
 console.log(`   Health Check: ${HEALTH_CHECK_URL}`);
 console.log(`   Token ESP32: ${ESP32_TOKEN ? '✅ Configurado' : '❌ Não configurado'}`);
 console.log(`   Rate Limit: ${MAX_REQUESTS_PER_MINUTE} req/minuto`);
-console.log(`   Timeout Desconexão: ${DISCONNECTION_TIMEOUT/1000} segundos`);
 
 // Armazenar conexões
 const clients = new Map();
@@ -47,69 +42,11 @@ const metrics = {
   messagesSent: 0,
   errors: 0,
   esp32Reconnects: 0,
-  webClientsConnected: 0,
-  esp32Disconnections: 0,
-  esp32Timeouts: 0
+  webClientsConnected: 0
 };
 
 // 🎯 NOVO: Rate limiting
 const rateLimit = new Map();
-
-// 🎯 NOVA FUNÇÃO: Sistema de heartbeat para ESP32
-function setupESP32Heartbeat(clientId, ws) {
-    console.log(`💓 Iniciando heartbeat para ESP32: ${clientId}`);
-    
-    clientHeartbeats.set(clientId, {
-        lastHeartbeat: Date.now(),
-        isConnected: true,
-        heartbeatInterval: setInterval(() => {
-            const clientData = clientHeartbeats.get(clientId);
-            if (clientData && Date.now() - clientData.lastHeartbeat > DISCONNECTION_TIMEOUT) {
-                console.log(`🚨 ESP32 ${clientId} considerado DESCONECTADO (timeout heartbeat)`);
-                clientData.isConnected = false;
-                metrics.esp32Timeouts++;
-                
-                // Notificar TODOS os clientes web sobre a desconexão
-                broadcastToWebClients({
-                    type: 'esp32_disconnected',
-                    message: 'ESP32 desconectado - Sem comunicação',
-                    clientId: clientId,
-                    reason: 'heartbeat_timeout',
-                    timestamp: new Date().toISOString(),
-                    environment: NODE_ENV,
-                    urgent: true
-                });
-                
-                // Limpar intervalos
-                clearInterval(clientData.heartbeatInterval);
-                clientHeartbeats.delete(clientId);
-            }
-        }, 5000) // Verificar a cada 5 segundos
-    });
-}
-
-// 🎯 NOVA FUNÇÃO: Atualizar heartbeat do ESP32
-function updateESP32Heartbeat(clientId) {
-    const heartbeatData = clientHeartbeats.get(clientId);
-    if (heartbeatData) {
-        heartbeatData.lastHeartbeat = Date.now();
-        if (!heartbeatData.isConnected) {
-            heartbeatData.isConnected = true;
-            console.log(`💓 ESP32 ${clientId} reconectado (heartbeat atualizado)`);
-        }
-    }
-}
-
-// 🎯 NOVA FUNÇÃO: Notificar reconexão do ESP32
-function notifyESP32Reconnection(clientId) {
-    broadcastToWebClients({
-        type: 'esp32_reconnected',
-        message: 'ESP32 reconectado',
-        clientId: clientId,
-        timestamp: new Date().toISOString(),
-        environment: NODE_ENV
-    });
-}
 
 // Middleware para CORS
 app.use((req, res, next) => {
@@ -167,8 +104,7 @@ app.get('/health', (req, res) => {
     config: {
       health_check_interval: `${HEALTH_CHECK_INTERVAL / 60000} minutos`,
       rate_limit: `${MAX_REQUESTS_PER_MINUTE} req/minuto`,
-      token_configured: !!ESP32_TOKEN,
-      disconnection_timeout: `${DISCONNECTION_TIMEOUT/1000} segundos`
+      token_configured: !!ESP32_TOKEN
     },
     render_keepalive: 'ACTIVE'
   });
@@ -228,8 +164,7 @@ app.get('/config', (req, res) => {
       },
       security: {
         token_configured: !!ESP32_TOKEN,
-        rate_limit: MAX_REQUESTS_PER_MINUTE,
-        disconnection_timeout: `${DISCONNECTION_TIMEOUT/1000} segundos`
+        rate_limit: MAX_REQUESTS_PER_MINUTE
       },
       server: {
         uptime: Math.floor(process.uptime()),
@@ -267,32 +202,11 @@ wss.on('connection', function connection(ws, req) {
     // Se já tem um ESP32 conectado, fechar a conexão anterior
     if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
       console.log(`🔄 Substituindo ESP32 anterior: ${esp32Client.clientId}`);
-      
-      // Notificar sobre a substituição
-      broadcastToWebClients({
-        type: 'esp32_connection_change',
-        message: 'Novo ESP32 conectado - Substituindo anterior',
-        oldClientId: esp32Client.clientId,
-        newClientId: clientId,
-        timestamp: new Date().toISOString(),
-        environment: NODE_ENV
-      });
-      
       esp32Client.close(1000, 'Novo ESP32 conectado');
       metrics.esp32Reconnects++;
-      
-      // Limpar heartbeat do anterior
-      if (clientHeartbeats.has(esp32Client.clientId)) {
-        clearInterval(clientHeartbeats.get(esp32Client.clientId).heartbeatInterval);
-        clientHeartbeats.delete(esp32Client.clientId);
-      }
     }
-    
     esp32Client = ws;
     console.log(`🎯 ESP32 registrado: ${clientId}`);
-    
-    // 🎯 NOVO: Iniciar sistema de heartbeat para este ESP32
-    setupESP32Heartbeat(clientId, ws);
     
     // Notificar todos os clientes web que o ESP32 conectou
     broadcastToWebClients({
@@ -324,11 +238,6 @@ wss.on('connection', function connection(ws, req) {
       const messageString = data.toString();
       metrics.messagesReceived++;
       
-      // 🎯 ATUALIZADO: Atualizar heartbeat do ESP32 quando receber mensagem
-      if (ws.isESP32) {
-        updateESP32Heartbeat(ws.clientId);
-      }
-      
       // 🎯 ATUALIZADO: Tentar detectar se é ESP32 pela mensagem com autenticação
       if (!ws.isESP32 && isESP32Message(messageString)) {
         console.log(`🎯 Detectado ESP32 pela mensagem: ${clientId}`);
@@ -354,9 +263,6 @@ wss.on('connection', function connection(ws, req) {
           metrics.esp32Reconnects++;
         }
         esp32Client = ws;
-        
-        // 🎯 NOVO: Iniciar heartbeat para ESP32 detectado
-        setupESP32Heartbeat(clientId, ws);
       }
       
       // Tentar parsear como JSON primeiro (mensagens do ESP32)
@@ -379,21 +285,11 @@ wss.on('connection', function connection(ws, req) {
     if (esp32Client === ws) {
       console.log('🎯 ESP32 desconectado');
       esp32Client = null;
-      metrics.esp32Disconnections++;
-      
-      // Limpar heartbeat
-      if (clientHeartbeats.has(clientId)) {
-        clearInterval(clientHeartbeats.get(clientId).heartbeatInterval);
-        clientHeartbeats.delete(clientId);
-      }
       
       // Notificar todos os clientes web que o ESP32 desconectou
       broadcastToWebClients({
         type: 'esp32_disconnected',
         message: 'ESP32 desconectado',
-        clientId: clientId,
-        reason: 'connection_closed',
-        code: code,
         timestamp: new Date().toISOString(),
         environment: NODE_ENV
       });
@@ -580,7 +476,7 @@ function handleWebSocketMessage(ws, message) {
   }
 }
 
-// 🎯 CORREÇÃO CRÍTICA: Processar comandos de texto (do frontend)
+// Processar comandos de texto (do frontend)
 function handleTextCommand(ws, command) {
   console.log(`📤 Comando de ${ws.clientId}: ${command} - Ambiente: ${NODE_ENV}`);
   
@@ -597,17 +493,20 @@ function handleTextCommand(ws, command) {
     return sendToClient(ws, statusMessage);
   }
   
-  // 🎯 CORREÇÃO CRÍTICA: Se o comando precisa do ESP32
+  // Se o comando precisa do ESP32
   if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
     console.log(`🔄 Repassando comando para ESP32: ${command}`);
-    
-    // 🎯 ENVIAR DIRETAMENTE PARA O ESP32
     esp32Client.send(command);
     metrics.messagesSent++;
     
-    // 🎯 CORREÇÃO: NÃO enviar ACK imediatamente - ESP32 vai enviar o ACK depois de processar
-    console.log(`✅ Comando ${command} enviado para ESP32 - Aguardando processamento...`);
-    
+    // Confirmar para o frontend
+    sendToClient(ws, {
+      type: 'command_ack',
+      command: command,
+      status: 'sent_to_esp32',
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
+    });
   } else {
     // CORREÇÃO MELHORADA: Avisar frontend que ESP32 não está conectado
     sendToClient(ws, {
@@ -837,7 +736,6 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`🔧 Config: http://localhost:${PORT}/config`);
   console.log(`🎯 Aguardando conexões ESP32 e Web...`);
   console.log(`🔐 Token ESP32: ${ESP32_TOKEN}`);
-  console.log(`💓 Sistema de heartbeat ativo: ${DISCONNECTION_TIMEOUT/1000}s timeout`);
   
   // 🎯 INICIAR HEALTH CHECK AUTOMÁTICO
   console.log(`🔄 Health Check configurado a cada ${HEALTH_CHECK_INTERVAL / 60000} minutos`);
@@ -919,4 +817,4 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Log inicial
 console.log('✅ Servidor WebSocket inicializado com sucesso!');
-console.log('🎯 Sistema de notificação de desconexão ATIVADO!');
+console.log('🎯 Variáveis de ambiente carregadas com sucesso!');
