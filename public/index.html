@@ -1043,6 +1043,7 @@
         let connectionAttempts = 0;
         const MAX_CONNECTION_ATTEMPTS = 5;
 
+        // 🎯 VARIÁVEIS PARA EVITAR OSCILAÇÃO
         let currentConsumoData = {
             consumo_diario: new Array(24).fill(0),
             valores_consumo: new Array(24).fill(0),
@@ -1051,8 +1052,10 @@
             consumo_mensal: 0
         };
 
+        // 🎯 Histórico de conexões
         let connectionHistory = [];
 
+        // 🎯 Sistema de Notificações
         function showNotification(title, message, type = 'info') {
             const container = document.getElementById('notificationContainer');
             const notification = document.createElement('div');
@@ -1070,6 +1073,7 @@
             
             container.appendChild(notification);
             
+            // Auto-remover após 8 segundos
             setTimeout(() => {
                 if (notification.parentElement) {
                     notification.remove();
@@ -1077,6 +1081,7 @@
             }, 8000);
         }
 
+        // 🎯 Adicionar evento ao histórico
         function addConnectionEvent(event, reason = '') {
             const now = new Date();
             const eventData = {
@@ -1088,6 +1093,7 @@
             
             connectionHistory.unshift(eventData);
             
+            // Manter apenas últimos 10 eventos
             if (connectionHistory.length > 10) {
                 connectionHistory = connectionHistory.slice(0, 10);
             }
@@ -1095,6 +1101,7 @@
             updateConnectionTimeline();
         }
 
+        // 🎯 Atualizar timeline
         function updateConnectionTimeline() {
             const container = document.getElementById('connectionTimeline');
             container.innerHTML = '';
@@ -1141,9 +1148,11 @@
                     updateConnectionStatus('✅ Conectado ao servidor', 'connected');
                     document.getElementById('connectionAlert').style.display = 'none';
                     
+                    // 🎯 Notificar conexão
                     showNotification('✅ Conectado', 'Conexão com servidor estabelecida com sucesso', 'success');
                     addConnectionEvent('Servidor conectado');
                     
+                    // Solicitar dados iniciais
                     setTimeout(() => {
                         sendCommand('get_data');
                         sendCommand('get_consumo');
@@ -1167,11 +1176,13 @@
                     isConnected = false;
                     updateConnectionStatus('❌ Desconectado do servidor', 'disconnected');
                     
-                    if (event.code !== 1000) {
+                    // 🎯 Notificar desconexão
+                    if (event.code !== 1000) { // Não notificar desconexões normais
                         showNotification('❌ Desconectado', `Conexão com servidor perdida: ${event.reason || 'Código ' + event.code}`, 'warning');
                         addConnectionEvent('Servidor desconectado', event.reason || `Código ${event.code}`);
                     }
                     
+                    // Tentar reconectar com backoff exponencial
                     const reconnectDelay = Math.min(1000 * Math.pow(2, connectionAttempts), 30000);
                     connectionAttempts++;
                     
@@ -1232,6 +1243,7 @@
                     
                 case 'consumo_data':
                     console.log('📊 Dados de consumo recebidos');
+                    // 🎯 CORREÇÃO: Atualizar apenas se houver dados válidos
                     if (data.valores_consumo && data.valores_consumo.length > 0) {
                         updateConsumoData(data);
                     }
@@ -1244,25 +1256,9 @@
 
                 case 'command_ack':
                     console.log('✅ Comando confirmado:', data.command);
-                    if (data.command === 'reset_consumo') {
-                        showNotification('✅ Reset Concluído', 'Histórico de consumo resetado com sucesso', 'success');
-                        updateConnectionStatus('✅ Reset concluído', 'connected');
-                        
-                        // Atualizar dados locais
-                        currentConsumoData = {
-                            consumo_diario: new Array(24).fill(0),
-                            valores_consumo: new Array(24).fill(0),
-                            consumo_acumulado_ultima_hora: 0,
-                            consumo_acumulado_hoje: 0,
-                            consumo_mensal: 0
-                        };
-                        
-                        // Atualizar interface
-                        updateConsumoCharts(currentConsumoData);
-                        updateResumoConsumo(0, 0, new Array(4).fill(0), 0);
-                    }
                     break;
 
+                // 🎯 Tratamento de eventos ESP32
                 case 'esp32_connected':
                     console.log('🎯 ESP32 conectado:', data.clientId);
                     showNotification('✅ ESP32 Conectado', 'Dispositivo ESP32 conectado com sucesso', 'success');
@@ -1306,14 +1302,18 @@
             }
         }
 
+        // 🎯 FUNÇÃO CORRIGIDA PARA ATUALIZAR DADOS DE CONSUMO SEM OSCILAÇÃO
         function updateConsumoData(data) {
+            // Atualizar apenas se os dados forem válidos
             if (data.valores_consumo && Array.isArray(data.valores_consumo)) {
+                // 🎯 MESCLAR DADOS: manter valores existentes se novos forem zero/vazios
                 for (let i = 0; i < 24; i++) {
                     if (data.valores_consumo[i] > 0) {
                         currentConsumoData.valores_consumo[i] = data.valores_consumo[i];
                     }
                 }
                 
+                // Atualizar consumo acumulado apenas se for maior que zero
                 if (data.consumo_acumulado_ultima_hora >= 0) {
                     currentConsumoData.consumo_acumulado_ultima_hora = data.consumo_acumulado_ultima_hora;
                 }
@@ -1322,10 +1322,12 @@
                     currentConsumoData.consumo_acumulado_hoje = data.consumo_acumulado_hoje;
                 }
                 
+                // 🎯 ATUALIZAR CONSUMO MENSAL SE DISPONÍVEL
                 if (data.consumo_mensal !== undefined) {
                     currentConsumoData.consumo_mensal = data.consumo_mensal;
                 }
                 
+                // Atualizar gráficos com dados mesclados
                 updateConsumoCharts(currentConsumoData);
                 updateResumoConsumo(
                     currentConsumoData.consumo_acumulado_ultima_hora,
@@ -1337,25 +1339,31 @@
         }
 
         function updateInterface(data) {
+            // Atualizar nível da água
             const percentage = data.percentage || 0;
             document.getElementById('percentageDisplay').textContent = percentage + '%';
             document.getElementById('waterLevel').style.height = percentage + '%';
             
+            // Atualizar valores
             document.getElementById('levelValue').textContent = (data.height || 0) + ' cm';
             document.getElementById('litersValue').textContent = (data.liters || 0) + ' L';
             
+            // 🎯 CORREÇÃO: Usar dados do consumo atual, não zerar
             document.getElementById('consumoAcumuladoHora').textContent = currentConsumoData.consumo_acumulado_ultima_hora + ' L';
             document.getElementById('consumoAcumuladoHoje').textContent = currentConsumoData.consumo_acumulado_hoje + ' L';
             
+            // 🎯 ATUALIZAR CONSUMO MENSAL
             document.getElementById('consumoMensal').textContent = currentConsumoData.consumo_mensal + ' L';
             
             document.getElementById('volumeTotalDisplay').textContent = data.volume_total || 1000;
             document.getElementById('alturaCaixaDisplay').textContent = data.altura_caixa || 100;
             
+            // Atualizar status do sensor
             const sensorOk = data.sensor_ok !== undefined ? data.sensor_ok : true;
             document.getElementById('sensorStatusMini').textContent = sensorOk ? '✅' : '❌';
             document.getElementById('sensorStatusMini').className = sensorOk ? 'status-online' : 'status-offline alert-active';
             
+            // Atualizar status container
             let status, statusClass;
             const systemStatus = data.status || 'ESTAVEL';
             
@@ -1411,16 +1419,19 @@
             document.getElementById('statusText').textContent = status;
             document.getElementById('statusContainer').className = 'status-container ' + statusClass;
 
+            // Atualizar cor da água
             let waterColor = 'linear-gradient(to top, rgba(0,119,255,0.9), rgba(0,200,255,0.95))';
             if (!sensorOk) waterColor = 'linear-gradient(to top, rgba(255,0,0,0.7), rgba(255,100,100,0.8))';
             else if(percentage < 10) waterColor = 'linear-gradient(to top, rgba(255,50,50,0.9), rgba(255,100,100,0.95))';
             else if(percentage < 50) waterColor = 'linear-gradient(to top, rgba(255,165,0,0.9), rgba(255,200,0,0.95))';
             document.getElementById('waterLevel').style.background = waterColor;
 
+            // Atualizar tempo
             const now = new Date();
             document.getElementById('lastUpdate').textContent = now.toLocaleTimeString('pt-BR');
             document.getElementById('lastUpdateMini').textContent = now.toLocaleTimeString('pt-BR');
 
+            // Atualizar estabilidade
             document.getElementById('sensorStableMini').textContent = data.leituras_estabilidade || '0';
             document.getElementById('sensorAlertMini').textContent = data.consumo_confirmado ? '🔴' : '✅';
             document.getElementById('sensorAlertMini').className = data.consumo_confirmado ? 'alert-active' : 'status-online';
@@ -1433,6 +1444,7 @@
             const freeMemory = data.free_memory || 0;
             document.getElementById('memoryMini').textContent = formatMemory(freeMemory);
             
+            // 🎯 ATUALIZAR CONSUMO MENSAL NO STATUS
             if (data.consumo_mensal !== undefined) {
                 currentConsumoData.consumo_mensal = data.consumo_mensal;
                 document.getElementById('consumoMensal').textContent = data.consumo_mensal + ' L';
@@ -1450,6 +1462,7 @@
             return bytes + ' B';
         }
 
+        // ====== GRÁFICOS ======
         function updateConsumoCharts(data) {
             if (data.valores_consumo) {
                 create24hHorizontalChart(data.valores_consumo);
@@ -1488,6 +1501,7 @@
                 
                 const consumoValor = document.createElement('div');
                 consumoValor.className = 'consumo-valor';
+                // 🎯 CORREÇÃO: Mostrar valor REAL acumulado
                 consumoValor.textContent = consumo > 0 ? consumo + 'L' : '0L';
                 
                 barraContainer.appendChild(barraProgresso);
@@ -1501,6 +1515,7 @@
             document.getElementById('total24h').textContent = total24h;
         }
 
+        // 🎯 FUNÇÃO ATUALIZADA PARA 4 SEMANAS
         function updateConsumoSemanalCharts(data) {
             if (data.consumo_semanal && data.semanas_consumo) {
                 updateGraficoSemanas(data.consumo_semanal, data.semanas_consumo);
@@ -1513,6 +1528,7 @@
             }
         }
 
+        // 🎯 FUNÇÃO ATUALIZADA PARA 4 SEMANAS
         function updateGraficoSemanas(consumoData, semanas) {
             const container = document.getElementById('graficoSemanas');
             const labelsContainer = document.getElementById('labelsSemanas');
@@ -1525,6 +1541,7 @@
             let totalSemanas = 0;
             const maxBarHeight = 85;
 
+            // 🎯 AGORA SÃO 4 SEMANAS
             for (let i = 0; i < 4; i++) {
                 totalSemanas += consumoData[i] || 0;
                 const alturaPercent = Math.min(((consumoData[i] || 0) / maxConsumo) * maxBarHeight, maxBarHeight);
@@ -1541,6 +1558,7 @@
                 if (consumoData[i] > 0) {
                     const valorLabel = document.createElement('div');
                     valorLabel.className = 'barra-valor-acima';
+                    // 🎯 CORREÇÃO: Mostrar valor REAL acumulado
                     valorLabel.textContent = (consumoData[i] || 0) + 'L';
                     valorLabel.style.bottom = (alturaPercent + 2) + '%';
                     barContainer.appendChild(valorLabel);
@@ -1549,6 +1567,7 @@
                 container.appendChild(barContainer);
             }
 
+            // 🎯 AGORA SÃO 4 LABELS
             for (let i = 0; i < 4; i++) {
                 const label = document.createElement('div');
                 label.className = 'barra-hora';
@@ -1560,10 +1579,12 @@
             document.getElementById('totalSemanas').textContent = totalSemanas;
         }
 
+        // 🎯 FUNÇÃO ATUALIZADA COM CONSUMO MENSAL
         function updateResumoConsumo(consumoAcumuladoHora, consumoAcumuladoHoje, consumoSemanal, consumoMensal) {
             document.getElementById('consumoAcumuladoHora').textContent = consumoAcumuladoHora + ' L';
             document.getElementById('consumoAcumuladoHoje').textContent = consumoAcumuladoHoje + ' L';
             
+            // 🎯 AGORA MOSTRA CONSUMO MENSAL
             document.getElementById('consumoMensal').textContent = (consumoMensal || 0) + ' L';
                 
             const totalSemanas = consumoSemanal ? consumoSemanal.reduce((a, b) => a + b, 0) : 0;
@@ -1580,17 +1601,32 @@
             }
         }
 
-        // ====== FUNÇÃO RESET CONSUMO CORRIGIDA ======
         function resetConsumo() {
             if (confirm('🗑️ Tem certeza que deseja resetar TODO o histórico de consumo?\n\nEsta ação não pode ser desfeita!')) {
                 console.log('🔄 Solicitando reset de consumo...');
                 sendCommand('reset_consumo');
                 
-                // Mostrar notificação de processamento
+                // 🎯 CORREÇÃO: Resetar também os dados locais
+                currentConsumoData = {
+                    consumo_diario: new Array(24).fill(0),
+                    valores_consumo: new Array(24).fill(0),
+                    consumo_acumulado_ultima_hora: 0,
+                    consumo_acumulado_hoje: 0,
+                    consumo_mensal: 0
+                };
+                
+                updateConnectionStatus('🔄 Resetando consumo...', 'connecting');
+                
+                // 🎯 NOVO: Notificar reset
                 showNotification('🔄 Resetando', 'Resetando todo o histórico de consumo...', 'info');
                 
-                // Atualizar status
-                updateConnectionStatus('🔄 Resetando consumo...', 'connecting');
+                setTimeout(() => {
+                    sendCommand('get_data');
+                    sendCommand('get_consumo');
+                    sendCommand('get_consumo_semanal');
+                    updateConnectionStatus('✅ Reset concluído', 'connected');
+                    showNotification('✅ Reset Concluído', 'Histórico de consumo resetado com sucesso', 'success');
+                }, 2000);
             }
         }
 
@@ -1611,12 +1647,14 @@
             document.getElementById('currentTime').textContent = timeStr;
         }
 
+        // Inicializar quando a página carregar
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 Inicializando Monitor Caixa de Compensação - Chillers...');
             
             create24hHorizontalChart(new Array(24).fill(0));
             updateGraficoSemanas(new Array(4).fill(0), ['S1', 'S2', 'S3', 'S4']);
             
+            // 🎯 Adicionar evento inicial
             addConnectionEvent('Sistema iniciado');
             
             connectWebSocket();
