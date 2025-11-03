@@ -41,7 +41,6 @@
             letter-spacing: 1px;
         }
 
-        /* ====== NOVO LAYOUT SUPERIOR COMPACTO ====== */
         .top-info-container {
             display: flex;
             flex-wrap: wrap;
@@ -128,7 +127,6 @@
             animation: blink 1s infinite;
         }
 
-        /* ====== ALERTAS ====== */
         .alert-banner {
             background: linear-gradient(135deg, #ff0000, #cc0000);
             color: white;
@@ -141,7 +139,6 @@
             border: 2px solid #ff4444;
         }
 
-        /* ====== DASHBOARD PRINCIPAL ====== */
         .dashboard {
             display: flex;
             flex-wrap: wrap;
@@ -164,7 +161,6 @@
             margin-bottom: 20px;
         }
 
-        /* IMAGEM DA CAIXA DE COMPENSAÇÃO */
         .tank-image {
             position: absolute;
             width: 100%;
@@ -176,7 +172,6 @@
             background: transparent;
         }
 
-        /* BARRA DE NÍVEL VERTICAL */
         .water-container {
             position: absolute;
             top: 95px;
@@ -242,7 +237,6 @@
             border: 2px solid #1a2a6c;
         }
 
-        /* ====== HISTÓRICO DE CONEXÃO ABAIXO DO TANQUE ====== */
         .connection-timeline-below {
             width: 100%;
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(240, 240, 240, 0.9));
@@ -314,7 +308,6 @@
             color: white;
         }
 
-        /* ====== SEÇÃO DE INFORMAÇÕES ====== */
         .info-section {
             flex: 2;
             min-width: 600px;
@@ -683,7 +676,6 @@
             font-weight: 600;
         }
 
-        /* ====== NOTIFICAÇÕES ====== */
         .notification-container {
             position: fixed;
             top: 20px;
@@ -748,7 +740,6 @@
             padding: 5px;
         }
 
-        /* ====== ANIMAÇÕES ====== */
         @keyframes waterShine {
             0% { transform: translateX(-100%); }
             100% { transform: translateX(100%); }
@@ -780,7 +771,6 @@
             }
         }
 
-        /* ====== RESPONSIVIDADE ====== */
         @media (max-width: 768px) {
             .dashboard {
                 flex-direction: column;
@@ -897,7 +887,6 @@
     <div class="container">
         <h1>❄️ MONITOR CAIXA DE COMPENSAÇÃO - CHILLERS</h1>
         
-        <!-- ====== NOVO LAYOUT SUPERIOR COMPACTO ====== -->
         <div class="top-info-container">
             <div class="date-time-compact">
                 📅 <span id="currentDate">--/--/----</span> | 🕒 <span id="currentTime">--:--:--</span>
@@ -926,7 +915,6 @@
             </div>
         </div>
 
-        <!-- Alertas -->
         <div id="connectionAlert" class="alert-banner" style="display:none;">
             🚨 ALERTA: ESP32 NÃO CONECTADO! Verifique a conexão do dispositivo.
         </div>
@@ -935,16 +923,13 @@
             🚨 ALERTA: FALHA NO SENSOR DETECTADA! Verifique a conexão do sensor.
         </div>
 
-        <!-- ====== DASHBOARD PRINCIPAL ====== -->
         <div class="dashboard">
             <div class="tank-section">
                 <div class="tank-container">
-                    <!-- IMAGEM DA CAIXA DE COMPENSAÇÃO COM CHILLERS -->
                     <img src='https://ik.imagekit.io/o7q7lmyva/ChatGPT%20Image%201%20de%20nov.%20de%202025,%2013_58_04.png?updatedAt=1762016341141' 
                          alt='Sistema de Chillers e Caixa de Compensação' 
                          class="tank-image">
                     
-                    <!-- BARRA DE NÍVEL VERTICAL E FINA -->
                     <div class="water-container">
                         <div class="water-level" id="waterLevel">
                             <div class="water-effect"></div>
@@ -952,11 +937,9 @@
                         </div>
                     </div>
                     
-                    <!-- DISPLAY DA PORCENTAGEM -->
                     <div class="percentage-display" id="percentageDisplay">0%</div>
                 </div>
                 
-                <!-- ====== HISTÓRICO DE CONEXÃO ABAIXO DO TANQUE ====== -->
                 <div class="connection-timeline-below">
                     <div class="timeline-title">📊 Histórico de Conexão ESP32</div>
                     <div class="timeline-items-container" id="connectionTimeline">
@@ -1012,7 +995,6 @@
                 <div class="consumo-section">
                     <div class="consumo-title">📊 VISÃO GERAL DO CONSUMO</div>
                     <div class="graficos-container">
-                        <!-- GRÁFICO HORIZONTAL DE 24H -->
                         <div class="grafico-box">
                             <div class="grafico-header">
                                 <h3>⏰ Consumo por Hora (24h)</h3>
@@ -1020,12 +1002,10 @@
                             </div>
                             <div class="grafico-horizontal">
                                 <div class="barra-horizontal-container" id="grafico24h">
-                                    <!-- Barras horizontais serão geradas aqui -->
                                 </div>
                             </div>
                         </div>
 
-                        <!-- GRÁFICO VERTICAL DE SEMANAS -->
                         <div class="grafico-box">
                             <div class="grafico-header">
                                 <h3>📅 Últimas 4 Semanas</h3>
@@ -1033,11 +1013,9 @@
                             </div>
                             <div class="grafico-content">
                                 <div class="barra-vertical" id="graficoSemanas">
-                                    <!-- Barras verticais serão geradas aqui -->
                                 </div>
                             </div>
                             <div class="semanas-labels" id="labelsSemanas">
-                                <!-- Labels serão gerados dinamicamente -->
                             </div>
                         </div>
                     </div>
@@ -1045,7 +1023,6 @@
             </div>
         </div>
 
-        <!-- BOTÕES -->
         <div class="config-buttons">
             <button class="btn-reset" onclick="resetConsumo()">🔄 Resetar Consumo</button>
             <button class="btn-refresh" onclick="refreshData()">🔄 Atualizar Dados</button>
@@ -1056,7 +1033,6 @@
         </div>
     </div>
 
-    <!-- NOTIFICAÇÕES -->
     <div class="notification-container" id="notificationContainer"></div>
 
     <script>
@@ -1067,7 +1043,6 @@
         let connectionAttempts = 0;
         const MAX_CONNECTION_ATTEMPTS = 5;
 
-        // Variáveis para evitar oscilação
         let currentConsumoData = {
             consumo_diario: new Array(24).fill(0),
             valores_consumo: new Array(24).fill(0),
@@ -1076,10 +1051,8 @@
             consumo_mensal: 0
         };
 
-        // Histórico de conexões
         let connectionHistory = [];
 
-        // Sistema de Notificações
         function showNotification(title, message, type = 'info') {
             const container = document.getElementById('notificationContainer');
             const notification = document.createElement('div');
@@ -1097,7 +1070,6 @@
             
             container.appendChild(notification);
             
-            // Auto-remover após 8 segundos
             setTimeout(() => {
                 if (notification.parentElement) {
                     notification.remove();
@@ -1105,7 +1077,6 @@
             }, 8000);
         }
 
-        // Adicionar evento ao histórico
         function addConnectionEvent(event, reason = '') {
             const now = new Date();
             const eventData = {
@@ -1117,7 +1088,6 @@
             
             connectionHistory.unshift(eventData);
             
-            // Manter apenas últimos 10 eventos
             if (connectionHistory.length > 10) {
                 connectionHistory = connectionHistory.slice(0, 10);
             }
@@ -1125,7 +1095,6 @@
             updateConnectionTimeline();
         }
 
-        // Atualizar timeline
         function updateConnectionTimeline() {
             const container = document.getElementById('connectionTimeline');
             container.innerHTML = '';
@@ -1172,11 +1141,9 @@
                     updateConnectionStatus('✅ Conectado ao servidor', 'connected');
                     document.getElementById('connectionAlert').style.display = 'none';
                     
-                    // Notificar conexão
                     showNotification('✅ Conectado', 'Conexão com servidor estabelecida com sucesso', 'success');
                     addConnectionEvent('Servidor conectado');
                     
-                    // Solicitar dados iniciais
                     setTimeout(() => {
                         sendCommand('get_data');
                         sendCommand('get_consumo');
@@ -1200,13 +1167,11 @@
                     isConnected = false;
                     updateConnectionStatus('❌ Desconectado do servidor', 'disconnected');
                     
-                    // Notificar desconexão
                     if (event.code !== 1000) {
                         showNotification('❌ Desconectado', `Conexão com servidor perdida: ${event.reason || 'Código ' + event.code}`, 'warning');
                         addConnectionEvent('Servidor desconectado', event.reason || `Código ${event.code}`);
                     }
                     
-                    // Tentar reconectar com backoff exponencial
                     const reconnectDelay = Math.min(1000 * Math.pow(2, connectionAttempts), 30000);
                     connectionAttempts++;
                     
@@ -1282,6 +1247,19 @@
                     if (data.command === 'reset_consumo') {
                         showNotification('✅ Reset Concluído', 'Histórico de consumo resetado com sucesso', 'success');
                         updateConnectionStatus('✅ Reset concluído', 'connected');
+                        
+                        // Atualizar dados locais
+                        currentConsumoData = {
+                            consumo_diario: new Array(24).fill(0),
+                            valores_consumo: new Array(24).fill(0),
+                            consumo_acumulado_ultima_hora: 0,
+                            consumo_acumulado_hoje: 0,
+                            consumo_mensal: 0
+                        };
+                        
+                        // Atualizar interface
+                        updateConsumoCharts(currentConsumoData);
+                        updateResumoConsumo(0, 0, new Array(4).fill(0), 0);
                     }
                     break;
 
@@ -1328,7 +1306,6 @@
             }
         }
 
-        // Função corrigida para atualizar dados de consumo sem oscilação
         function updateConsumoData(data) {
             if (data.valores_consumo && Array.isArray(data.valores_consumo)) {
                 for (let i = 0; i < 24; i++) {
@@ -1473,7 +1450,6 @@
             return bytes + ' B';
         }
 
-        // ====== GRÁFICOS ======
         function updateConsumoCharts(data) {
             if (data.valores_consumo) {
                 create24hHorizontalChart(data.valores_consumo);
@@ -1610,35 +1586,11 @@
                 console.log('🔄 Solicitando reset de consumo...');
                 sendCommand('reset_consumo');
                 
-                // Resetar dados locais
-                currentConsumoData = {
-                    consumo_diario: new Array(24).fill(0),
-                    valores_consumo: new Array(24).fill(0),
-                    consumo_acumulado_ultima_hora: 0,
-                    consumo_acumulado_hoje: 0,
-                    consumo_mensal: 0
-                };
-                
-                // Atualizar interface imediatamente
-                updateConsumoCharts(currentConsumoData);
-                updateResumoConsumo(0, 0, new Array(4).fill(0), 0);
-                
                 // Mostrar notificação de processamento
                 showNotification('🔄 Resetando', 'Resetando todo o histórico de consumo...', 'info');
                 
                 // Atualizar status
                 updateConnectionStatus('🔄 Resetando consumo...', 'connecting');
-                
-                // Recarregar dados após um tempo
-                setTimeout(() => {
-                    sendCommand('get_data');
-                    sendCommand('get_consumo');
-                    sendCommand('get_consumo_semanal');
-                    
-                    // Mostrar notificação de sucesso
-                    showNotification('✅ Reset Concluído', 'Histórico de consumo resetado com sucesso', 'success');
-                    updateConnectionStatus('✅ Reset concluído', 'connected');
-                }, 2000);
             }
         }
 
@@ -1659,7 +1611,6 @@
             document.getElementById('currentTime').textContent = timeStr;
         }
 
-        // Inicializar quando a página carregar
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 Inicializando Monitor Caixa de Compensação - Chillers...');
             
