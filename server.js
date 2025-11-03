@@ -580,7 +580,7 @@ function handleWebSocketMessage(ws, message) {
   }
 }
 
-// Processar comandos de texto (do frontend)
+// 🎯 CORREÇÃO CRÍTICA: Processar comandos de texto (do frontend)
 function handleTextCommand(ws, command) {
   console.log(`📤 Comando de ${ws.clientId}: ${command} - Ambiente: ${NODE_ENV}`);
   
@@ -597,20 +597,17 @@ function handleTextCommand(ws, command) {
     return sendToClient(ws, statusMessage);
   }
   
-  // Se o comando precisa do ESP32
+  // 🎯 CORREÇÃO CRÍTICA: Se o comando precisa do ESP32
   if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
     console.log(`🔄 Repassando comando para ESP32: ${command}`);
+    
+    // 🎯 ENVIAR DIRETAMENTE PARA O ESP32
     esp32Client.send(command);
     metrics.messagesSent++;
     
-    // Confirmar para o frontend
-    sendToClient(ws, {
-      type: 'command_ack',
-      command: command,
-      status: 'sent_to_esp32',
-      timestamp: new Date().toISOString(),
-      environment: NODE_ENV
-    });
+    // 🎯 CORREÇÃO: NÃO enviar ACK imediatamente - ESP32 vai enviar o ACK depois de processar
+    console.log(`✅ Comando ${command} enviado para ESP32 - Aguardando processamento...`);
+    
   } else {
     // CORREÇÃO MELHORADA: Avisar frontend que ESP32 não está conectado
     sendToClient(ws, {
