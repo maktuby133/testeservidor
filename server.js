@@ -15,7 +15,7 @@ const wss = new WebSocket.Server({
   clientTracking: true
 });
 
-// 🎯 CONFIGURAÇÃO
+// 🎯 CONFIGURAÇÃO VIA VARIÁVEIS DE AMBIENTE
 const HEALTH_CHECK_URL = process.env.HEALTH_CHECK_URL || `https://testeservidor-6opr.onrender.com/health`;
 const HEALTH_CHECK_INTERVAL = parseInt(process.env.HEALTH_CHECK_INTERVAL) || 14 * 60 * 1000;
 const ESP32_TOKEN = process.env.ESP32_TOKEN || 'esp32_token_secreto_2024';
@@ -23,21 +23,29 @@ const MAX_REQUESTS_PER_MINUTE = parseInt(process.env.MAX_REQUESTS_PER_MINUTE) ||
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
+// 🎯 LOG DE CONFIGURAÇÃO CARREGADA
+console.log('🔧 Configuração do Servidor:');
+console.log(`   Porta: ${PORT}`);
+console.log(`   Ambiente: ${NODE_ENV}`);
+console.log(`   Health Check: ${HEALTH_CHECK_URL}`);
+console.log(`   Token ESP32: ${ESP32_TOKEN ? '✅ Configurado' : '❌ Não configurado'}`);
+console.log(`   Rate Limit: ${MAX_REQUESTS_PER_MINUTE} req/minuto`);
+
 // Armazenar conexões
 const clients = new Map();
 let esp32Client = null;
 
-// Métricas
+// 🎯 NOVO: Armazenamento de dados históricos
+const historicalData = [];
 const metrics = {
   messagesReceived: 0,
   messagesSent: 0,
   errors: 0,
   esp32Reconnects: 0,
-  webClientsConnected: 0,
-  esp32Disconnections: 0
+  webClientsConnected: 0
 };
 
-// Rate limiting
+// 🎯 NOVO: Rate limiting
 const rateLimit = new Map();
 
 // Middleware para CORS
@@ -51,7 +59,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.static('public'));
 
-// 🎯 MIDDLEWARE DE RATE LIMITING
+// 🎯 NOVO: Middleware de rate limiting
 app.use((req, res, next) => {
   const clientIP = getClientIP(req);
   
@@ -65,130 +73,115 @@ app.use((req, res, next) => {
   next();
 });
 
-// ====== ROTAS ======
-
-// Rota principal
+// Rota principal - serve o HTML
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Health check
+// Health check melhorado
 app.get('/health', (req, res) => {
+  const memoryUsage = process.memoryUsage();
+  
   res.json({ 
     status: 'OK', 
     service: 'Caixa dÁgua WebSocket',
     timestamp: new Date().toISOString(),
     environment: NODE_ENV,
     uptime: Math.floor(process.uptime()),
+    memory: {
+      used: Math.round(memoryUsage.heapUsed / 1024 / 1024) + ' MB',
+      total: Math.round(memoryUsage.heapTotal / 1024 / 1024) + ' MB'
+    },
     connections: {
       total: clients.size,
       esp32: esp32Client ? 1 : 0,
       web: Array.from(clients.values()).filter(client => client !== esp32Client).length
-    }
+    },
+    metrics: {
+      ...metrics,
+      historicalDataPoints: historicalData.length
+    },
+    config: {
+      health_check_interval: `${HEALTH_CHECK_INTERVAL / 60000} minutos`,
+      rate_limit: `${MAX_REQUESTS_PER_MINUTE} req/minuto`,
+      token_configured: !!ESP32_TOKEN
+    },
+    render_keepalive: 'ACTIVE'
   });
 });
 
-// 🎯 ROTA CORRIGIDA: Reset de consumo
-app.post('/command/reset_consumo', express.json(), (req, res) => {
-  console.log('🔄 API: Recebido comando reset_consumo');
-  
-  if (!esp32Client || esp32Client.readyState !== WebSocket.OPEN) {
-    console.log('❌ ESP32 não conectado');
-    return res.status(404).json({ 
-      success: false, 
-      message: 'ESP32 não conectado',
-      environment: NODE_ENV
-    });
-  }
-  
-  try {
-    // 🎯 ENVIAR COMANDO DIRETAMENTE PARA ESP32
-    esp32Client.send('reset_consumo');
-    metrics.messagesSent++;
-    console.log('✅ Comando reset_consumo enviado para ESP32');
-    
-    res.json({ 
-      success: true, 
-      message: 'Reset de consumo enviado para ESP32',
-      timestamp: new Date().toISOString(),
-      environment: NODE_ENV
-    });
-  } catch (error) {
-    console.error('❌ Erro ao enviar reset:', error);
-    metrics.errors++;
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erro ao enviar comando de reset',
-      error: error.message,
-      environment: NODE_ENV
-    });
-  }
+// 🎯 NOVA ROTA PARA PING SIMPLES (mais leve)
+app.get('/ping', (req, res) => {
+  res.json({ 
+    status: 'pong', 
+    timestamp: new Date().toISOString(),
+    service: 'active',
+    environment: NODE_ENV
+  });
 });
 
-// 🎯 ROTA ALTERNATIVA (para compatibilidade)
-app.post('/consumo/reset', express.json(), (req, res) => {
-  console.log('🔄 API: Recebido comando /consumo/reset');
-  
-  if (!esp32Client || esp32Client.readyState !== WebSocket.OPEN) {
-    return res.status(404).json({ 
-      success: false, 
-      message: 'ESP32 não conectado',
-      environment: NODE_ENV
-    });
-  }
-  
-  try {
-    esp32Client.send('reset_consumo');
-    metrics.messagesSent++;
-    console.log('✅ Comando reset_consumo enviado para ESP32 via /consumo/reset');
-    
-    res.json({ 
-      success: true, 
-      message: 'Reset de consumo enviado para ESP32',
-      timestamp: new Date().toISOString(),
-      environment: NODE_ENV
-    });
-  } catch (error) {
-    console.error('❌ Erro ao enviar reset:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erro ao enviar comando de reset',
-      error: error.message,
-      environment: NODE_ENV
-    });
-  }
-});
-
-// Status do sistema
-app.get('/status', (req, res) => {
-  const webClients = Array.from(clients.values()).filter(client => !client.isESP32);
+// 🎯 NOVA ROTA PARA MÉTRICAS
+app.get('/metrics', (req, res) => {
+  const uptimeMinutes = process.uptime() / 60;
   
   res.json({
-    status: 'operational',
-    serverTime: new Date().toISOString(),
-    environment: NODE_ENV,
-    uptime: Math.floor(process.uptime()),
-    connections: {
-      total: clients.size,
-      esp32: esp32Client ? {
-        connected: true,
-        clientId: esp32Client.clientId,
-        ip: esp32Client.clientIP,
-        connectedAt: esp32Client.connectedAt
-      } : { connected: false },
-      web: webClients.length
+    ...metrics,
+    averageMessageRate: metrics.messagesReceived / uptimeMinutes,
+    historicalDataPoints: historicalData.length,
+    rateLimitSize: rateLimit.size,
+    environment: NODE_ENV
+  });
+});
+
+// 🎯 NOVA ROTA PARA DADOS HISTÓRICOS
+app.get('/historical-data', (req, res) => {
+  const { hours = 24 } = req.query;
+  const cutoffTime = new Date(Date.now() - (hours * 60 * 60 * 1000));
+  
+  const filteredData = historicalData.filter(entry => 
+    new Date(entry.timestamp) >= cutoffTime
+  );
+  
+  res.json({
+    success: true,
+    data: filteredData,
+    total: filteredData.length,
+    timeRange: `${hours} horas`,
+    environment: NODE_ENV
+  });
+});
+
+// 🎯 NOVA ROTA PARA CONFIGURAÇÃO DO SISTEMA
+app.get('/config', (req, res) => {
+  res.json({
+    success: true,
+    config: {
+      environment: NODE_ENV,
+      port: PORT,
+      health_check: {
+        url: HEALTH_CHECK_URL,
+        interval: `${HEALTH_CHECK_INTERVAL / 60000} minutos`
+      },
+      security: {
+        token_configured: !!ESP32_TOKEN,
+        rate_limit: MAX_REQUESTS_PER_MINUTE
+      },
+      server: {
+        uptime: Math.floor(process.uptime()),
+        node_version: process.version,
+        platform: process.platform
+      }
     }
   });
 });
 
-// ====== WEBSOCKET ======
-
+// WebSocket connection
 wss.on('connection', function connection(ws, req) {
   const clientId = generateClientId(req);
   const clientIP = getClientIP(req);
   const isESP32 = isESP32Connection(req, clientIP);
   
-  console.log(`✅ Nova conexão: ${clientId} - IP: ${clientIP} - Tipo: ${isESP32 ? 'ESP32' : 'WEB'}`);
+  console.log(`✅ Nova conexão: ${clientId} - IP: ${clientIP} - Tipo: ${isESP32 ? 'ESP32' : 'WEB'} - Ambiente: ${NODE_ENV}`);
   
   clients.set(clientId, ws);
   ws.clientId = clientId;
@@ -196,36 +189,48 @@ wss.on('connection', function connection(ws, req) {
   ws.isESP32 = isESP32;
   ws.connectedAt = new Date();
   
-  // Detectar ESP32
+  // 🎯 ATUALIZADO: Detectar se é o ESP32 com autenticação
   if (isESP32) {
+    const authenticated = authenticateESP32(req);
+    if (!authenticated) {
+      console.log(`❌ Tentativa de conexão ESP32 não autenticada: ${clientId}`);
+      ws.close(1008, 'Autenticação falhou');
+      clients.delete(clientId);
+      return;
+    }
+    
+    // Se já tem um ESP32 conectado, fechar a conexão anterior
     if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
       console.log(`🔄 Substituindo ESP32 anterior: ${esp32Client.clientId}`);
       esp32Client.close(1000, 'Novo ESP32 conectado');
       metrics.esp32Reconnects++;
     }
-    
     esp32Client = ws;
     console.log(`🎯 ESP32 registrado: ${clientId}`);
     
-    // Notificar clientes web
+    // Notificar todos os clientes web que o ESP32 conectou
     broadcastToWebClients({
       type: 'esp32_connected',
       message: 'ESP32 conectado',
       clientId: clientId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
     });
   } else {
     metrics.webClientsConnected++;
   }
   
-  // Mensagem de boas-vindas
-  sendToClient(ws, {
+  // Enviar confirmação de conexão
+  const welcomeMessage = {
     type: 'connected',
     message: 'Conectado ao servidor WebSocket',
     clientId: clientId,
     isESP32: isESP32,
-    timestamp: new Date().toISOString()
-  });
+    timestamp: new Date().toISOString(),
+    environment: NODE_ENV
+  };
+  
+  sendToClient(ws, welcomeMessage);
   
   // Mensagens do cliente
   ws.on('message', function message(data) {
@@ -233,12 +238,39 @@ wss.on('connection', function connection(ws, req) {
       const messageString = data.toString();
       metrics.messagesReceived++;
       
-      // Tentar parsear como JSON primeiro
+      // 🎯 ATUALIZADO: Tentar detectar se é ESP32 pela mensagem com autenticação
+      if (!ws.isESP32 && isESP32Message(messageString)) {
+        console.log(`🎯 Detectado ESP32 pela mensagem: ${clientId}`);
+        
+        // Verificar autenticação na mensagem
+        try {
+          const parsedMsg = JSON.parse(messageString);
+          if (parsedMsg.token !== ESP32_TOKEN) {
+            console.log(`❌ ESP32 não autenticado pela mensagem: ${clientId}`);
+            ws.close(1008, 'Token inválido');
+            return;
+          }
+        } catch (e) {
+          console.log(`❌ Mensagem ESP32 sem token válido: ${clientId}`);
+          ws.close(1008, 'Autenticação necessária');
+          return;
+        }
+        
+        ws.isESP32 = true;
+        
+        if (esp32Client && esp32Client !== ws) {
+          esp32Client.close(1000, 'Novo ESP32 detectado');
+          metrics.esp32Reconnects++;
+        }
+        esp32Client = ws;
+      }
+      
+      // Tentar parsear como JSON primeiro (mensagens do ESP32)
       try {
         const parsedMessage = JSON.parse(messageString);
         handleWebSocketMessage(ws, parsedMessage);
       } catch (jsonError) {
-        // Se não for JSON, tratar como comando de texto
+        // Se não for JSON, tratar como comando de texto (do frontend)
         handleTextCommand(ws, messageString);
       }
     } catch (error) {
@@ -248,151 +280,63 @@ wss.on('connection', function connection(ws, req) {
   });
   
   ws.on('close', function close(code, reason) {
-    console.log(`❌ Conexão fechada: ${clientId} - Código: ${code} - Motivo: ${reason || 'Nenhum'}`);
+    console.log(`❌ Conexão fechada: ${clientId} - Código: ${code} - Motivo: ${reason || 'Nenhum'} - Ambiente: ${NODE_ENV}`);
     
     if (esp32Client === ws) {
       console.log('🎯 ESP32 desconectado');
       esp32Client = null;
-      metrics.esp32Disconnections++;
       
-      // Notificar clientes web
+      // Notificar todos os clientes web que o ESP32 desconectou
       broadcastToWebClients({
         type: 'esp32_disconnected',
         message: 'ESP32 desconectado',
-        clientId: clientId,
-        reason: 'connection_closed',
-        code: code,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        environment: NODE_ENV
       });
     } else {
       metrics.webClientsConnected = Math.max(0, metrics.webClientsConnected - 1);
     }
     
     clients.delete(clientId);
+    logConnectionStats();
   });
   
   ws.on('error', function error(err) {
     console.error(`❌ Erro WebSocket ${clientId}:`, err.message);
     metrics.errors++;
   });
+  
+  // Log estatísticas de conexão
+  logConnectionStats();
 });
 
-// ====== FUNÇÕES PRINCIPAIS ======
-
-function handleWebSocketMessage(ws, message) {
-  const clientInfo = `${ws.clientId} (${ws.clientIP})`;
-  
-  console.log(`📨 ${clientInfo} - ${message.type}`);
-  
-  // Adicionar metadados
-  const enhancedMessage = {
-    ...message,
-    clientId: ws.clientId,
-    origin: ws.isESP32 ? 'esp32' : 'web',
-    timestamp: new Date().toISOString()
-  };
-  
-  // Se a mensagem é do ESP32, retransmitir para todos os clientes web
-  if (ws.isESP32) {
-    broadcastToWebClients(enhancedMessage);
-  } else {
-    // Se é do frontend e temos ESP32, repassar para o ESP32
-    if (esp32Client && esp32Client.readyState === WebSocket.OPEN && esp32Client !== ws) {
-      // Remover metadados antes de enviar para ESP32
-      const { clientId, origin, timestamp, ...cleanMessage } = enhancedMessage;
-      sendToClient(esp32Client, cleanMessage);
-      metrics.messagesSent++;
-    } else if (!esp32Client) {
-      // Se não há ESP32, responder ao frontend
-      sendToClient(ws, {
-        type: 'error',
-        message: 'ESP32 não conectado',
-        timestamp: new Date().toISOString()
-      });
-    }
+// 🎯 NOVA FUNÇÃO: Autenticação ESP32
+function authenticateESP32(req) {
+  // Verificar token no header Authorization
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    return token === ESP32_TOKEN;
   }
+  
+  // Verificar token no query parameter
+  const url = require('url');
+  const parsedUrl = url.parse(req.url, true);
+  const tokenParam = parsedUrl.query.token;
+  if (tokenParam) {
+    return tokenParam === ESP32_TOKEN;
+  }
+  
+  // Para desenvolvimento, permitir sem token se não estiver em produção
+  if (NODE_ENV !== 'production') {
+    console.log('⚠️  Modo desenvolvimento: Autenticação ESP32 bypassada');
+    return true;
+  }
+  
+  return false;
 }
 
-// 🎯 FUNÇÃO CRÍTICA CORRIGIDA: Processar comandos de texto
-function handleTextCommand(ws, command) {
-  console.log(`📤 Comando de ${ws.clientId}: ${command}`);
-  
-  // Comandos que não precisam do ESP32
-  if (command === 'get_status' || command === 'health') {
-    const statusMessage = {
-      type: 'server_status',
-      clients: clients.size,
-      esp32Connected: !!esp32Client,
-      timestamp: new Date().toISOString()
-    };
-    return sendToClient(ws, statusMessage);
-  }
-  
-  // 🎯 CORREÇÃO: Se o comando precisa do ESP32
-  if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
-    console.log(`🔄 REPASSANDO COMANDO PARA ESP32: ${command}`);
-    
-    try {
-      esp32Client.send(command);
-      metrics.messagesSent++;
-      console.log(`✅ Comando ${command} ENVIADO para ESP32`);
-      
-    } catch (error) {
-      console.error(`❌ ERRO ao enviar comando para ESP32:`, error.message);
-      sendToClient(ws, {
-        type: 'error',
-        message: 'Erro ao enviar comando para ESP32',
-        command: command,
-        timestamp: new Date().toISOString()
-      });
-    }
-    
-  } else {
-    console.log(`❌ ESP32 NÃO CONECTADO - Comando ${command} ignorado`);
-    sendToClient(ws, {
-      type: 'error',
-      message: 'ESP32 não conectado',
-      command: command,
-      timestamp: new Date().toISOString()
-    });
-  }
-}
-
-// ====== FUNÇÕES AUXILIARES ======
-
-function sendToClient(client, message) {
-  if (client.readyState === WebSocket.OPEN) {
-    try {
-      client.send(JSON.stringify(message));
-      metrics.messagesSent++;
-    } catch (error) {
-      console.error(`❌ Erro ao enviar para ${client.clientId}:`, error.message);
-      metrics.errors++;
-    }
-  }
-}
-
-function broadcastToWebClients(message) {
-  let sentCount = 0;
-  
-  clients.forEach((client, id) => {
-    if (client.readyState === WebSocket.OPEN && !client.isESP32) {
-      try {
-        client.send(JSON.stringify(message));
-        sentCount++;
-        metrics.messagesSent++;
-      } catch (error) {
-        console.error(`❌ Erro ao transmitir para ${id}:`, error.message);
-        metrics.errors++;
-      }
-    }
-  });
-  
-  if (sentCount > 0) {
-    console.log(`📡 Mensagem ${message.type} transmitida para ${sentCount} cliente(s) web`);
-  }
-}
-
+// 🎯 NOVA FUNÇÃO: Rate limiting
 function checkRateLimit(clientIP) {
   const now = Date.now();
   const windowStart = now - 60000; // 1 minuto
@@ -414,20 +358,57 @@ function checkRateLimit(clientIP) {
   return true;
 }
 
+// 🎯 NOVA FUNÇÃO: Salvar dados históricos
+function saveSensorData(data) {
+  const dataPoint = {
+    timestamp: new Date().toISOString(),
+    liters: data.liters,
+    percentage: data.percentage,
+    consumption: data.consumo_hoje,
+    distance: data.distance,
+    environment: NODE_ENV
+  };
+  
+  historicalData.push(dataPoint);
+  
+  // Manter apenas últimas 48h (aproximadamente 2880 pontos se enviar a cada minuto)
+  if (historicalData.length > 2880) {
+    historicalData.shift();
+  }
+}
+
+// CORREÇÃO CRÍTICA: Detectar se é conexão do ESP32
 function isESP32Connection(req, clientIP) {
   const userAgent = req.headers['user-agent'] || '';
   
+  // ESP32 geralmente não envia User-Agent ou envia string específica
   const isESP = userAgent.includes('ESP32') || 
                 userAgent.includes('Arduino') ||
                 userAgent.includes('WiFiClient') ||
-                userAgent === '' ||
-                req.headers['origin'] === '' ||
-                clientIP.includes('192.168.') ||
-                clientIP.includes('10.0.');
+                userAgent === '' || // ESP32 muitas vezes não envia User-Agent
+                userAgent.includes('ESP8266') ||
+                // Nova detecção: verificar por padrão de IP ou origem
+                req.headers['origin'] === '' || // ESP32 não envia origin
+                clientIP.includes('192.168.') || // IP local comum do ESP32
+                clientIP.includes('10.0.') || // Outro IP local
+                req.headers['sec-websocket-protocol'] === 'arduino';
   
+  console.log(`🔍 Detecção ESP32 - UserAgent: "${userAgent}", Origin: "${req.headers['origin']}", IP: ${clientIP}, Resultado: ${isESP}`);
   return isESP;
 }
 
+// CORREÇÃO CRÍTICA: Detectar ESP32 pelo conteúdo da mensagem
+function isESP32Message(message) {
+  // Verificar se a mensagem contém padrões típicos do ESP32
+  return message.includes('"type":"all_data"') ||
+         message.includes('"type":"status"') ||
+         message.includes('"distance":') ||
+         message.includes('"liters":') ||
+         message.includes('"percentage":') ||
+         (message.startsWith('{') && message.includes('sensor_ok'));
+}
+
+// Gerar ID único para cliente
 function generateClientId(req) {
   const isESP32 = isESP32Connection(req, getClientIP(req));
   const prefix = isESP32 ? 'ESP32' : 'WEB';
@@ -436,33 +417,343 @@ function generateClientId(req) {
   return `${prefix}_${timestamp}_${random}`;
 }
 
+// Obter IP do cliente
 function getClientIP(req) {
   return req.headers['x-forwarded-for'] || 
+         req.headers['x-real-ip'] ||
          req.connection.remoteAddress || 
-         'unknown';
+         req.socket.remoteAddress ||
+         (req.connection.socket ? req.connection.socket.remoteAddress : 'unknown');
 }
 
-// ====== INICIALIZAÇÃO ======
+// Processar mensagens JSON (do ESP32)
+function handleWebSocketMessage(ws, message) {
+  const clientInfo = `${ws.clientId} (${ws.clientIP})`;
+  
+  // 🎯 ATUALIZADO: Salvar dados históricos para mensagens de sensor
+  if (message.type === 'all_data' || message.type === 'status') {
+    saveSensorData(message);
+  }
+  
+  // Adicionar metadados à mensagem
+  const enhancedMessage = {
+    ...message,
+    clientId: ws.clientId,
+    origin: ws.isESP32 ? 'esp32' : 'web',
+    timestamp: new Date().toISOString(),
+    serverTime: Date.now(),
+    environment: NODE_ENV
+  };
+  
+  console.log(`📨 ${clientInfo} - ${message.type} - Ambiente: ${NODE_ENV}`);
+  
+  // Log específico para dados importantes
+  if (message.type === 'all_data') {
+    console.log(`💧 Dados: ${message.liters}L (${message.percentage}%) | Consumo H: ${message.consumo_hora}L D: ${message.consumo_hoje}L`);
+  } else if (message.type === 'status') {
+    console.log(`📊 Status: WiFi ${message.wifi_connected ? '✅' : '❌'} | Sensor ${message.sensor_ok ? '✅' : '❌'} | Mem: ${message.free_memory}`);
+  }
+  
+  // CORREÇÃO: Se a mensagem é do ESP32, retransmitir para todos os clientes web
+  if (ws.isESP32) {
+    broadcastToWebClients(enhancedMessage);
+  } else {
+    // Se é do frontend e temos ESP32, repassar para o ESP32
+    if (esp32Client && esp32Client.readyState === WebSocket.OPEN && esp32Client !== ws) {
+      // Remover metadados antes de enviar para ESP32
+      const { clientId, origin, timestamp, serverTime, environment, ...cleanMessage } = enhancedMessage;
+      sendToClient(esp32Client, cleanMessage);
+      metrics.messagesSent++;
+    } else if (!esp32Client) {
+      // CORREÇÃO: Se não há ESP32, responder ao frontend
+      sendToClient(ws, {
+        type: 'error',
+        message: 'ESP32 não conectado',
+        timestamp: new Date().toISOString(),
+        environment: NODE_ENV
+      });
+    }
+  }
+}
+
+// Processar comandos de texto (do frontend)
+function handleTextCommand(ws, command) {
+  console.log(`📤 Comando de ${ws.clientId}: ${command} - Ambiente: ${NODE_ENV}`);
+  
+  // CORREÇÃO: Comandos que não precisam do ESP32
+  if (command === 'get_status' || command === 'health') {
+    const statusMessage = {
+      type: 'server_status',
+      clients: clients.size,
+      esp32Connected: !!esp32Client,
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV,
+      metrics: metrics
+    };
+    return sendToClient(ws, statusMessage);
+  }
+  
+  // Se o comando precisa do ESP32
+  if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
+    console.log(`🔄 Repassando comando para ESP32: ${command}`);
+    esp32Client.send(command);
+    metrics.messagesSent++;
+    
+    // Confirmar para o frontend
+    sendToClient(ws, {
+      type: 'command_ack',
+      command: command,
+      status: 'sent_to_esp32',
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
+    });
+  } else {
+    // CORREÇÃO MELHORADA: Avisar frontend que ESP32 não está conectado
+    sendToClient(ws, {
+      type: 'error',
+      message: 'ESP32 não conectado',
+      command: command,
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
+    });
+    console.log('⚠️ Comando ignorado - ESP32 não conectado:', command);
+  }
+}
+
+// ====== FUNÇÕES AUXILIARES ======
+
+// Enviar mensagem para um cliente específico
+function sendToClient(client, message) {
+  if (client.readyState === WebSocket.OPEN) {
+    try {
+      client.send(JSON.stringify(message));
+      metrics.messagesSent++;
+    } catch (error) {
+      console.error(`❌ Erro ao enviar para ${client.clientId}:`, error.message);
+      metrics.errors++;
+    }
+  }
+}
+
+// Transmitir para todos os clientes web (exceto ESP32)
+function broadcastToWebClients(message) {
+  let sentCount = 0;
+  
+  clients.forEach((client, id) => {
+    if (client.readyState === WebSocket.OPEN && !client.isESP32) {
+      try {
+        client.send(JSON.stringify(message));
+        sentCount++;
+        metrics.messagesSent++;
+      } catch (error) {
+        console.error(`❌ Erro ao transmitir para ${id}:`, error.message);
+        metrics.errors++;
+      }
+    }
+  });
+  
+  if (sentCount > 0) {
+    console.log(`📡 Mensagem ${message.type} transmitida para ${sentCount} cliente(s) web - Ambiente: ${NODE_ENV}`);
+  }
+}
+
+// Log estatísticas de conexão
+function logConnectionStats() {
+  const webClients = Array.from(clients.values()).filter(client => !client.isESP32).length;
+  console.log(`📊 Estatísticas: Total: ${clients.size} | ESP32: ${esp32Client ? 1 : 0} | Web: ${webClients} | Ambiente: ${NODE_ENV}`);
+}
+
+// ====== API REST ======
+
+// Status do sistema
+app.get('/status', (req, res) => {
+  const webClients = Array.from(clients.values()).filter(client => !client.isESP32);
+  
+  res.json({
+    status: 'operational',
+    serverTime: new Date().toISOString(),
+    environment: NODE_ENV,
+    uptime: Math.floor(process.uptime()),
+    memory: process.memoryUsage(),
+    metrics: metrics,
+    connections: {
+      total: clients.size,
+      esp32: esp32Client ? {
+        connected: true,
+        clientId: esp32Client.clientId,
+        ip: esp32Client.clientIP,
+        connectedAt: esp32Client.connectedAt
+      } : { connected: false },
+      web: webClients.map(client => ({
+        clientId: client.clientId,
+        ip: client.clientIP,
+        connectedAt: client.connectedAt
+      }))
+    }
+  });
+});
+
+// Listar clientes conectados
+app.get('/clients', (req, res) => {
+  const clientList = Array.from(clients.entries()).map(([id, ws]) => ({
+    id,
+    ip: ws.clientIP,
+    type: ws.isESP32 ? 'ESP32' : 'WEB',
+    connected: ws.readyState === WebSocket.OPEN,
+    connectedAt: ws.connectedAt,
+    isActiveESP32: ws === esp32Client
+  }));
+  
+  res.json({ 
+    clients: clientList, 
+    total: clientList.length,
+    esp32Connected: !!esp32Client,
+    environment: NODE_ENV
+  });
+});
+
+// Enviar comando para ESP32 via HTTP
+app.post('/command/:command', express.json(), (req, res) => {
+  const { command } = req.params;
+  
+  if (!esp32Client || esp32Client.readyState !== WebSocket.OPEN) {
+    return res.status(404).json({ 
+      success: false, 
+      message: 'ESP32 não conectado',
+      command: command,
+      environment: NODE_ENV
+    });
+  }
+  
+  try {
+    esp32Client.send(command);
+    metrics.messagesSent++;
+    console.log(`📤 Comando HTTP enviado: ${command} - Ambiente: ${NODE_ENV}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Comando enviado para ESP32`,
+      command: command,
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
+    });
+  } catch (error) {
+    console.error('❌ Erro ao enviar comando:', error);
+    metrics.errors++;
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erro ao enviar comando',
+      error: error.message,
+      environment: NODE_ENV
+    });
+  }
+});
+
+// Reset de consumo via API
+app.post('/consumo/reset', (req, res) => {
+  if (!esp32Client || esp32Client.readyState !== WebSocket.OPEN) {
+    return res.status(404).json({ 
+      success: false, 
+      message: 'ESP32 não conectado',
+      environment: NODE_ENV
+    });
+  }
+  
+  try {
+    esp32Client.send('reset_consumo');
+    metrics.messagesSent++;
+    console.log('🔄 Comando de reset de consumo enviado via API');
+    
+    res.json({ 
+      success: true, 
+      message: 'Reset de consumo enviado para ESP32',
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
+    });
+  } catch (error) {
+    console.error('❌ Erro ao enviar reset:', error);
+    metrics.errors++;
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erro ao enviar comando de reset',
+      error: error.message,
+      environment: NODE_ENV
+    });
+  }
+});
+
+// Informações do sistema
+app.get('/system/info', (req, res) => {
+  res.json({
+    nodeVersion: process.version,
+    platform: process.platform,
+    architecture: process.arch,
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    environment: NODE_ENV,
+    metrics: metrics
+  });
+});
+
+// Middleware de erro
+app.use((error, req, res, next) => {
+  console.error('❌ Erro no servidor:', error);
+  metrics.errors++;
+  res.status(500).json({ 
+    success: false, 
+    message: 'Erro interno do servidor',
+    error: NODE_ENV === 'production' ? 'Internal error' : error.message,
+    environment: NODE_ENV
+  });
+});
+
+// Rota 404
+app.use('*', (req, res) => {
+  res.status(404).json({ 
+    success: false, 
+    message: 'Rota não encontrada',
+    path: req.originalUrl,
+    environment: NODE_ENV
+  });
+});
+
+// 🎯 FUNÇÃO DE HEALTH CHECK
+async function healthCheck() {
+    try {
+        const response = await axios.get(HEALTH_CHECK_URL);
+        console.log(`✅ Health check realizado: ${response.status} - ${new Date().toLocaleTimeString('pt-BR')} - Ambiente: ${NODE_ENV}`);
+    } catch (error) {
+        console.log(`❌ Erro no health check: ${error.message} - Ambiente: ${NODE_ENV}`);
+        metrics.errors++;
+    }
+}
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
   console.log(`🌐 Ambiente: ${NODE_ENV}`);
   console.log(`📊 Health: http://localhost:${PORT}/health`);
+  console.log(`📋 Status: http://localhost:${PORT}/status`);
+  console.log(`🔧 Config: http://localhost:${PORT}/config`);
   console.log(`🎯 Aguardando conexões ESP32 e Web...`);
+  console.log(`🔐 Token ESP32: ${ESP32_TOKEN}`);
+  
+  // 🎯 INICIAR HEALTH CHECK AUTOMÁTICO
+  console.log(`🔄 Health Check configurado a cada ${HEALTH_CHECK_INTERVAL / 60000} minutos`);
+  setInterval(healthCheck, HEALTH_CHECK_INTERVAL);
+  healthCheck(); // Executar imediatamente
 });
 
-// Health check automático
-async function healthCheck() {
+// Heartbeat para manter conexões ativas
+setInterval(() => {
+  if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
     try {
-        const response = await axios.get(HEALTH_CHECK_URL);
-        console.log(`✅ Health check: ${response.status} - ${new Date().toLocaleTimeString('pt-BR')}`);
+      esp32Client.ping();
     } catch (error) {
-        console.log(`❌ Erro no health check: ${error.message}`);
+      console.error('❌ Erro no heartbeat do ESP32:', error.message);
+      metrics.errors++;
     }
-}
-
-setInterval(healthCheck, HEALTH_CHECK_INTERVAL);
-healthCheck();
+  }
+}, 30000);
 
 // Limpeza de conexões mortas
 setInterval(() => {
@@ -481,8 +772,49 @@ setInterval(() => {
   });
   
   if (cleanedCount > 0) {
-    console.log(`🧹 Limpeza: ${cleanedCount} cliente(s) removido(s)`);
+    console.log(`🧹 Limpeza: ${cleanedCount} cliente(s) removido(s) - Ambiente: ${NODE_ENV}`);
   }
 }, 60000);
 
+// 🎯 NOVO: Limpeza periódica do rate limit
+setInterval(() => {
+  const now = Date.now();
+  const windowStart = now - 120000; // 2 minutos
+  
+  rateLimit.forEach((requests, ip) => {
+    const filteredRequests = requests.filter(time => time > windowStart);
+    if (filteredRequests.length === 0) {
+      rateLimit.delete(ip);
+    } else {
+      rateLimit.set(ip, filteredRequests);
+    }
+  });
+}, 60000); // A cada minuto
+
+// Graceful shutdown
+function gracefulShutdown(signal) {
+  console.log(`\n🔄 Recebido ${signal}, encerrando servidor... - Ambiente: ${NODE_ENV}`);
+  
+  // Fechar todas as conexões WebSocket
+  clients.forEach((client, id) => {
+    client.close(1000, 'Servidor sendo encerrado');
+  });
+  
+  server.close(() => {
+    console.log('✅ Servidor encerrado com sucesso');
+    process.exit(0);
+  });
+  
+  // Force close após 10 segundos
+  setTimeout(() => {
+    console.log('❌ Forçando encerramento...');
+    process.exit(1);
+  }, 10000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Log inicial
 console.log('✅ Servidor WebSocket inicializado com sucesso!');
+console.log('🎯 Variáveis de ambiente carregadas com sucesso!');
