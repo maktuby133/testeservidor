@@ -175,11 +175,11 @@
         /* BARRA DE NÍVEL AJUSTADA - BONITA SOBRE A CAIXA D'ÁGUA */
         .water-container {
             position: absolute;
-            top: 100px;              /* Posição vertical ajustada */
+            top: 140px;              /* Posição vertical ajustada */
             left: 50%;
             transform: translateX(-50%);
-            width: 120px;            /* Largura adequada para a caixa */
-            height: 220px;           /* Altura maior para acompanhar a caixa */
+            width: 180px;            /* Largura adequada para a caixa */
+            height: 280px;           /* Altura maior para acompanhar a caixa */
             z-index: 3;
             overflow: hidden;
             border-radius: 6px;      /* Bordas suaves */
@@ -201,6 +201,11 @@
                 rgba(0, 80, 200, 0.95),    /* Azul mais escuro na base */
                 rgba(0, 150, 255, 0.9),    /* Azul médio */
                 rgba(100, 200, 255, 0.85)  /* Azul claro no topo */
+            );
+            box-shadow: 
+                inset 0 5px 15px rgba(255, 255, 255, 0.4),
+                inset 0 -5px 15px rgba(0, 50, 150, 0.3),
+                0 0 20px rgba(0, 100, 255, 0.5);
         }
 
         .water-effect {
@@ -210,37 +215,48 @@
             width: 100%;
             height: 100%;
             background: linear-gradient(90deg, 
-                transparent 10%, 
-                rgba(255, 255, 255, 0.3) 50%, 
-                transparent 90%);
-            animation: waterShine 3s infinite linear;
-            border-radius: 3px 3px 0 0;
+                transparent 0%, 
+                rgba(255, 255, 255, 0.4) 20%,
+                rgba(255, 255, 255, 0.6) 50%,
+                rgba(255, 255, 255, 0.4) 80%,
+                transparent 100%
+            );
+            animation: waterShine 4s infinite linear;
+            border-radius: 4px 4px 0 0;
+            opacity: 0.7;
         }
 
         .water-bubbles {
             position: absolute;
             bottom: 0;
             width: 100%;
-            height: 8px;
-            background: radial-gradient(circle at 30% 50%, rgba(255, 255, 255, 0.4) 1px, transparent 2px),
-                radial-gradient(circle at 70% 50%, rgba(255, 255, 255, 0.3) 1px, transparent 2px);
-            animation: bubbles 2s infinite ease-in-out;
+            height: 15px;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.6) 2px, transparent 3px),
+                radial-gradient(circle at 50% 70%, rgba(255, 255, 255, 0.5) 1px, transparent 2px),
+                radial-gradient(circle at 80% 40%, rgba(255, 255, 255, 0.4) 2px, transparent 3px);
+            animation: bubbles 3s infinite ease-in-out;
         }
 
         .percentage-display {
             position: absolute;
-            top: 20px;
+            top: 30px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 2.2rem;
+            font-size: 2.5rem;
             font-weight: 900;
             color: #1a2a6c;
-            text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.8);
+            text-shadow: 
+                2px 2px 4px rgba(255, 255, 255, 0.8),
+                0 0 10px rgba(255, 255, 255, 0.5);
             z-index: 4;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 8px 16px;
-            border-radius: 10px;
-            border: 2px solid #1a2a6c;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(240, 240, 240, 0.95));
+            padding: 12px 20px;
+            border-radius: 15px;
+            border: 3px solid #1a2a6c;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            min-width: 100px;
+            text-align: center;
         }
 
         .connection-timeline-below {
@@ -753,7 +769,7 @@
 
         @keyframes bubbles {
             0%, 100% { transform: translateY(0); opacity: 0.7; }
-            50% { transform: translateY(-3px); opacity: 1; }
+            50% { transform: translateY(-8px); opacity: 1; }
         }
 
         @keyframes pulse {
@@ -789,17 +805,17 @@
             }
             
             .water-container {
-                top: 80px;
+                top: 100px;
                 left: 50%;
                 transform: translateX(-50%);
-                width: 25px;
-                height: 180px;
+                width: 120px;
+                height: 200px;
             }
             
             .percentage-display {
                 font-size: 1.8rem;
-                top: 15px;
-                padding: 6px 12px;
+                top: 20px;
+                padding: 8px 16px;
             }
             
             .system-status-compact {
@@ -862,14 +878,14 @@
             }
             
             .water-container {
-                top: 70px;
-                width: 20px;
-                height: 160px;
+                top: 80px;
+                width: 100px;
+                height: 180px;
             }
             
             .percentage-display {
                 font-size: 1.5rem;
-                top: 10px;
+                top: 15px;
             }
             
             h1 {
@@ -936,7 +952,7 @@
                          alt='Sistema de Chillers e Caixa de Compensação' 
                          class="tank-image">
                     
-                    <!-- CORREÇÃO APLICADA: Barra centralizada com left: 50% e transform: translateX(-50%) -->
+                    <!-- BARRA DE NÍVEL BONITA E AJUSTADA -->
                     <div class="water-container">
                         <div class="water-level" id="waterLevel">
                             <div class="water-effect"></div>
@@ -1450,10 +1466,10 @@
             document.getElementById('statusContainer').className = 'status-container ' + statusClass;
 
             // Atualizar cor da água
-            let waterColor = 'linear-gradient(to top, rgba(0,119,255,0.9), rgba(0,200,255,0.95))';
-            if (!sensorOk) waterColor = 'linear-gradient(to top, rgba(255,0,0,0.7), rgba(255,100,100,0.8))';
-            else if(percentage < 10) waterColor = 'linear-gradient(to top, rgba(255,50,50,0.9), rgba(255,100,100,0.95))';
-            else if(percentage < 50) waterColor = 'linear-gradient(to top, rgba(255,165,0,0.9), rgba(255,200,0,0.95))';
+            let waterColor = 'linear-gradient(to top, rgba(0, 80, 200, 0.95), rgba(0, 150, 255, 0.9), rgba(100, 200, 255, 0.85))';
+            if (!sensorOk) waterColor = 'linear-gradient(to top, rgba(255, 0, 0, 0.8), rgba(255, 100, 100, 0.9))';
+            else if(percentage < 10) waterColor = 'linear-gradient(to top, rgba(255, 50, 50, 0.9), rgba(255, 100, 100, 0.95))';
+            else if(percentage < 50) waterColor = 'linear-gradient(to top, rgba(255, 165, 0, 0.9), rgba(255, 200, 0, 0.95))';
             document.getElementById('waterLevel').style.background = waterColor;
 
             // Atualizar tempo
