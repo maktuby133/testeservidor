@@ -172,10 +172,12 @@
             background: transparent;
         }
 
+        /* CORREÇÃO DA BARRA DE NÍVEL - CENTRALIZADA */
         .water-container {
             position: absolute;
             top: 95px;
-            left: 192px;
+            left: 50%;
+            transform: translateX(-50%);
             width: 70px;
             height: 120px;
             z-index: 3;
@@ -930,6 +932,7 @@
                          alt='Sistema de Chillers e Caixa de Compensação' 
                          class="tank-image">
                     
+                    <!-- CORREÇÃO APLICADA: Barra centralizada com left: 50% e transform: translateX(-50%) -->
                     <div class="water-container">
                         <div class="water-level" id="waterLevel">
                             <div class="water-effect"></div>
