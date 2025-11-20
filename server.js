@@ -42,8 +42,7 @@ const metrics = {
   messagesSent: 0,
   errors: 0,
   esp32Reconnects: 0,
-  webClientsConnected: 0,
-  resetCommands: 0 // 🎯 NOVO: Contador de resets
+  webClientsConnected: 0
 };
 
 // 🎯 NOVO: Rate limiting
@@ -149,6 +148,41 @@ app.get('/historical-data', (req, res) => {
     total: filteredData.length,
     timeRange: `${hours} horas`,
     environment: NODE_ENV
+  });
+});
+
+// 🎯 NOVA ROTA APENAS PARA INFORMAÇÕES DE NÍVEL
+app.get('/nivel', (req, res) => {
+  // Buscar o último dado do sensor
+  const lastData = historicalData.length > 0 
+    ? historicalData[historicalData.length - 1] 
+    : null;
+  
+  // Calcular tempo desde a última atualização
+  let timeSinceLastUpdate = null;
+  if (lastData && lastData.timestamp) {
+    const lastUpdate = new Date(lastData.timestamp);
+    const now = new Date();
+    timeSinceLastUpdate = Math.floor((now - lastUpdate) / 1000); // em segundos
+  }
+  
+  res.json({
+    success: true,
+    nivel: lastData ? {
+      liters: lastData.liters,
+      percentage: lastData.percentage,
+      distance: lastData.distance,
+      timestamp: lastData.timestamp,
+      consumption: lastData.consumption,
+      environment: lastData.environment
+    } : null,
+    esp32Connected: !!esp32Client,
+    lastUpdate: lastData ? lastData.timestamp : null,
+    timeSinceLastUpdate: timeSinceLastUpdate,
+    hasData: !!lastData,
+    totalDataPoints: historicalData.length,
+    environment: NODE_ENV,
+    serverTime: new Date().toISOString()
   });
 });
 
@@ -427,28 +461,13 @@ function getClientIP(req) {
          (req.connection.socket ? req.connection.socket.remoteAddress : 'unknown');
 }
 
-// 🎯 FUNÇÃO CORRIGIDA: Processar mensagens JSON (do ESP32)
+// Processar mensagens JSON (do ESP32)
 function handleWebSocketMessage(ws, message) {
   const clientInfo = `${ws.clientId} (${ws.clientIP})`;
   
   // 🎯 ATUALIZADO: Salvar dados históricos para mensagens de sensor
   if (message.type === 'all_data' || message.type === 'status') {
     saveSensorData(message);
-  }
-  
-  // 🎯 NOVO: Tratamento específico para confirmação de reset
-  if (message.type === 'reset_confirmation') {
-    console.log(`✅ Confirmação de reset recebida do ESP32: ${message.message}`);
-    
-    // Retransmitir confirmação para todos os clientes web
-    broadcastToWebClients({
-      type: 'reset_confirmation',
-      message: message.message,
-      timestamp: message.timestamp || new Date().toISOString(),
-      source: 'esp32',
-      environment: NODE_ENV
-    });
-    return;
   }
   
   // Adicionar metadados à mensagem
@@ -492,7 +511,7 @@ function handleWebSocketMessage(ws, message) {
   }
 }
 
-// 🎯 FUNÇÃO CORRIGIDA: Processar comandos de texto (do frontend)
+// Processar comandos de texto (do frontend)
 function handleTextCommand(ws, command) {
   console.log(`📤 Comando de ${ws.clientId}: ${command} - Ambiente: ${NODE_ENV}`);
   
@@ -509,50 +528,7 @@ function handleTextCommand(ws, command) {
     return sendToClient(ws, statusMessage);
   }
   
-  // 🎯 CORREÇÃO CRÍTICA: Comando reset_consumo com tratamento especial
-  if (command === 'reset_consumo') {
-    console.log(`🔄 RESET DE CONSUMO SOLICITADO por ${ws.clientId}`);
-    metrics.resetCommands++; // 🎯 Contabilizar reset
-    
-    if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
-      console.log(`🔄 Enviando comando reset para ESP32: ${esp32Client.clientId}`);
-      esp32Client.send(command);
-      metrics.messagesSent++;
-      
-      // 🎯 CONFIRMAÇÃO IMEDIATA PARA O FRONTEND
-      sendToClient(ws, {
-        type: 'command_ack',
-        command: command,
-        status: 'sent_to_esp32',
-        message: 'Comando de reset enviado para ESP32',
-        timestamp: new Date().toISOString(),
-        environment: NODE_ENV
-      });
-      
-      // 🎯 NOTIFICAR TODOS OS CLIENTES SOBRE O RESET
-      broadcastToWebClients({
-        type: 'reset_initiated',
-        message: 'Reset de consumo iniciado',
-        initiatedBy: ws.clientId,
-        timestamp: new Date().toISOString(),
-        environment: NODE_ENV
-      });
-      
-    } else {
-      // 🎯 RESPOSTA MELHORADA PARA FALTA DE ESP32
-      sendToClient(ws, {
-        type: 'error',
-        message: 'ESP32 não conectado - Reset não pode ser executado',
-        command: command,
-        timestamp: new Date().toISOString(),
-        environment: NODE_ENV
-      });
-      console.log('❌ Reset ignorado - ESP32 não conectado');
-    }
-    return;
-  }
-  
-  // Se o comando precisa do ESP32 (outros comandos)
+  // Se o comando precisa do ESP32
   if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
     console.log(`🔄 Repassando comando para ESP32: ${command}`);
     esp32Client.send(command);
@@ -671,7 +647,7 @@ app.get('/clients', (req, res) => {
   });
 });
 
-// 🎯 ROTA CORRIGIDA: Enviar comando para ESP32 via HTTP
+// Enviar comando para ESP32 via HTTP
 app.post('/command/:command', express.json(), (req, res) => {
   const { command } = req.params;
   
@@ -708,7 +684,7 @@ app.post('/command/:command', express.json(), (req, res) => {
   }
 });
 
-// 🎯 ROTA CORRIGIDA: Reset de consumo via API
+// Reset de consumo via API
 app.post('/consumo/reset', (req, res) => {
   if (!esp32Client || esp32Client.readyState !== WebSocket.OPEN) {
     return res.status(404).json({ 
@@ -721,7 +697,6 @@ app.post('/consumo/reset', (req, res) => {
   try {
     esp32Client.send('reset_consumo');
     metrics.messagesSent++;
-    metrics.resetCommands++;
     console.log('🔄 Comando de reset de consumo enviado via API');
     
     res.json({ 
@@ -793,6 +768,8 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`🌐 Ambiente: ${NODE_ENV}`);
   console.log(`📊 Health: http://localhost:${PORT}/health`);
   console.log(`📋 Status: http://localhost:${PORT}/status`);
+  console.log(`💧 Nível: http://localhost:${PORT}/nivel`);
+  console.log(`📈 Histórico: http://localhost:${PORT}/historical-data`);
   console.log(`🔧 Config: http://localhost:${PORT}/config`);
   console.log(`🎯 Aguardando conexões ESP32 e Web...`);
   console.log(`🔐 Token ESP32: ${ESP32_TOKEN}`);
