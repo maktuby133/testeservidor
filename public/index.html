@@ -172,30 +172,35 @@
             background: transparent;
         }
 
-        /* CORREÇÃO DA BARRA DE NÍVEL - CENTRALIZADA */
+        /* BARRA DE NÍVEL AJUSTADA - BONITA SOBRE A CAIXA D'ÁGUA */
         .water-container {
-    position: absolute;
-    top: 150px; /* ← Barra mais baixa */
-    left: 50%;
-    transform: translateX(-50%);
-    width: 200px; /* ← LARGURA AUMENTADA (era 70px) */
-    height: 120px;
-    z-index: 3;
-    overflow: hidden;
-    border-radius: 8px; /* ← Bordas mais arredondadas */
-    background: rgba(255, 255, 255, 0.1);
-}
+            position: absolute;
+            top: 140px;              /* Posição vertical ajustada */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 180px;            /* Largura adequada para a caixa */
+            height: 280px;           /* Altura maior para acompanhar a caixa */
+            z-index: 3;
+            overflow: hidden;
+            border-radius: 6px;      /* Bordas suaves */
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 
+                0 0 20px rgba(0, 100, 255, 0.4),
+                inset 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+
         .water-level {
             position: absolute;
             bottom: 0;
             left: 0;
             width: 100%;
-            border-radius: 3px 3px 0 0;
-            transition: height 2s ease-in-out;
-            background: linear-gradient(to top, rgba(0, 119, 255, 0.9), rgba(0, 200, 255, 0.95));
-            box-shadow: 
-                inset 0 0 10px rgba(255, 255, 255, 0.5),
-                0 0 10px rgba(0, 100, 255, 0.6);
+            border-radius: 4px 4px 0 0;
+            transition: height 1.5s ease-in-out;
+            background: linear-gradient(to top, 
+                rgba(0, 80, 200, 0.95),    /* Azul mais escuro na base */
+                rgba(0, 150, 255, 0.9),    /* Azul médio */
+                rgba(100, 200, 255, 0.85)  /* Azul claro no topo */
         }
 
         .water-effect {
