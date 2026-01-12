@@ -1,335 +1,360 @@
 require('dotenv').config();
 const express = require('express');
-const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
+const fs = require('fs');
 
-const app = express();
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
-
-// ====== CONFIGURAÇÕES ======
+// Configurações
 const PORT = process.env.PORT || 3000;
-const NODE_ENV = process.env.NODE_ENV || 'production';
+const WEBSOCKET_PORT = process.env.WEBSOCKET_PORT || 8080;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 const AUTH_TOKEN = process.env.AUTH_TOKEN || 'esp32_token_secreto_2024';
 
-// ====== CLIENTES CONECTADOS ======
-let webClients = new Set();
-let esp32Client = null; // Cliente direto ESP32 (modo antigo)
-let loraReceiverClient = null; // Cliente receptor LoRa
-let lastSensorData = null;
-let lastConsumoData = null;
-let lastConsumoSemanal = null;
+// Inicializar Express
+const app = express();
+app.use(express.json());
+app.use(express.static('public'));
 
-// ====== ESTATÍSTICAS DO SISTEMA ======
+// Middleware de logging
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
+
+// Clientes conectados
+const clients = new Map(); // deviceId -> WebSocket
+let esp32Client = null;
+
+// Métricas do sistema
 const metrics = {
-  webClientsTotal: 0,
-  esp32Connects: 0,
-  loraReceiverConnects: 0,
+  connections: 0,
   messagesReceived: 0,
   messagesSent: 0,
-  loraPacketsReceived: 0,
   errors: 0,
-  lastLoraRx: null,
-  lastWebClientConnect: null,
-  systemStartTime: Date.now()
+  lastConnection: null
 };
 
-// ====== MIDDLEWARE ======
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
-
 // ====== ROTAS HTTP ======
+
+// Página principal
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Painel de configuração
+app.get('/config', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'config_panel.html'));
+});
+
+// Status do sistema
 app.get('/health', (req, res) => {
-  const uptime = Math.floor((Date.now() - metrics.systemStartTime) / 1000);
-  
   res.json({
-    status: 'online',
-    environment: NODE_ENV,
-    uptime: uptime,
-    connections: {
-      web_clients: webClients.size,
-      esp32_direct: esp32Client ? 'connected' : 'disconnected',
-      lora_receiver: loraReceiverClient ? 'connected' : 'disconnected'
-    },
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
     metrics: {
       ...metrics,
-      uptime_formatted: formatUptime(uptime)
+      connectedClients: clients.size,
+      esp32Connected: esp32Client ? 'connected' : 'disconnected'
     },
-    last_data: {
-      sensor: lastSensorData ? 'available' : 'none',
-      consumo: lastConsumoData ? 'available' : 'none',
-      last_lora_rx: metrics.lastLoraRx
-    },
-    timestamp: new Date().toISOString()
+    environment: NODE_ENV,
+    uptime: process.uptime()
   });
 });
 
-app.get('/api/data', (req, res) => {
-  res.json({
-    sensor_data: lastSensorData || {},
-    consumo_data: lastConsumoData || {},
-    consumo_semanal: lastConsumoSemanal || {},
-    timestamp: new Date().toISOString()
-  });
-});
-
-app.get('/api/metrics', (req, res) => {
-  const uptime = Math.floor((Date.now() - metrics.systemStartTime) / 1000);
+// Listar dispositivos conectados
+app.get('/devices', (req, res) => {
+  const deviceList = Array.from(clients.keys()).map(deviceId => ({
+    deviceId,
+    connected: true,
+    lastSeen: metrics.lastConnection
+  }));
   
   res.json({
-    ...metrics,
-    uptime: uptime,
-    uptime_formatted: formatUptime(uptime),
-    connections: {
-      web_clients: webClients.size,
-      esp32_direct: esp32Client !== null,
-      lora_receiver: loraReceiverClient !== null
-    },
-    timestamp: new Date().toISOString()
+    success: true,
+    count: deviceList.length,
+    devices: deviceList,
+    esp32: esp32Client ? {
+      connected: true,
+      readyState: esp32Client.readyState
+    } : { connected: false }
   });
 });
 
-// Reset de consumo via HTTP
-app.post('/reset-consumo', (req, res) => {
-  console.log('🔄 Reset de consumo solicitado via HTTP');
+// Enviar comando para ESP32
+app.post('/send-command', express.json(), (req, res) => {
+  const { command, deviceId = 'esp32' } = req.body;
   
-  // Enviar comando para ESP32 direto ou via receptor LoRa
-  if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
-    esp32Client.send('reset_consumo');
-    res.json({ 
-      success: true, 
-      message: 'Reset enviado para ESP32 direto',
-      method: 'direct'
-    });
-  } else if (loraReceiverClient && loraReceiverClient.readyState === WebSocket.OPEN) {
-    // Enviar comando para o receptor encaminhar via LoRa
-    const command = JSON.stringify({
-      type: 'command',
-      target: 'CAIXA_AGUA',
-      command: 'reset_consumo',
-      timestamp: Date.now()
-    });
-    loraReceiverClient.send(command);
-    res.json({ 
-      success: true, 
-      message: 'Reset enviado via receptor LoRa',
-      method: 'lora'
-    });
-  } else {
-    res.status(404).json({ 
+  if (!command) {
+    return res.status(400).json({ 
       success: false, 
-      message: 'Nenhum dispositivo conectado'
+      message: 'Comando não especificado' 
+    });
+  }
+  
+  let targetClient = null;
+  
+  if (deviceId === 'esp32') {
+    targetClient = esp32Client;
+  } else {
+    targetClient = clients.get(deviceId);
+  }
+  
+  if (!targetClient || targetClient.readyState !== WebSocket.OPEN) {
+    return res.status(404).json({ 
+      success: false, 
+      message: `Dispositivo ${deviceId} não conectado` 
+    });
+  }
+  
+  try {
+    targetClient.send(command);
+    metrics.messagesSent++;
+    
+    console.log(`📤 Comando enviado para ${deviceId}: ${command}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Comando enviado para ${deviceId}`,
+      command: command,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Erro ao enviar comando:', error);
+    metrics.errors++;
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erro ao enviar comando',
+      error: error.message 
     });
   }
 });
 
-// ====== WEBSOCKET ======
-wss.on('connection', (ws, req) => {
-  const clientIP = req.socket.remoteAddress;
-  console.log(`\n🔗 Nova conexão WebSocket de ${clientIP}`);
+// Teste do sensor (nova rota)
+app.post('/test-sensor', express.json(), (req, res) => {
+  const { test_type, duration = 10 } = req.body;
   
-  let clientType = 'unknown';
-  let isAuthenticated = false;
-  let deviceInfo = {};
-
-  // Timeout para autenticação
-  const authTimeout = setTimeout(() => {
-    if (!isAuthenticated) {
-      console.log('⏰ Timeout de autenticação - fechando conexão');
-      ws.send(JSON.stringify({ 
-        type: 'error', 
-        message: 'Autenticação necessária' 
-      }));
-      ws.close();
+  if (!esp32Client || esp32Client.readyState !== WebSocket.OPEN) {
+    return res.status(404).json({ 
+      success: false, 
+      message: 'ESP32 não conectado',
+      environment: NODE_ENV
+    });
+  }
+  
+  try {
+    let command = '';
+    switch(test_type) {
+      case 'calibration':
+        command = 'start_calibration';
+        break;
+      case 'stability':
+        command = 'test_stability';
+        break;
+      case 'accuracy':
+        command = 'test_accuracy';
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          message: 'Tipo de teste inválido'
+        });
     }
-  }, 30000); // 30 segundos para autenticar
+    
+    esp32Client.send(command);
+    metrics.messagesSent++;
+    
+    console.log(`🔬 Teste de sensor iniciado: ${test_type} por ${duration}s`);
+    
+    res.json({ 
+      success: true, 
+      message: `Teste ${test_type} iniciado`,
+      duration: duration,
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
+    });
+  } catch (error) {
+    console.error('❌ Erro ao iniciar teste:', error);
+    metrics.errors++;
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erro ao iniciar teste',
+      error: error.message,
+      environment: NODE_ENV
+    });
+  }
+});
 
+// Ajuste de sensibilidade (nova rota)
+app.post('/adjust-sensitivity', express.json(), (req, res) => {
+  const { sensitivity } = req.body;
+  
+  if (!esp32Client || esp32Client.readyState !== WebSocket.OPEN) {
+    return res.status(404).json({ 
+      success: false, 
+      message: 'ESP32 não conectado',
+      environment: NODE_ENV
+    });
+  }
+  
+  if (sensitivity < 5 || sensitivity > 50) {
+    return res.status(400).json({
+      success: false,
+      message: 'Sensibilidade deve estar entre 5 e 50 litros'
+    });
+  }
+  
+  try {
+    const command = `set_sensitivity:${sensitivity}`;
+    esp32Client.send(command);
+    metrics.messagesSent++;
+    
+    console.log(`🎯 Sensibilidade ajustada para: ${sensitivity}L`);
+    
+    res.json({ 
+      success: true, 
+      message: `Sensibilidade ajustada para ${sensitivity}L`,
+      sensitivity: sensitivity,
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
+    });
+  } catch (error) {
+    console.error('❌ Erro ao ajustar sensibilidade:', error);
+    metrics.errors++;
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erro ao ajustar sensibilidade',
+      error: error.message,
+      environment: NODE_ENV
+    });
+  }
+});
+
+// Últimos dados recebidos
+app.get('/last-data', (req, res) => {
+  const dataDir = path.join(__dirname, 'data');
+  const files = fs.readdirSync(dataDir)
+    .filter(file => file.endsWith('.json'))
+    .sort()
+    .reverse()
+    .slice(0, 10);
+  
+  const lastData = files.map(file => {
+    const content = fs.readFileSync(path.join(dataDir, file), 'utf8');
+    return JSON.parse(content);
+  });
+  
+  res.json({
+    success: true,
+    count: lastData.length,
+    data: lastData
+  });
+});
+
+// ====== WEBSOCKET SERVER ======
+
+const wss = new WebSocket.Server({ port: WEBSOCKET_PORT });
+
+wss.on('connection', (ws, req) => {
+  const clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  let deviceId = 'unknown';
+  let authenticated = false;
+  
+  console.log(`🟢 Nova conexão WebSocket: ${clientId}`);
+  metrics.connections++;
+  metrics.lastConnection = new Date().toISOString();
+  
   ws.on('message', (message) => {
     try {
+      const data = message.toString();
+      console.log(`📨 Mensagem recebida de ${clientId}:`, data.substring(0, 100));
       metrics.messagesReceived++;
-      const data = JSON.parse(message);
       
-      // ====== AUTENTICAÇÃO ======
-      if (data.type === 'auth') {
-        console.log('🔐 Tentativa de autenticação:', data);
+      // Tentar parsear como JSON
+      try {
+        const jsonData = JSON.parse(data);
         
-        // Verificar token
-        if (data.token === AUTH_TOKEN) {
-          isAuthenticated = true;
-          clearTimeout(authTimeout);
-          
-          deviceInfo = {
-            device: data.device,
-            deviceType: data.device_type || data.device,
-            version: data.version || 'unknown'
-          };
-          
-          // Identificar tipo de cliente
-          if (data.device_type === 'LORA_RECEIVER' || data.device === 'RECEPTOR_01') {
-            clientType = 'lora_receiver';
-            loraReceiverClient = ws;
-            metrics.loraReceiverConnects++;
-            console.log('✅ Receptor LoRa autenticado:', data.device);
+        // Autenticação
+        if (jsonData.type === 'auth') {
+          if (jsonData.token === AUTH_TOKEN) {
+            authenticated = true;
+            deviceId = jsonData.device || clientId;
             
-            ws.send(JSON.stringify({ 
-              type: 'auth_success', 
-              message: 'Receptor LoRa conectado',
-              role: 'lora_receiver'
+            if (jsonData.device_type === 'LORA_RECEIVER' || jsonData.device === 'RECEPTOR_01') {
+              esp32Client = ws;
+              console.log(`✅ ESP32 Receptor autenticado: ${deviceId}`);
+            } else {
+              clients.set(deviceId, ws);
+              console.log(`✅ Cliente autenticado: ${deviceId}`);
+            }
+            
+            ws.send(JSON.stringify({
+              type: 'auth_response',
+              success: true,
+              message: 'Autenticação bem-sucedida'
             }));
-            
-            // Notificar clientes web
-            broadcastToWeb({
-              type: 'lora_receiver_connected',
-              device: data.device,
-              timestamp: new Date().toISOString()
-            });
-            
-          } else if (data.device === 'ESP32' || data.device === 'CAIXA_AGUA') {
-            clientType = 'esp32_direct';
-            esp32Client = ws;
-            metrics.esp32Connects++;
-            console.log('✅ ESP32 direto autenticado');
-            
-            ws.send(JSON.stringify({ 
-              type: 'auth_success', 
-              message: 'ESP32 conectado',
-              role: 'esp32_direct'
-            }));
-            
-            broadcastToWeb({
-              type: 'esp32_connected',
-              timestamp: new Date().toISOString()
-            });
-            
           } else {
-            clientType = 'web';
-            webClients.add(ws);
-            metrics.webClientsTotal++;
-            metrics.lastWebClientConnect = new Date().toISOString();
-            console.log(`✅ Cliente web autenticado (${webClients.size} total)`);
-            
-            ws.send(JSON.stringify({ 
-              type: 'auth_success', 
-              message: 'Cliente web conectado',
-              role: 'web_client'
+            console.log(`❌ Token inválido de: ${clientId}`);
+            ws.send(JSON.stringify({
+              type: 'auth_response',
+              success: false,
+              message: 'Token de autenticação inválido'
             }));
-            
-            // Enviar dados atuais
-            if (lastSensorData) {
-              ws.send(JSON.stringify(lastSensorData));
-            }
-            if (lastConsumoData) {
-              ws.send(JSON.stringify(lastConsumoData));
-            }
-            if (lastConsumoSemanal) {
-              ws.send(JSON.stringify(lastConsumoSemanal));
-            }
+            ws.close();
           }
-          
-        } else {
-          console.log('❌ Token inválido:', data.token);
-          ws.send(JSON.stringify({ 
-            type: 'auth_failed', 
-            message: 'Token inválido' 
+          return;
+        }
+        
+        // Se não está autenticado, rejeitar
+        if (!authenticated) {
+          console.log(`❌ Mensagem não autenticada de: ${clientId}`);
+          ws.send(JSON.stringify({
+            type: 'error',
+            message: 'Autenticação necessária'
           }));
-          ws.close();
+          return;
         }
-        return;
-      }
-      
-      // Exigir autenticação para outros comandos
-      if (!isAuthenticated) {
-        console.log('⚠️ Mensagem não autenticada ignorada');
-        return;
-      }
-      
-      // ====== PROCESSAR DADOS DO RECEPTOR LORA ======
-      if (clientType === 'lora_receiver' && data.type === 'sensor_data') {
-        console.log('\n📡 ========================================');
-        console.log('DADOS RECEBIDOS VIA LoRa');
-        console.log('========================================');
-        console.log('📦 Pacote completo:', JSON.stringify(data, null, 2));
         
-        metrics.loraPacketsReceived++;
-        metrics.lastLoraRx = new Date().toISOString();
-        
-        // Armazenar dados
-        lastSensorData = {
-          type: 'all_data',
-          ...data,
-          source: 'lora',
-          server_timestamp: new Date().toISOString()
-        };
-        
-        // Broadcast para clientes web
-        broadcastToWeb(lastSensorData);
-        
-        console.log('✅ Dados processados e enviados aos clientes web');
-        console.log('========================================\n');
-      }
-      
-      // ====== PROCESSAR DADOS DIRETOS DO ESP32 ======
-      else if (clientType === 'esp32_direct') {
-        console.log('📡 Dados diretos do ESP32:', data.type);
-        
-        if (data.type === 'all_data') {
-          lastSensorData = { ...data, source: 'direct' };
-          broadcastToWeb(lastSensorData);
-        } else if (data.type === 'consumo_data') {
-          lastConsumoData = data;
-          broadcastToWeb(lastConsumoData);
-        } else if (data.type === 'consumo_semanal_data') {
-          lastConsumoSemanal = data;
-          broadcastToWeb(lastConsumoSemanal);
+        // Processar dados do sensor
+        if (jsonData.type === 'sensor_data' || jsonData.type === 'sensor_update') {
+          console.log(`📊 Dados do sensor recebidos de ${deviceId}:`, {
+            distance: jsonData.distance,
+            liters: jsonData.liters,
+            percentage: jsonData.percentage
+          });
+          
+          // Salvar dados
+          saveSensorData(jsonData);
+          
+          // Broadcast para outros clientes (exceto o remetente)
+          wss.clients.forEach(client => {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({
+                type: 'sensor_update',
+                device: deviceId,
+                data: jsonData,
+                timestamp: new Date().toISOString()
+              }));
+            }
+          });
         }
-      }
-      
-      // ====== STATUS DO RECEPTOR ======
-      else if (data.type === 'receiver_status') {
-        console.log('📊 Status do receptor LoRa:', {
-          device: data.device,
-          lora_packets: data.lora_packets_received,
-          uptime: data.uptime,
-          rssi: data.last_rssi
-        });
         
-        broadcastToWeb({
-          type: 'lora_receiver_status',
-          ...data,
-          server_timestamp: new Date().toISOString()
-        });
-      }
-      
-      // ====== COMANDOS DOS CLIENTES WEB ======
-      else if (clientType === 'web') {
-        console.log('📨 Comando do cliente web:', data);
+        // Status do receptor
+        if (jsonData.type === 'receiver_status') {
+          console.log(`📡 Status do receptor ${deviceId}:`, {
+            packets: jsonData.lora_packets_received,
+            errors: jsonData.lora_packets_error
+          });
+        }
         
-        // Encaminhar comandos
-        if (data === 'get_data' || data === 'get_status') {
-          if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
-            esp32Client.send(data);
-          }
-          if (loraReceiverClient && loraReceiverClient.readyState === WebSocket.OPEN) {
-            loraReceiverClient.send(JSON.stringify({
-              type: 'command',
-              command: data
-            }));
-          }
-        } else if (data === 'reset_consumo') {
-          if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
-            esp32Client.send('reset_consumo');
-          } else if (loraReceiverClient && loraReceiverClient.readyState === WebSocket.OPEN) {
-            loraReceiverClient.send(JSON.stringify({
-              type: 'command',
-              target: 'CAIXA_AGUA',
-              command: 'reset_consumo'
-            }));
-          }
+      } catch (jsonError) {
+        // Se não for JSON, tratar como mensagem simples
+        console.log(`📝 Mensagem simples de ${deviceId}: ${data}`);
+        
+        if (data === 'ping') {
+          ws.send('pong');
+        } else if (data.startsWith('set_sensitivity:')) {
+          const sensitivity = data.split(':')[1];
+          console.log(`🎯 Configuração de sensibilidade: ${sensitivity}L`);
         }
       }
       
@@ -338,132 +363,101 @@ wss.on('connection', (ws, req) => {
       metrics.errors++;
     }
   });
-
+  
   ws.on('close', () => {
-    console.log(`❌ Conexão WebSocket fechada (${clientType})`);
+    console.log(`🔴 Conexão fechada: ${clientId}`);
     
-    if (clientType === 'esp32_direct') {
-      esp32Client = null;
-      broadcastToWeb({
-        type: 'esp32_disconnected',
-        timestamp: new Date().toISOString()
-      });
-    } else if (clientType === 'lora_receiver') {
-      loraReceiverClient = null;
-      broadcastToWeb({
-        type: 'lora_receiver_disconnected',
-        timestamp: new Date().toISOString()
-      });
-    } else if (clientType === 'web') {
-      webClients.delete(ws);
-      console.log(`Cliente web removido (${webClients.size} restantes)`);
+    // Remover da lista de clientes
+    if (deviceId !== 'unknown') {
+      clients.delete(deviceId);
     }
     
-    clearTimeout(authTimeout);
+    // Limpar ESP32 se for ele
+    if (ws === esp32Client) {
+      esp32Client = null;
+      console.log('📡 ESP32 desconectado');
+    }
+    
+    metrics.connections = Math.max(0, metrics.connections - 1);
   });
-
+  
   ws.on('error', (error) => {
-    console.error('❌ Erro WebSocket:', error.message);
+    console.error(`❌ Erro no WebSocket ${clientId}:`, error);
     metrics.errors++;
   });
+  
+  // Enviar mensagem de boas-vindas
+  ws.send(JSON.stringify({
+    type: 'welcome',
+    message: 'Conectado ao servidor Caixa d\'Água Inteligente',
+    server_time: new Date().toISOString(),
+    requires_auth: true
+  }));
 });
 
 // ====== FUNÇÕES AUXILIARES ======
-function broadcastToWeb(data) {
-  const message = JSON.stringify(data);
-  let sentCount = 0;
-  
-  webClients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(message);
-      sentCount++;
-      metrics.messagesSent++;
+
+function saveSensorData(data) {
+  try {
+    const dataDir = path.join(__dirname, 'data');
+    
+    // Criar diretório se não existir
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
     }
-  });
-  
-  if (sentCount > 0) {
-    console.log(`📤 Broadcast para ${sentCount} cliente(s) web`);
+    
+    // Adicionar timestamp
+    const sensorData = {
+      ...data,
+      received_at: new Date().toISOString(),
+      server_timestamp: Date.now()
+    };
+    
+    // Salvar em arquivo
+    const filename = `sensor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.json`;
+    const filepath = path.join(dataDir, filename);
+    
+    fs.writeFileSync(filepath, JSON.stringify(sensorData, null, 2));
+    
+    console.log(`💾 Dados salvos em: ${filename}`);
+    
+  } catch (error) {
+    console.error('❌ Erro ao salvar dados:', error);
   }
 }
 
-function formatUptime(seconds) {
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-  
-  return `${days}d ${hours}h ${minutes}m ${secs}s`;
+// ====== INICIALIZAÇÃO ======
+
+// Criar diretório de dados
+const dataDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// ====== HEALTH CHECK PERIÓDICO ======
+// Iniciar servidor HTTP
+app.listen(PORT, () => {
+  console.log(`
+🚀 SERVIDOR INICIADO!
+=======================================
+🌐 HTTP Server:  http://localhost:${PORT}
+🔗 WebSocket:    ws://localhost:${WEBSOCKET_PORT}
+🔐 Auth Token:   ${AUTH_TOKEN.substring(0, 10)}...
+📁 Data Dir:     ${dataDir}
+=======================================
+📌 Rotas disponíveis:
+   GET  /          → Painel principal
+   GET  /config    → Painel de configuração
+   GET  /health    → Status do sistema
+   GET  /devices   → Dispositivos conectados
+   GET  /last-data → Últimos dados
+   POST /send-command → Enviar comando
+   POST /test-sensor → Testar sensor
+   POST /adjust-sensitivity → Ajustar sensibilidade
+=======================================
+  `);
+});
+
+// Monitorar conexões
 setInterval(() => {
-  const uptime = Math.floor((Date.now() - metrics.systemStartTime) / 1000);
-  
-  console.log('\n💚 ========================================');
-  console.log('HEALTH CHECK - Servidor');
-  console.log('========================================');
-  console.log(`⏱️  Uptime: ${formatUptime(uptime)}`);
-  console.log(`🌐 Ambiente: ${NODE_ENV}`);
-  console.log(`📱 Clientes web: ${webClients.size}`);
-  console.log(`📡 ESP32 direto: ${esp32Client ? '✅ CONECTADO' : '❌ DESCONECTADO'}`);
-  console.log(`📡 Receptor LoRa: ${loraReceiverClient ? '✅ CONECTADO' : '❌ DESCONECTADO'}`);
-  console.log(`📊 Pacotes LoRa recebidos: ${metrics.loraPacketsReceived}`);
-  console.log(`📊 Mensagens recebidas: ${metrics.messagesReceived}`);
-  console.log(`📊 Mensagens enviadas: ${metrics.messagesSent}`);
-  console.log(`❌ Erros: ${metrics.errors}`);
-  if (metrics.lastLoraRx) {
-    console.log(`📡 Último pacote LoRa: ${metrics.lastLoraRx}`);
-  }
-  console.log('========================================\n');
-}, 60000); // A cada 60 segundos
-
-// ====== INICIAR SERVIDOR ======
-server.listen(PORT, () => {
-  console.log('\n🚀 ========================================');
-  console.log('   SERVIDOR CAIXA D\'ÁGUA COM LoRa');
-  console.log('========================================');
-  console.log(`🌐 Ambiente: ${NODE_ENV}`);
-  console.log(`🔗 Servidor rodando na porta ${PORT}`);
-  console.log(`🏠 Interface web: http://localhost:${PORT}`);
-  console.log(`💚 Health check: http://localhost:${PORT}/health`);
-  console.log(`📊 Métricas: http://localhost:${PORT}/api/metrics`);
-  console.log(`📡 Suporta: ESP32 direto + Receptor LoRa`);
-  console.log(`🔐 Token: ${AUTH_TOKEN}`);
-  console.log('========================================\n');
-  console.log('✅ Aguardando conexões...\n');
-});
-
-// ====== TRATAMENTO DE ERROS ======
-process.on('uncaughtException', (error) => {
-  console.error('❌ Erro não capturado:', error);
-  metrics.errors++;
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Promise rejeitada não tratada:', reason);
-  metrics.errors++;
-});
-
-// ====== GRACEFUL SHUTDOWN ======
-process.on('SIGTERM', () => {
-  console.log('\n⚠️  Recebido SIGTERM, encerrando graciosamente...');
-  
-  // Fechar todas as conexões WebSocket
-  webClients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify({
-        type: 'server_shutdown',
-        message: 'Servidor encerrando'
-      }));
-      client.close();
-    }
-  });
-  
-  if (esp32Client) esp32Client.close();
-  if (loraReceiverClient) loraReceiverClient.close();
-  
-  server.close(() => {
-    console.log('✅ Servidor encerrado com sucesso');
-    process.exit(0);
-  });
-});
+  console.log(`📊 Status: ${clients.size} cliente(s), ESP32: ${esp32Client ? 'Conectado' : 'Desconectado'}`);
+}, 30000);
