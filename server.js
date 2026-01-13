@@ -1,4 +1,4 @@
-// server.js - Versão para Render.com
+// server.js - VERSÃO COMPLETA CORRIGIDA
 const express = require('express');
 const WebSocket = require('ws');
 const http = require('http');
@@ -6,14 +6,29 @@ const cors = require('cors');
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+
+// IMPORTANTE: Configurar CORS para Render.com
+const wss = new WebSocket.Server({ 
+  server,
+  // Configurar para aceitar conexões de qualquer origem no Render
+  clientTracking: true,
+  verifyClient: (info, cb) => {
+    console.log(`🌐 Nova conexão de: ${info.origin}`);
+    cb(true); // Aceitar todas as conexões
+  }
+});
 
 // Configurações
 const PORT = process.env.PORT || 3000;
-const AUTH_TOKEN = 'esp32_token_secreto_2024'; // SEU TOKEN
+const AUTH_TOKEN = 'esp32_token_secreto_2024';
 
-// Middleware
-app.use(cors());
+// Middleware para Render.com
+app.use(cors({
+  origin: '*', // Permitir todas as origens
+  methods: ['GET', 'POST', 'OPTIONS'],
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(express.static('public'));
 
@@ -24,15 +39,15 @@ const dataStore = {
   webClients: [],
   metrics: {
     totalPackets: 0,
-    validPackets: 0,
-    invalidPackets: 0,
     lastUpdate: new Date()
   }
 };
 
 // WebSocket Server
 wss.on('connection', (ws, req) => {
-  console.log('🔗 Nova conexão WebSocket');
+  console.log('🔗 NOVA CONEXÃO WebSocket estabelecida!');
+  console.log(`📡 Origem: ${req.headers.origin || 'Direct'}`);
+  console.log(`🌐 User-Agent: ${req.headers['user-agent'] || 'Unknown'}`);
   
   const clientId = Date.now();
   const clientInfo = {
@@ -47,26 +62,40 @@ wss.on('connection', (ws, req) => {
   
   dataStore.webClients.push(clientInfo);
   
-  // Enviar mensagem de boas-vindas
+  // Enviar mensagem de boas-vindas IMEDIATAMENTE
   ws.send(JSON.stringify({
     type: 'welcome',
-    message: 'Conectado ao servidor de monitoramento',
+    message: 'Servidor WebSocket conectado!',
     timestamp: new Date().toISOString(),
+    server: 'Render.com',
     requiresAuth: true
   }));
+  
+  // Heartbeat para manter conexão ativa
+  const heartbeatInterval = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'heartbeat',
+        timestamp: new Date().toISOString()
+      }));
+    }
+  }, 30000);
   
   // Receber mensagens
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
+      console.log(`📨 Mensagem recebida [${data.type}]:`, data.device || 'Unknown');
       handleWebSocketMessage(ws, data, clientInfo);
     } catch (error) {
       console.error('❌ Erro ao processar mensagem:', error);
+      console.log('📝 Mensagem raw:', message.toString());
     }
   });
   
   // Desconexão
   ws.on('close', () => {
+    clearInterval(heartbeatInterval);
     console.log(`🔌 Cliente desconectado: ${clientInfo.deviceId || 'Desconhecido'}`);
     dataStore.webClients = dataStore.webClients.filter(c => c.id !== clientId);
   });
@@ -78,45 +107,39 @@ wss.on('connection', (ws, req) => {
 
 // Manipular mensagens WebSocket
 function handleWebSocketMessage(ws, data, clientInfo) {
-  console.log(`📨 Mensagem [${data.type || 'unknown'}]:`, data.device || 'Unknown');
-  
   switch(data.type) {
     case 'auth':
+      console.log(`🔐 Tentativa de autenticação: ${data.device}`);
+      
       if (data.token === AUTH_TOKEN) {
         clientInfo.authenticated = true;
         clientInfo.type = data.device === 'LORA_RECEIVER' ? 'receiver' : 'web';
-        clientInfo.deviceId = data.device || 'Unknown';
+        clientInfo.deviceId = data.device || `DEVICE_${Date.now()}`;
         
-        console.log(`✅ Cliente autenticado: ${data.device} (${clientInfo.ip})`);
+        console.log(`✅✅✅ CLIENTE AUTENTICADO: ${clientInfo.deviceId}`);
         
         ws.send(JSON.stringify({
           type: 'auth_success',
-          message: 'Autenticado com sucesso',
-          timestamp: new Date().toISOString()
+          message: 'Autenticação bem-sucedida!',
+          device: clientInfo.deviceId,
+          timestamp: new Date().toISOString(),
+          welcome: 'Bem-vindo ao sistema de monitoramento LoRa'
         }));
         
-        // Se for receptor LoRa, enviar confirmação
+        // Se for receptor, enviar confirmação especial
         if (clientInfo.type === 'receiver') {
-          console.log('📡 Receptor LoRa autenticado e pronto');
-        }
-        
-        // Se for cliente web, enviar dados existentes
-        if (clientInfo.type === 'web') {
-          setTimeout(() => {
-            if (Object.keys(dataStore.loraDevices).length > 0) {
-              ws.send(JSON.stringify({
-                type: 'devices_list',
-                devices: dataStore.loraDevices,
-                timestamp: new Date().toISOString()
-              }));
-            }
-          }, 1000);
+          console.log(`📡 Receptor LoRa registrado: ${clientInfo.deviceId}`);
+          ws.send(JSON.stringify({
+            type: 'receiver_ready',
+            message: 'Receptor pronto para receber dados',
+            timestamp: new Date().toISOString()
+          }));
         }
       } else {
         console.log('❌ Token inválido recebido');
         ws.send(JSON.stringify({
           type: 'auth_error',
-          message: 'Token inválido',
+          message: 'Token de autenticação inválido',
           timestamp: new Date().toISOString()
         }));
       }
@@ -124,6 +147,7 @@ function handleWebSocketMessage(ws, data, clientInfo) {
       
     case 'lora_data':
       if (clientInfo.authenticated && clientInfo.type === 'receiver') {
+        console.log(`📡 Dados LoRa recebidos de: ${data.device_id}`);
         handleLoraData(data);
         broadcastToWebClients(data);
       }
@@ -131,17 +155,13 @@ function handleWebSocketMessage(ws, data, clientInfo) {
       
     case 'receiver_status':
       if (clientInfo.authenticated && clientInfo.type === 'receiver') {
+        console.log(`📊 Status receptor: ${data.packets_received} pacotes`);
         handleReceiverStatus(data, clientInfo);
-        broadcastToWebClients({
-          type: 'receiver_status_update',
-          data: data,
-          receiverId: clientInfo.deviceId,
-          timestamp: new Date().toISOString()
-        });
       }
       break;
       
     case 'ping':
+      console.log('🔄 Ping recebido');
       ws.send(JSON.stringify({
         type: 'pong',
         timestamp: data.timestamp || Date.now(),
@@ -149,150 +169,71 @@ function handleWebSocketMessage(ws, data, clientInfo) {
       }));
       break;
       
-    case 'get_devices':
-      if (clientInfo.authenticated) {
-        ws.send(JSON.stringify({
-          type: 'devices_list',
-          devices: dataStore.loraDevices,
-          timestamp: new Date().toISOString()
-        }));
-      }
-      break;
-      
-    case 'get_status':
-      ws.send(JSON.stringify({
-        type: 'server_status',
-        metrics: dataStore.metrics,
-        connectedClients: dataStore.webClients.length,
-        authenticatedClients: dataStore.webClients.filter(c => c.authenticated).length,
-        receivers: dataStore.webClients.filter(c => c.type === 'receiver').length,
-        webClients: dataStore.webClients.filter(c => c.type === 'web').length,
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime()
-      }));
-      break;
-      
     default:
-      console.log('📝 Tipo desconhecido:', data.type);
+      console.log('📝 Tipo de mensagem:', data.type);
   }
 }
 
 // Processar dados LoRa
 function handleLoraData(data) {
   const deviceId = data.device_id || 'unknown';
-  const timestamp = new Date(data.real_timestamp * 1000 || Date.now());
+  const timestamp = new Date();
   
-  // Atualizar ou criar dispositivo
   if (!dataStore.loraDevices[deviceId]) {
     dataStore.loraDevices[deviceId] = {
       id: deviceId,
       firstSeen: timestamp,
       lastSeen: timestamp,
       totalPackets: 0,
-      history: [],
-      lastData: null,
-      signalQuality: []
+      lastData: null
     };
-    console.log(`📱 NOVO dispositivo: ${deviceId}`);
+    console.log(`🎉 NOVO DISPOSITIVO DETECTADO: ${deviceId}`);
   }
   
-  // Atualizar dispositivo
   const device = dataStore.loraDevices[deviceId];
   device.lastSeen = timestamp;
   device.totalPackets++;
   device.lastData = data;
   
-  // Adicionar ao histórico
-  device.history.push({
-    timestamp: timestamp,
-    distance: data.distance,
-    level: data.level,
-    percentage: data.percentage,
-    liters: data.liters,
-    rssi: data.rssi,
-    snr: data.snr
-  });
-  
-  if (device.history.length > 50) {
-    device.history = device.history.slice(-50);
-  }
-  
-  // Atualizar qualidade do sinal
-  if (data.rssi) {
-    device.signalQuality.push({
-      timestamp: timestamp,
-      rssi: data.rssi,
-      snr: data.snr
-    });
-    
-    if (device.signalQuality.length > 20) {
-      device.signalQuality = device.signalQuality.slice(-20);
-    }
-  }
-  
-  // Atualizar métricas
   dataStore.metrics.totalPackets++;
-  dataStore.metrics.validPackets++;
   dataStore.metrics.lastUpdate = new Date();
   
   console.log(`📊 ${deviceId}: ${data.percentage}% | ${data.liters}L | RSSI: ${data.rssi}dBm`);
 }
 
-// Processar status do receptor
 function handleReceiverStatus(data, clientInfo) {
-  const receiverId = clientInfo.deviceId || `RECEIVER_${Date.now()}`;
-  
-  dataStore.receivers[receiverId] = {
-    id: receiverId,
-    lastUpdate: new Date(),
-    status: data,
-    uptime: data.uptime || 0,
-    ip: clientInfo.ip
-  };
-  
-  console.log(`📡 Receptor ${receiverId}: ${data.packets_received} pacotes | ${data.wifi_rssi}dBm`);
+  console.log(`📡 Receptor ${clientInfo.deviceId}: WiFi=${data.wifi_rssi}dBm | Pacotes=${data.packets_received}`);
 }
 
-// Broadcast para clientes web
 function broadcastToWebClients(data) {
   const message = JSON.stringify(data);
+  const webClients = dataStore.webClients.filter(c => 
+    c.type === 'web' && c.authenticated && c.ws.readyState === WebSocket.OPEN
+  );
   
-  dataStore.webClients.forEach(client => {
-    if (client.ws.readyState === WebSocket.OPEN && 
-        client.type === 'web' && 
-        client.authenticated) {
-      try {
-        client.ws.send(message);
-      } catch (error) {
-        console.error('❌ Erro ao enviar para cliente:', error);
-      }
+  webClients.forEach(client => {
+    try {
+      client.ws.send(message);
+    } catch (error) {
+      console.error('❌ Erro ao enviar para cliente web:', error);
     }
   });
 }
 
 // ====== ROTAS HTTP ======
 
-// Rota principal
 app.get('/', (req, res) => {
   res.json({
-    service: 'LoRa Water Tank Monitor',
-    version: '2.0.0',
+    service: 'Monitor LoRa - Caixa d\'Água',
     status: 'online',
-    environment: process.env.NODE_ENV || 'development',
+    version: '2.0.0',
     serverTime: new Date().toISOString(),
     uptime: process.uptime(),
     connections: {
       total: dataStore.webClients.length,
-      receivers: dataStore.webClients.filter(c => c.type === 'receiver').length,
-      webClients: dataStore.webClients.filter(c => c.type === 'web').length,
       authenticated: dataStore.webClients.filter(c => c.authenticated).length
     },
-    devices: {
-      total: Object.keys(dataStore.loraDevices).length,
-      active: Object.values(dataStore.loraDevices).filter(d => 
-        (new Date() - d.lastSeen) < 5 * 60 * 1000
-      ).length
-    },
+    devices: Object.keys(dataStore.loraDevices).length,
     metrics: dataStore.metrics
   });
 });
@@ -301,67 +242,59 @@ app.get('/', (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    memory: process.memoryUsage()
+    timestamp: new Date().toISOString()
   });
 });
 
-// API de dispositivos
-app.get('/api/devices', (req, res) => {
-  res.json({
-    count: Object.keys(dataStore.loraDevices).length,
-    devices: dataStore.loraDevices,
-    lastUpdate: dataStore.metrics.lastUpdate
-  });
+// WebSocket test endpoint
+app.get('/ws-test', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Teste WebSocket</title>
+    </head>
+    <body>
+      <h1>Teste de Conexão WebSocket</h1>
+      <div id="status">Conectando...</div>
+      <div id="messages"></div>
+      <script>
+        const ws = new WebSocket('wss://${req.headers.host}');
+        ws.onopen = () => {
+          document.getElementById('status').innerHTML = '✅ CONECTADO!';
+          ws.send(JSON.stringify({
+            type: 'auth',
+            device: 'TEST_CLIENT',
+            token: 'esp32_token_secreto_2024'
+          }));
+        };
+        ws.onmessage = (e) => {
+          const msg = document.createElement('div');
+          msg.textContent = '📨: ' + e.data;
+          document.getElementById('messages').appendChild(msg);
+        };
+        ws.onerror = (e) => {
+          document.getElementById('status').innerHTML = '❌ ERRO: ' + e;
+        };
+      </script>
+    </body>
+    </html>
+  `);
 });
-
-// API de status
-app.get('/api/status', (req, res) => {
-  res.json({
-    server: {
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV
-    },
-    metrics: dataStore.metrics,
-    connections: {
-      total: dataStore.webClients.length,
-      authenticated: dataStore.webClients.filter(c => c.authenticated).length
-    }
-  });
-});
-
-// Limpeza de dispositivos inativos
-setInterval(() => {
-  const now = new Date();
-  const inactiveThreshold = 30 * 60 * 1000; // 30 minutos
-  
-  Object.keys(dataStore.loraDevices).forEach(deviceId => {
-    const device = dataStore.loraDevices[deviceId];
-    if (now - device.lastSeen > inactiveThreshold) {
-      console.log(`🗑️  Removendo dispositivo inativo: ${deviceId}`);
-      delete dataStore.loraDevices[deviceId];
-    }
-  });
-}, 5 * 60 * 1000); // A cada 5 minutos
-
-// Limpeza de clientes desconectados
-setInterval(() => {
-  dataStore.webClients = dataStore.webClients.filter(client => {
-    if (client.ws.readyState === WebSocket.CLOSED) {
-      console.log(`🧹 Limpando cliente desconectado: ${client.deviceId || 'Unknown'}`);
-      return false;
-    }
-    return true;
-  });
-}, 60 * 1000); // A cada 1 minuto
 
 // Iniciar servidor
 server.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
-  console.log(`🔗 WebSocket: wss://testeservidor-6opr.onrender.com`);
-  console.log(`🌐 HTTP: https://testeservidor-6opr.onrender.com`);
-  console.log(`🔐 Token: ${AUTH_TOKEN}`);
-  console.log(`📊 Dashboard: https://testeservidor-6opr.onrender.com/index.html`);
+  console.log(`
+🚀 SERVIDOR INICIADO NO RENDER.COM
+================================
+🌐 HTTP: https://testeservidor-6opr.onrender.com
+🔗 WebSocket: wss://testeservidor-6opr.onrender.com
+🔐 Token: ${AUTH_TOKEN}
+📊 Dashboard: https://testeservidor-6opr.onrender.com
+🔄 Porta: ${PORT}
+✅ Pronto para conexões!
+`);
 });
+
+// Exportar para Render.com
+module.exports = { app, server };
