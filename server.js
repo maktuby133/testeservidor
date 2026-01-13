@@ -1,463 +1,355 @@
-require('dotenv').config();
+// server.js
 const express = require('express');
 const WebSocket = require('ws');
-const path = require('path');
-const fs = require('fs');
+const http = require('http');
+const cors = require('cors');
+
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
 // Configurações
 const PORT = process.env.PORT || 3000;
-const WEBSOCKET_PORT = process.env.WEBSOCKET_PORT || 8080;
-const NODE_ENV = process.env.NODE_ENV || 'development';
-const AUTH_TOKEN = process.env.AUTH_TOKEN || 'esp32_token_secreto_2024';
+const AUTH_TOKEN = process.env.AUTH_TOKEN || 'token_secreto_receptor';
 
-// Inicializar Express
-const app = express();
+// Middleware
+app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// Middleware de logging
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  next();
-});
-
-// Clientes conectados
-const clients = new Map(); // deviceId -> WebSocket
-let esp32Client = null;
-
-// Métricas do sistema
-const metrics = {
-  connections: 0,
-  messagesReceived: 0,
-  messagesSent: 0,
-  errors: 0,
-  lastConnection: null
+// Armazenamento de dados
+const dataStore = {
+  loraDevices: {},
+  receivers: {},
+  webClients: [],
+  metrics: {
+    totalPackets: 0,
+    validPackets: 0,
+    invalidPackets: 0,
+    lastUpdate: new Date()
+  }
 };
 
-// ====== ROTAS HTTP ======
-
-// Página principal
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Painel de configuração
-app.get('/config', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'config_panel.html'));
-});
-
-// Status do sistema
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'healthy',
+// WebSocket Server
+wss.on('connection', (ws, req) => {
+  console.log('🔗 Nova conexão WebSocket');
+  
+  // Adicionar ao array de clientes web
+  const clientId = Date.now();
+  dataStore.webClients.push({
+    id: clientId,
+    ws: ws,
+    type: 'web',
+    connectedAt: new Date()
+  });
+  
+  // Enviar dados iniciais
+  ws.send(JSON.stringify({
+    type: 'welcome',
+    message: 'Conectado ao servidor de monitoramento',
     timestamp: new Date().toISOString(),
-    metrics: {
-      ...metrics,
-      connectedClients: clients.size,
-      esp32Connected: esp32Client ? 'connected' : 'disconnected'
-    },
-    environment: NODE_ENV,
+    devices: Object.keys(dataStore.loraDevices).length,
+    receivers: Object.keys(dataStore.receivers).length
+  }));
+  
+  // Enviar histórico de dispositivos
+  if (Object.keys(dataStore.loraDevices).length > 0) {
+    ws.send(JSON.stringify({
+      type: 'devices_list',
+      devices: dataStore.loraDevices,
+      timestamp: new Date().toISOString()
+    }));
+  }
+  
+  // Mensagens do cliente
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message);
+      handleWebSocketMessage(ws, data, clientId);
+    } catch (error) {
+      console.error('❌ Erro ao processar mensagem:', error);
+    }
+  });
+  
+  // Desconexão
+  ws.on('close', () => {
+    console.log('🔌 Cliente WebSocket desconectado');
+    dataStore.webClients = dataStore.webClients.filter(c => c.id !== clientId);
+  });
+  
+  ws.on('error', (error) => {
+    console.error('❌ Erro WebSocket:', error);
+  });
+});
+
+// Manipular mensagens WebSocket
+function handleWebSocketMessage(ws, data, clientId) {
+  switch(data.type) {
+    case 'auth':
+      if (data.token === AUTH_TOKEN) {
+        console.log(`🔐 Autenticação bem-sucedida: ${data.device}`);
+        
+        // Atualizar tipo do cliente
+        const client = dataStore.webClients.find(c => c.id === clientId);
+        if (client) {
+          client.type = data.device === 'LORA_RECEIVER' ? 'receiver' : 'web';
+          client.deviceId = data.device;
+        }
+        
+        ws.send(JSON.stringify({
+          type: 'auth_success',
+          message: 'Autenticado com sucesso',
+          timestamp: new Date().toISOString()
+        }));
+      }
+      break;
+      
+    case 'lora_data':
+      handleLoraData(data);
+      broadcastToWebClients(data);
+      break;
+      
+    case 'receiver_status':
+      handleReceiverStatus(data);
+      broadcastToWebClients({
+        type: 'receiver_update',
+        data: data,
+        timestamp: new Date().toISOString()
+      });
+      break;
+      
+    case 'ping':
+      ws.send(JSON.stringify({
+        type: 'pong',
+        timestamp: data.timestamp || Date.now()
+      }));
+      break;
+      
+    case 'get_devices':
+      ws.send(JSON.stringify({
+        type: 'devices_list',
+        devices: dataStore.loraDevices,
+        timestamp: new Date().toISOString()
+      }));
+      break;
+      
+    case 'get_status':
+      ws.send(JSON.stringify({
+        type: 'server_status',
+        ...dataStore.metrics,
+        connectedClients: dataStore.webClients.length,
+        timestamp: new Date().toISOString()
+      }));
+      break;
+  }
+}
+
+// Processar dados LoRa
+function handleLoraData(data) {
+  const deviceId = data.device_id;
+  const timestamp = new Date(data.real_timestamp * 1000 || Date.now());
+  
+  // Atualizar ou criar dispositivo
+  if (!dataStore.loraDevices[deviceId]) {
+    dataStore.loraDevices[deviceId] = {
+      id: deviceId,
+      firstSeen: timestamp,
+      lastSeen: timestamp,
+      totalPackets: 0,
+      history: [],
+      lastData: null,
+      signalQuality: []
+    };
+    console.log(`📱 Novo dispositivo detectado: ${deviceId}`);
+  }
+  
+  // Atualizar dispositivo
+  const device = dataStore.loraDevices[deviceId];
+  device.lastSeen = timestamp;
+  device.totalPackets++;
+  device.lastData = data;
+  
+  // Adicionar ao histórico (mantém últimos 100 registros)
+  device.history.push({
+    timestamp: timestamp,
+    distance: data.distance,
+    level: data.level,
+    percentage: data.percertage || data.percentage,
+    liters: data.liters,
+    rssi: data.rssi,
+    snr: data.snr
+  });
+  
+  if (device.history.length > 100) {
+    device.history = device.history.slice(-100);
+  }
+  
+  // Atualizar qualidade do sinal
+  if (data.rssi) {
+    device.signalQuality.push({
+      timestamp: timestamp,
+      rssi: data.rssi,
+      snr: data.snr
+    });
+    
+    if (device.signalQuality.length > 50) {
+      device.signalQuality = device.signalQuality.slice(-50);
+    }
+  }
+  
+  // Atualizar métricas
+  dataStore.metrics.totalPackets++;
+  dataStore.metrics.validPackets++;
+  dataStore.metrics.lastUpdate = new Date();
+  
+  console.log(`📊 Dados de ${deviceId}: ${data.percentage}% | ${data.liters}L | RSSI: ${data.rssi}dBm`);
+}
+
+// Processar status do receptor
+function handleReceiverStatus(data) {
+  const receiverId = `RECEIVER_${data.wifi_rssi || Date.now()}`;
+  
+  dataStore.receivers[receiverId] = {
+    id: receiverId,
+    lastUpdate: new Date(),
+    status: data,
+    uptime: data.uptime || 0
+  };
+  
+  // Limitar quantidade de receptores armazenados
+  if (Object.keys(dataStore.receivers).length > 10) {
+    const oldestKey = Object.keys(dataStore.receivers)[0];
+    delete dataStore.receivers[oldestKey];
+  }
+}
+
+// Broadcast para clientes web
+function broadcastToWebClients(data) {
+  const message = JSON.stringify(data);
+  
+  dataStore.webClients.forEach(client => {
+    if (client.ws.readyState === WebSocket.OPEN && client.type === 'web') {
+      try {
+        client.ws.send(message);
+      } catch (error) {
+        console.error('❌ Erro ao enviar para cliente:', error);
+      }
+    }
+  });
+}
+
+// Rotas HTTP
+app.get('/', (req, res) => {
+  res.json({
+    service: 'LoRa Water Tank Monitor',
+    version: '1.0.0',
+    status: 'online',
+    devices: Object.keys(dataStore.loraDevices).length,
+    receivers: Object.keys(dataStore.receivers).length,
+    webClients: dataStore.webClients.filter(c => c.type === 'web').length,
     uptime: process.uptime()
   });
 });
 
-// Listar dispositivos conectados
-app.get('/devices', (req, res) => {
-  const deviceList = Array.from(clients.keys()).map(deviceId => ({
-    deviceId,
-    connected: true,
-    lastSeen: metrics.lastConnection
-  }));
-  
+app.get('/api/devices', (req, res) => {
   res.json({
-    success: true,
-    count: deviceList.length,
-    devices: deviceList,
-    esp32: esp32Client ? {
-      connected: true,
-      readyState: esp32Client.readyState
-    } : { connected: false }
+    count: Object.keys(dataStore.loraDevices).length,
+    devices: dataStore.loraDevices,
+    lastUpdate: dataStore.metrics.lastUpdate
   });
 });
 
-// Enviar comando para ESP32
-app.post('/send-command', express.json(), (req, res) => {
-  const { command, deviceId = 'esp32' } = req.body;
+app.get('/api/device/:id', (req, res) => {
+  const deviceId = req.params.id;
+  const device = dataStore.loraDevices[deviceId];
   
-  if (!command) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Comando não especificado' 
-    });
-  }
-  
-  let targetClient = null;
-  
-  if (deviceId === 'esp32') {
-    targetClient = esp32Client;
+  if (device) {
+    res.json(device);
   } else {
-    targetClient = clients.get(deviceId);
-  }
-  
-  if (!targetClient || targetClient.readyState !== WebSocket.OPEN) {
-    return res.status(404).json({ 
-      success: false, 
-      message: `Dispositivo ${deviceId} não conectado` 
-    });
-  }
-  
-  try {
-    targetClient.send(command);
-    metrics.messagesSent++;
-    
-    console.log(`📤 Comando enviado para ${deviceId}: ${command}`);
-    
-    res.json({ 
-      success: true, 
-      message: `Comando enviado para ${deviceId}`,
-      command: command,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('❌ Erro ao enviar comando:', error);
-    metrics.errors++;
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erro ao enviar comando',
-      error: error.message 
-    });
+    res.status(404).json({ error: 'Dispositivo não encontrado' });
   }
 });
 
-// Teste do sensor (nova rota)
-app.post('/test-sensor', express.json(), (req, res) => {
-  const { test_type, duration = 10 } = req.body;
+app.get('/api/device/:id/history', (req, res) => {
+  const deviceId = req.params.id;
+  const device = dataStore.loraDevices[deviceId];
+  const limit = parseInt(req.query.limit) || 50;
   
-  if (!esp32Client || esp32Client.readyState !== WebSocket.OPEN) {
-    return res.status(404).json({ 
-      success: false, 
-      message: 'ESP32 não conectado',
-      environment: NODE_ENV
+  if (device) {
+    const history = device.history.slice(-limit);
+    res.json({
+      deviceId: deviceId,
+      count: history.length,
+      history: history
     });
-  }
-  
-  try {
-    let command = '';
-    switch(test_type) {
-      case 'calibration':
-        command = 'start_calibration';
-        break;
-      case 'stability':
-        command = 'test_stability';
-        break;
-      case 'accuracy':
-        command = 'test_accuracy';
-        break;
-      default:
-        return res.status(400).json({
-          success: false,
-          message: 'Tipo de teste inválido'
-        });
-    }
-    
-    esp32Client.send(command);
-    metrics.messagesSent++;
-    
-    console.log(`🔬 Teste de sensor iniciado: ${test_type} por ${duration}s`);
-    
-    res.json({ 
-      success: true, 
-      message: `Teste ${test_type} iniciado`,
-      duration: duration,
-      timestamp: new Date().toISOString(),
-      environment: NODE_ENV
-    });
-  } catch (error) {
-    console.error('❌ Erro ao iniciar teste:', error);
-    metrics.errors++;
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erro ao iniciar teste',
-      error: error.message,
-      environment: NODE_ENV
-    });
+  } else {
+    res.status(404).json({ error: 'Dispositivo não encontrado' });
   }
 });
 
-// Ajuste de sensibilidade (nova rota)
-app.post('/adjust-sensitivity', express.json(), (req, res) => {
-  const { sensitivity } = req.body;
-  
-  if (!esp32Client || esp32Client.readyState !== WebSocket.OPEN) {
-    return res.status(404).json({ 
-      success: false, 
-      message: 'ESP32 não conectado',
-      environment: NODE_ENV
-    });
-  }
-  
-  if (sensitivity < 5 || sensitivity > 50) {
-    return res.status(400).json({
-      success: false,
-      message: 'Sensibilidade deve estar entre 5 e 50 litros'
-    });
-  }
-  
-  try {
-    const command = `set_sensitivity:${sensitivity}`;
-    esp32Client.send(command);
-    metrics.messagesSent++;
-    
-    console.log(`🎯 Sensibilidade ajustada para: ${sensitivity}L`);
-    
-    res.json({ 
-      success: true, 
-      message: `Sensibilidade ajustada para ${sensitivity}L`,
-      sensitivity: sensitivity,
-      timestamp: new Date().toISOString(),
-      environment: NODE_ENV
-    });
-  } catch (error) {
-    console.error('❌ Erro ao ajustar sensibilidade:', error);
-    metrics.errors++;
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erro ao ajustar sensibilidade',
-      error: error.message,
-      environment: NODE_ENV
-    });
-  }
-});
-
-// Últimos dados recebidos
-app.get('/last-data', (req, res) => {
-  const dataDir = path.join(__dirname, 'data');
-  const files = fs.readdirSync(dataDir)
-    .filter(file => file.endsWith('.json'))
-    .sort()
-    .reverse()
-    .slice(0, 10);
-  
-  const lastData = files.map(file => {
-    const content = fs.readFileSync(path.join(dataDir, file), 'utf8');
-    return JSON.parse(content);
-  });
-  
+app.get('/api/status', (req, res) => {
   res.json({
-    success: true,
-    count: lastData.length,
-    data: lastData
+    server: {
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      timestamp: new Date().toISOString()
+    },
+    metrics: dataStore.metrics,
+    connections: {
+      total: dataStore.webClients.length,
+      web: dataStore.webClients.filter(c => c.type === 'web').length,
+      receivers: dataStore.webClients.filter(c => c.type === 'receiver').length
+    }
   });
 });
 
-// ====== WEBSOCKET SERVER ======
-
-const wss = new WebSocket.Server({ port: WEBSOCKET_PORT });
-
-wss.on('connection', (ws, req) => {
-  const clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  let deviceId = 'unknown';
-  let authenticated = false;
+app.get('/api/metrics', (req, res) => {
+  // Calcular estatísticas
+  const devices = Object.values(dataStore.loraDevices);
+  const stats = {
+    totalDevices: devices.length,
+    totalPackets: dataStore.metrics.totalPackets,
+    averageSignal: null,
+    devicesLowBattery: 0,
+    lastUpdates: devices.map(d => ({
+      id: d.id,
+      lastSeen: d.lastSeen,
+      percentage: d.lastData?.percentage || 0
+    }))
+  };
   
-  console.log(`🟢 Nova conexão WebSocket: ${clientId}`);
-  metrics.connections++;
-  metrics.lastConnection = new Date().toISOString();
-  
-  ws.on('message', (message) => {
-    try {
-      const data = message.toString();
-      console.log(`📨 Mensagem recebida de ${clientId}:`, data.substring(0, 100));
-      metrics.messagesReceived++;
-      
-      // Tentar parsear como JSON
-      try {
-        const jsonData = JSON.parse(data);
-        
-        // Autenticação
-        if (jsonData.type === 'auth') {
-          if (jsonData.token === AUTH_TOKEN) {
-            authenticated = true;
-            deviceId = jsonData.device || clientId;
-            
-            if (jsonData.device_type === 'LORA_RECEIVER' || jsonData.device === 'RECEPTOR_01') {
-              esp32Client = ws;
-              console.log(`✅ ESP32 Receptor autenticado: ${deviceId}`);
-            } else {
-              clients.set(deviceId, ws);
-              console.log(`✅ Cliente autenticado: ${deviceId}`);
-            }
-            
-            ws.send(JSON.stringify({
-              type: 'auth_response',
-              success: true,
-              message: 'Autenticação bem-sucedida'
-            }));
-          } else {
-            console.log(`❌ Token inválido de: ${clientId}`);
-            ws.send(JSON.stringify({
-              type: 'auth_response',
-              success: false,
-              message: 'Token de autenticação inválido'
-            }));
-            ws.close();
-          }
-          return;
-        }
-        
-        // Se não está autenticado, rejeitar
-        if (!authenticated) {
-          console.log(`❌ Mensagem não autenticada de: ${clientId}`);
-          ws.send(JSON.stringify({
-            type: 'error',
-            message: 'Autenticação necessária'
-          }));
-          return;
-        }
-        
-        // Processar dados do sensor
-        if (jsonData.type === 'sensor_data' || jsonData.type === 'sensor_update') {
-          console.log(`📊 Dados do sensor recebidos de ${deviceId}:`, {
-            distance: jsonData.distance,
-            liters: jsonData.liters,
-            percentage: jsonData.percentage
-          });
-          
-          // Salvar dados
-          saveSensorData(jsonData);
-          
-          // Broadcast para outros clientes (exceto o remetente)
-          wss.clients.forEach(client => {
-            if (client !== ws && client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify({
-                type: 'sensor_update',
-                device: deviceId,
-                data: jsonData,
-                timestamp: new Date().toISOString()
-              }));
-            }
-          });
-        }
-        
-        // Status do receptor
-        if (jsonData.type === 'receiver_status') {
-          console.log(`📡 Status do receptor ${deviceId}:`, {
-            packets: jsonData.lora_packets_received,
-            errors: jsonData.lora_packets_error
-          });
-        }
-        
-      } catch (jsonError) {
-        // Se não for JSON, tratar como mensagem simples
-        console.log(`📝 Mensagem simples de ${deviceId}: ${data}`);
-        
-        if (data === 'ping') {
-          ws.send('pong');
-        } else if (data.startsWith('set_sensitivity:')) {
-          const sensitivity = data.split(':')[1];
-          console.log(`🎯 Configuração de sensibilidade: ${sensitivity}L`);
-        }
-      }
-      
-    } catch (error) {
-      console.error('❌ Erro ao processar mensagem:', error);
-      metrics.errors++;
-    }
-  });
-  
-  ws.on('close', () => {
-    console.log(`🔴 Conexão fechada: ${clientId}`);
+  // Calcular RSSI médio
+  const allRssi = devices
+    .flatMap(d => d.signalQuality.map(q => q.rssi))
+    .filter(r => r != null);
     
-    // Remover da lista de clientes
-    if (deviceId !== 'unknown') {
-      clients.delete(deviceId);
-    }
-    
-    // Limpar ESP32 se for ele
-    if (ws === esp32Client) {
-      esp32Client = null;
-      console.log('📡 ESP32 desconectado');
-    }
-    
-    metrics.connections = Math.max(0, metrics.connections - 1);
-  });
-  
-  ws.on('error', (error) => {
-    console.error(`❌ Erro no WebSocket ${clientId}:`, error);
-    metrics.errors++;
-  });
-  
-  // Enviar mensagem de boas-vindas
-  ws.send(JSON.stringify({
-    type: 'welcome',
-    message: 'Conectado ao servidor Caixa d\'Água Inteligente',
-    server_time: new Date().toISOString(),
-    requires_auth: true
-  }));
-});
-
-// ====== FUNÇÕES AUXILIARES ======
-
-function saveSensorData(data) {
-  try {
-    const dataDir = path.join(__dirname, 'data');
-    
-    // Criar diretório se não existir
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-    
-    // Adicionar timestamp
-    const sensorData = {
-      ...data,
-      received_at: new Date().toISOString(),
-      server_timestamp: Date.now()
-    };
-    
-    // Salvar em arquivo
-    const filename = `sensor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.json`;
-    const filepath = path.join(dataDir, filename);
-    
-    fs.writeFileSync(filepath, JSON.stringify(sensorData, null, 2));
-    
-    console.log(`💾 Dados salvos em: ${filename}`);
-    
-  } catch (error) {
-    console.error('❌ Erro ao salvar dados:', error);
+  if (allRssi.length > 0) {
+    const sum = allRssi.reduce((a, b) => a + b, 0);
+    stats.averageSignal = sum / allRssi.length;
   }
-}
-
-// ====== INICIALIZAÇÃO ======
-
-// Criar diretório de dados
-const dataDir = path.join(__dirname, 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
-
-// Iniciar servidor HTTP
-app.listen(PORT, () => {
-  console.log(`
-🚀 SERVIDOR INICIADO!
-=======================================
-🌐 HTTP Server:  http://localhost:${PORT}
-🔗 WebSocket:    ws://localhost:${WEBSOCKET_PORT}
-🔐 Auth Token:   ${AUTH_TOKEN.substring(0, 10)}...
-📁 Data Dir:     ${dataDir}
-=======================================
-📌 Rotas disponíveis:
-   GET  /          → Painel principal
-   GET  /config    → Painel de configuração
-   GET  /health    → Status do sistema
-   GET  /devices   → Dispositivos conectados
-   GET  /last-data → Últimos dados
-   POST /send-command → Enviar comando
-   POST /test-sensor → Testar sensor
-   POST /adjust-sensitivity → Ajustar sensibilidade
-=======================================
-  `);
+  
+  res.json(stats);
 });
 
-// Monitorar conexões
+// Limpeza periódica de dispositivos inativos
 setInterval(() => {
-  console.log(`📊 Status: ${clients.size} cliente(s), ESP32: ${esp32Client ? 'Conectado' : 'Desconectado'}`);
-}, 30000);
+  const now = new Date();
+  const inactiveThreshold = 30 * 60 * 1000; // 30 minutos
+  
+  Object.keys(dataStore.loraDevices).forEach(deviceId => {
+    const device = dataStore.loraDevices[deviceId];
+    if (now - device.lastSeen > inactiveThreshold) {
+      console.log(`🗑️  Removendo dispositivo inativo: ${deviceId}`);
+      delete dataStore.loraDevices[deviceId];
+    }
+  });
+}, 5 * 60 * 1000); // A cada 5 minutos
+
+// Iniciar servidor
+server.listen(PORT, () => {
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`🔗 WebSocket: ws://localhost:${PORT}`);
+  console.log(`🌐 HTTP: http://localhost:${PORT}`);
+});
+
+module.exports = { app, server, wss, dataStore };
