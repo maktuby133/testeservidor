@@ -1,4 +1,4 @@
-// server.js
+// server.js - Versão para Render.com
 const express = require('express');
 const WebSocket = require('ws');
 const http = require('http');
@@ -10,7 +10,7 @@ const wss = new WebSocket.Server({ server });
 
 // Configurações
 const PORT = process.env.PORT || 3000;
-const AUTH_TOKEN = 'esp32_token_secreto_2024'; // SEU TOKEN AQUI
+const AUTH_TOKEN = 'esp32_token_secreto_2024'; // SEU TOKEN
 
 // Middleware
 app.use(cors());
@@ -41,7 +41,8 @@ wss.on('connection', (ws, req) => {
     type: 'unknown',
     deviceId: null,
     authenticated: false,
-    connectedAt: new Date()
+    connectedAt: new Date(),
+    ip: req.socket.remoteAddress
   };
   
   dataStore.webClients.push(clientInfo);
@@ -50,7 +51,8 @@ wss.on('connection', (ws, req) => {
   ws.send(JSON.stringify({
     type: 'welcome',
     message: 'Conectado ao servidor de monitoramento',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    requiresAuth: true
   }));
   
   // Receber mensagens
@@ -65,7 +67,7 @@ wss.on('connection', (ws, req) => {
   
   // Desconexão
   ws.on('close', () => {
-    console.log('🔌 Cliente desconectado');
+    console.log(`🔌 Cliente desconectado: ${clientInfo.deviceId || 'Desconhecido'}`);
     dataStore.webClients = dataStore.webClients.filter(c => c.id !== clientId);
   });
   
@@ -76,7 +78,7 @@ wss.on('connection', (ws, req) => {
 
 // Manipular mensagens WebSocket
 function handleWebSocketMessage(ws, data, clientInfo) {
-  console.log(`📨 Mensagem recebida [${data.type}]:`, data.device || 'Unknown');
+  console.log(`📨 Mensagem [${data.type || 'unknown'}]:`, data.device || 'Unknown');
   
   switch(data.type) {
     case 'auth':
@@ -85,7 +87,7 @@ function handleWebSocketMessage(ws, data, clientInfo) {
         clientInfo.type = data.device === 'LORA_RECEIVER' ? 'receiver' : 'web';
         clientInfo.deviceId = data.device || 'Unknown';
         
-        console.log(`✅ Cliente autenticado: ${data.device}`);
+        console.log(`✅ Cliente autenticado: ${data.device} (${clientInfo.ip})`);
         
         ws.send(JSON.stringify({
           type: 'auth_success',
@@ -93,7 +95,12 @@ function handleWebSocketMessage(ws, data, clientInfo) {
           timestamp: new Date().toISOString()
         }));
         
-        // Enviar dados existentes para novo cliente web
+        // Se for receptor LoRa, enviar confirmação
+        if (clientInfo.type === 'receiver') {
+          console.log('📡 Receptor LoRa autenticado e pronto');
+        }
+        
+        // Se for cliente web, enviar dados existentes
         if (clientInfo.type === 'web') {
           setTimeout(() => {
             if (Object.keys(dataStore.loraDevices).length > 0) {
@@ -116,18 +123,19 @@ function handleWebSocketMessage(ws, data, clientInfo) {
       break;
       
     case 'lora_data':
-      if (clientInfo.authenticated) {
+      if (clientInfo.authenticated && clientInfo.type === 'receiver') {
         handleLoraData(data);
         broadcastToWebClients(data);
       }
       break;
       
     case 'receiver_status':
-      if (clientInfo.authenticated) {
-        handleReceiverStatus(data);
+      if (clientInfo.authenticated && clientInfo.type === 'receiver') {
+        handleReceiverStatus(data, clientInfo);
         broadcastToWebClients({
-          type: 'receiver_update',
+          type: 'receiver_status_update',
           data: data,
+          receiverId: clientInfo.deviceId,
           timestamp: new Date().toISOString()
         });
       }
@@ -136,30 +144,36 @@ function handleWebSocketMessage(ws, data, clientInfo) {
     case 'ping':
       ws.send(JSON.stringify({
         type: 'pong',
-        timestamp: data.timestamp || Date.now()
+        timestamp: data.timestamp || Date.now(),
+        serverTime: new Date().toISOString()
       }));
       break;
       
     case 'get_devices':
-      ws.send(JSON.stringify({
-        type: 'devices_list',
-        devices: dataStore.loraDevices,
-        timestamp: new Date().toISOString()
-      }));
+      if (clientInfo.authenticated) {
+        ws.send(JSON.stringify({
+          type: 'devices_list',
+          devices: dataStore.loraDevices,
+          timestamp: new Date().toISOString()
+        }));
+      }
       break;
       
     case 'get_status':
       ws.send(JSON.stringify({
         type: 'server_status',
-        ...dataStore.metrics,
+        metrics: dataStore.metrics,
         connectedClients: dataStore.webClients.length,
         authenticatedClients: dataStore.webClients.filter(c => c.authenticated).length,
-        timestamp: new Date().toISOString()
+        receivers: dataStore.webClients.filter(c => c.type === 'receiver').length,
+        webClients: dataStore.webClients.filter(c => c.type === 'web').length,
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
       }));
       break;
       
     default:
-      console.log('📝 Tipo de mensagem desconhecido:', data.type);
+      console.log('📝 Tipo desconhecido:', data.type);
   }
 }
 
@@ -179,7 +193,7 @@ function handleLoraData(data) {
       lastData: null,
       signalQuality: []
     };
-    console.log(`📱 Novo dispositivo detectado: ${deviceId}`);
+    console.log(`📱 NOVO dispositivo: ${deviceId}`);
   }
   
   // Atualizar dispositivo
@@ -188,7 +202,7 @@ function handleLoraData(data) {
   device.totalPackets++;
   device.lastData = data;
   
-  // Adicionar ao histórico (mantém últimos 50 registros)
+  // Adicionar ao histórico
   device.history.push({
     timestamp: timestamp,
     distance: data.distance,
@@ -225,20 +239,21 @@ function handleLoraData(data) {
 }
 
 // Processar status do receptor
-function handleReceiverStatus(data) {
-  const receiverId = `RECEIVER_${Date.now()}`;
+function handleReceiverStatus(data, clientInfo) {
+  const receiverId = clientInfo.deviceId || `RECEIVER_${Date.now()}`;
   
   dataStore.receivers[receiverId] = {
     id: receiverId,
     lastUpdate: new Date(),
     status: data,
-    uptime: data.uptime || 0
+    uptime: data.uptime || 0,
+    ip: clientInfo.ip
   };
   
-  console.log(`📡 Status receptor: ${data.packets_received} pacotes recebidos`);
+  console.log(`📡 Receptor ${receiverId}: ${data.packets_received} pacotes | ${data.wifi_rssi}dBm`);
 }
 
-// Broadcast para clientes web autenticados
+// Broadcast para clientes web
 function broadcastToWebClients(data) {
   const message = JSON.stringify(data);
   
@@ -255,21 +270,44 @@ function broadcastToWebClients(data) {
   });
 }
 
-// Rotas HTTP
+// ====== ROTAS HTTP ======
+
+// Rota principal
 app.get('/', (req, res) => {
   res.json({
     service: 'LoRa Water Tank Monitor',
-    version: '1.0.0',
+    version: '2.0.0',
     status: 'online',
-    devices: Object.keys(dataStore.loraDevices).length,
-    receivers: Object.keys(dataStore.receivers).length,
-    webClients: dataStore.webClients.filter(c => c.type === 'web').length,
-    receiversConnected: dataStore.webClients.filter(c => c.type === 'receiver').length,
+    environment: process.env.NODE_ENV || 'development',
+    serverTime: new Date().toISOString(),
     uptime: process.uptime(),
-    token: AUTH_TOKEN ? 'Configurado' : 'Não configurado'
+    connections: {
+      total: dataStore.webClients.length,
+      receivers: dataStore.webClients.filter(c => c.type === 'receiver').length,
+      webClients: dataStore.webClients.filter(c => c.type === 'web').length,
+      authenticated: dataStore.webClients.filter(c => c.authenticated).length
+    },
+    devices: {
+      total: Object.keys(dataStore.loraDevices).length,
+      active: Object.values(dataStore.loraDevices).filter(d => 
+        (new Date() - d.lastSeen) < 5 * 60 * 1000
+      ).length
+    },
+    metrics: dataStore.metrics
   });
 });
 
+// Health check para Render
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
+  });
+});
+
+// API de dispositivos
 app.get('/api/devices', (req, res) => {
   res.json({
     count: Object.keys(dataStore.loraDevices).length,
@@ -278,43 +316,23 @@ app.get('/api/devices', (req, res) => {
   });
 });
 
-app.get('/api/device/:id', (req, res) => {
-  const deviceId = req.params.id;
-  const device = dataStore.loraDevices[deviceId];
-  
-  if (device) {
-    res.json(device);
-  } else {
-    res.status(404).json({ error: 'Dispositivo não encontrado' });
-  }
-});
-
+// API de status
 app.get('/api/status', (req, res) => {
   res.json({
     server: {
       uptime: process.uptime(),
-      memory: process.memoryUsage(),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV
     },
     metrics: dataStore.metrics,
     connections: {
       total: dataStore.webClients.length,
-      web: dataStore.webClients.filter(c => c.type === 'web').length,
-      receivers: dataStore.webClients.filter(c => c.type === 'receiver').length,
       authenticated: dataStore.webClients.filter(c => c.authenticated).length
     }
   });
 });
 
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
-  });
-});
-
-// Limpeza periódica de dispositivos inativos
+// Limpeza de dispositivos inativos
 setInterval(() => {
   const now = new Date();
   const inactiveThreshold = 30 * 60 * 1000; // 30 minutos
@@ -328,11 +346,22 @@ setInterval(() => {
   });
 }, 5 * 60 * 1000); // A cada 5 minutos
 
+// Limpeza de clientes desconectados
+setInterval(() => {
+  dataStore.webClients = dataStore.webClients.filter(client => {
+    if (client.ws.readyState === WebSocket.CLOSED) {
+      console.log(`🧹 Limpando cliente desconectado: ${client.deviceId || 'Unknown'}`);
+      return false;
+    }
+    return true;
+  });
+}, 60 * 1000); // A cada 1 minuto
+
 // Iniciar servidor
 server.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
-  console.log(`🔗 WebSocket: ws://localhost:${PORT}`);
-  console.log(`🌐 HTTP: http://localhost:${PORT}`);
+  console.log(`🔗 WebSocket: wss://testeservidor-6opr.onrender.com`);
+  console.log(`🌐 HTTP: https://testeservidor-6opr.onrender.com`);
   console.log(`🔐 Token: ${AUTH_TOKEN}`);
-  console.log(`📁 Dashboard: http://localhost:${PORT}/index.html`);
+  console.log(`📊 Dashboard: https://testeservidor-6opr.onrender.com/index.html`);
 });
