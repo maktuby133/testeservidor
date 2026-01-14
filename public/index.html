@@ -1,534 +1,194 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configuração - Caixa d'Água Inteligente</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        
-        .config-container {
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 600px;
-            width: 100%;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .header h1 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 28px;
-            font-weight: 800;
-        }
-        
-        .header p {
-            color: #666;
-            font-size: 16px;
-            line-height: 1.5;
-        }
-        
-        .header-icon {
-            font-size: 48px;
-            margin-bottom: 20px;
-            color: #667eea;
-        }
-        
-        .form-group {
-            margin-bottom: 25px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-            font-weight: 600;
-            font-size: 14px;
-        }
-        
-        .input-with-icon {
-            position: relative;
-        }
-        
-        .input-icon {
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #999;
-        }
-        
-        input[type="text"], input[type="number"], input[type="password"] {
-            width: 100%;
-            padding: 15px 15px 15px 45px;
-            border: 2px solid #e0e0e0;
-            border-radius: 12px;
-            font-size: 16px;
-            transition: all 0.3s;
-            box-sizing: border-box;
-        }
-        
-        input[type="text"]:focus, input[type="number"]:focus, input[type="password"]:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-            outline: none;
-        }
-        
-        .input-help {
-            font-size: 12px;
-            color: #888;
-            margin-top: 5px;
-            margin-left: 45px;
-        }
-        
-        .slider-container {
-            margin-top: 15px;
-        }
-        
-        .slider-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-        }
-        
-        .slider-value {
-            font-weight: bold;
-            color: #667eea;
-            font-size: 16px;
-        }
-        
-        input[type="range"] {
-            width: 100%;
-            height: 6px;
-            border-radius: 3px;
-            background: linear-gradient(to right, #667eea, #764ba2);
-            outline: none;
-            -webkit-appearance: none;
-        }
-        
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: white;
-            cursor: pointer;
-            border: 3px solid #667eea;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        }
-        
-        .sensor-preview {
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-        
-        .sensor-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: #333;
-            margin-bottom: 15px;
-        }
-        
-        .sensor-value {
-            font-size: 36px;
-            font-weight: 800;
-            color: #667eea;
-            margin: 10px 0;
-        }
-        
-        .sensor-unit {
-            font-size: 14px;
-            color: #666;
-            font-weight: 600;
-        }
-        
-        .sensor-visual {
-            height: 20px;
-            background: linear-gradient(to right, #32CD32, #FFA500, #FF4500);
-            border-radius: 10px;
-            margin: 20px 0;
-            position: relative;
-        }
-        
-        .sensor-marker {
-            position: absolute;
-            top: -5px;
-            width: 30px;
-            height: 30px;
-            background: #667eea;
-            border-radius: 50%;
-            transform: translateX(-50%);
-            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
-        }
-        
-        .sensor-labels {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            color: #666;
-            font-weight: 600;
-        }
-        
-        .btn-container {
-            display: flex;
-            gap: 15px;
-            margin-top: 40px;
-        }
-        
-        .btn-save, .btn-cancel {
-            flex: 1;
-            padding: 18px;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-        
-        .btn-save {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        
-        .btn-save:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-        }
-        
-        .btn-cancel {
-            background: #f5f5f5;
-            color: #666;
-        }
-        
-        .btn-cancel:hover {
-            background: #e0e0e0;
-        }
-        
-        .connection-info {
-            background: #e8f4fd;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
-        
-        .info-title {
-            font-weight: 700;
-            color: #0066cc;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .info-item {
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .status-indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 8px;
-        }
-        
-        .status-online {
-            background: #32CD32;
-        }
-        
-        .status-offline {
-            background: #FF4500;
-        }
-        
-        .advanced-toggle {
-            background: none;
-            border: none;
-            color: #667eea;
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 14px;
-            margin-top: 10px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .advanced-settings {
-            display: none;
-            background: #f9f9f9;
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-        
-        @media (max-width: 768px) {
-            .config-container {
-                padding: 25px;
-            }
-            
-            .header h1 {
-                font-size: 24px;
-            }
-            
-            .btn-container {
-                flex-direction: column;
-            }
-            
-            .sensor-value {
-                font-size: 28px;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>💧 Monitoramento Caixa d'Água</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Chart.js para gráficos -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0077cc, #00c6ff);
+      margin: 0;
+      padding: 0;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    header {
+      text-align: center;
+      padding: 30px 20px;
+      animation: fadeInDown 1s ease;
+    }
+    h1 {
+      font-size: 2.5em;
+      margin: 0;
+      color: #fff;
+      text-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+    }
+    p {
+      margin: 5px 0;
+    }
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      width: 90%;
+      max-width: 1200px;
+      margin: 20px auto;
+    }
+    .card {
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      animation: fadeInUp 1s ease;
+      transition: transform 0.3s;
+    }
+    .card:hover {
+      transform: translateY(-5px) scale(1.02);
+    }
+    .card h2 {
+      margin-top: 0;
+      font-size: 1.4em;
+      color: #fff;
+      border-bottom: 1px solid rgba(255,255,255,0.3);
+      padding-bottom: 10px;
+    }
+    .value {
+      font-size: 1.2em;
+      margin: 8px 0;
+    }
+    .status.ok { color: #00ff88; font-weight: bold; }
+    .status.alert { color: #ff4444; font-weight: bold; }
+    canvas {
+      margin-top: 15px;
+    }
+    footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 0.9em;
+      color: rgba(255,255,255,0.8);
+    }
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
 </head>
 <body>
-    <div class="config-container">
-        <div class="header">
-            <div class="header-icon">💧</div>
-            <h1>Configuração da Caixa d'Água Inteligente</h1>
-            <p>Configure os parâmetros do sistema para monitoramento preciso</p>
-        </div>
-        
-        <div class="connection-info">
-            <div class="info-title">📡 Informações de Conexão</div>
-            <div class="info-item">
-                <span class="status-indicator status-online"></span>
-                <strong>SSID:</strong> CaixaDagua_Config
-            </div>
-            <div class="info-item">
-                <span class="status-indicator status-online"></span>
-                <strong>Senha:</strong> 12345678
-            </div>
-            <div class="info-item">
-                <span class="status-indicator status-online"></span>
-                <strong>IP:</strong> 192.168.4.1
-            </div>
-            <div class="info-item">
-                <span class="status-indicator status-online"></span>
-                <strong>Dispositivo:</strong> ESP32 Water Monitor
-            </div>
-        </div>
-        
-        <div class="sensor-preview">
-            <div class="sensor-title">Leitura Atual do Sensor</div>
-            <div class="sensor-value" id="sensorReading">--.--</div>
-            <div class="sensor-unit">centímetros</div>
-            
-            <div class="sensor-visual">
-                <div class="sensor-marker" id="sensorMarker"></div>
-            </div>
-            
-            <div class="sensor-labels">
-                <span>0 cm</span>
-                <span>Cheio</span>
-            </div>
-        </div>
-        
-        <form id="configForm">
-            <div class="form-group">
-                <label for="altura">📏 Altura da Caixa (cm)</label>
-                <div class="input-with-icon">
-                    <span class="input-icon">📐</span>
-                    <input type="number" id="altura" name="altura" value="110" min="20" max="500" step="0.1" required>
-                </div>
-                <div class="input-help">Altura interna da caixa d'água em centímetros (20-500 cm)</div>
-            </div>
-            
-            <div class="form-group">
-                <label for="volume">💧 Volume Total (Litros)</label>
-                <div class="input-with-icon">
-                    <span class="input-icon">📊</span>
-                    <input type="number" id="volume" name="volume" value="5000" min="100" max="50000" step="1" required>
-                </div>
-                <div class="input-help">Capacidade total da caixa d'água em litros (100-50000 L)</div>
-            </div>
-            
-            <div class="form-group">
-                <label for="sensibilidade">🎯 Sensibilidade de Consumo</label>
-                <div class="slider-container">
-                    <div class="slider-header">
-                        <span>Variação Mínima para Registrar</span>
-                        <span class="slider-value" id="sensibilidadeValue">18 L</span>
-                    </div>
-                    <input type="range" id="sensibilidade" name="sensibilidade" min="5" max="50" value="18" 
-                           oninput="updateSensitivity(this.value)">
-                </div>
-                <div class="input-help">Evita falsos registros de consumo por variações pequenas (5-50 litros)</div>
-            </div>
-            
-            <div class="form-group">
-                <button type="button" class="advanced-toggle" onclick="toggleAdvanced()">
-                    ⚙️ Configurações Avançadas
-                </button>
-                
-                <div class="advanced-settings" id="advancedSettings">
-                    <div class="form-group">
-                        <label for="offset">🔧 Offset do Sensor (cm)</label>
-                        <div class="slider-container">
-                            <div class="slider-header">
-                                <span>Ajuste Fino de Calibração</span>
-                                <span class="slider-value" id="offsetValue">0.0 cm</span>
-                            </div>
-                            <input type="range" id="offset" name="offset" min="-10" max="10" step="0.1" value="0" 
-                                   oninput="updateOffset(this.value)">
-                        </div>
-                        <div class="input-help">Correção fina da leitura do sensor (±10 cm)</div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="token">🔐 Token de Autenticação</label>
-                        <div class="input-with-icon">
-                            <span class="input-icon">🔑</span>
-                            <input type="text" id="token" name="token" value="esp32_token_secreto_2024" maxlength="49" required>
-                        </div>
-                        <div class="input-help">Token para comunicação segura com o servidor (mínimo 6 caracteres)</div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="intervalo">⏱️ Intervalo de Leitura (ms)</label>
-                        <div class="slider-container">
-                            <div class="slider-header">
-                                <span>Tempo entre leituras do sensor</span>
-                                <span class="slider-value" id="intervaloValue">2000 ms</span>
-                            </div>
-                            <input type="range" id="intervalo" name="intervalo" min="1000" max="10000" step="500" value="2000" 
-                                   oninput="updateInterval(this.value)">
-                        </div>
-                        <div class="input-help">Intervalo entre leituras do sensor (1000-10000 ms)</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="btn-container">
-                <button type="submit" class="btn-save">
-                    💾 Salvar Configurações
-                </button>
-                <button type="button" class="btn-cancel" onclick="window.location.reload()">
-                    ↩️ Cancelar
-                </button>
-            </div>
-        </form>
+  <header>
+    <h1>💧 Monitoramento da Caixa d'Água</h1>
+    <p>Dados em tempo real via LoRa + WebSocket</p>
+  </header>
+
+  <div class="dashboard">
+    <div class="card">
+      <h2>📊 Nível da Caixa</h2>
+      <p class="value">Distância: <span id="distance">--</span> cm</p>
+      <p class="value">Altura: <span id="level">--</span> cm</p>
+      <p class="value">Percentual: <span id="percentage">--</span>%</p>
+      <p class="value">Volume: <span id="liters">--</span> L</p>
+      <p>Sensor: <span id="sensorStatus" class="status">--</span></p>
     </div>
 
-    <script>
-        // Atualizar valores dos sliders
-        function updateSensitivity(value) {
-            document.getElementById('sensibilidadeValue').textContent = value + ' L';
-            updateSensorPreview();
+    <div class="card">
+      <h2>📡 Status LoRa</h2>
+      <p class="value">RSSI: <span id="rssi">--</span> dBm</p>
+      <p class="value">SNR: <span id="snr">--</span> dB</p>
+      <p class="value">Pacotes RX: <span id="rxCount">--</span></p>
+      <p class="value">Último dispositivo: <span id="lastDevice">--</span></p>
+    </div>
+
+    <div class="card">
+      <h2>📈 Consumo Diário</h2>
+      <canvas id="consumoChart"></canvas>
+    </div>
+  </div>
+
+  <footer>
+    <p>🏠 Sistema de Automação - LoRa + ESP32 + WebSocket</p>
+  </footer>
+
+  <script>
+    const wsUrl = "wss://testeservidor-6opr.onrender.com";
+    const socket = new WebSocket(wsUrl);
+
+    // Gráfico de consumo
+    const ctx = document.getElementById('consumoChart').getContext('2d');
+    const consumoChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: Array.from({length: 24}, (_, i) => i + "h"),
+        datasets: [{
+          label: 'Consumo (L)',
+          data: Array(24).fill(0),
+          backgroundColor: 'rgba(0, 255, 136, 0.6)',
+          borderColor: '#00ff88',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true }
         }
-        
-        function updateOffset(value) {
-            document.getElementById('offsetValue').textContent = parseFloat(value).toFixed(1) + ' cm';
-            updateSensorPreview();
-        }
-        
-        function updateInterval(value) {
-            document.getElementById('intervaloValue').textContent = value + ' ms';
-        }
-        
-        function toggleAdvanced() {
-            const advanced = document.getElementById('advancedSettings');
-            const button = document.querySelector('.advanced-toggle');
-            
-            if (advanced.style.display === 'none' || advanced.style.display === '') {
-                advanced.style.display = 'block';
-                button.innerHTML = '⚙️ Ocultar Configurações Avançadas';
-            } else {
-                advanced.style.display = 'none';
-                button.innerHTML = '⚙️ Configurações Avançadas';
-            }
-        }
-        
-        // Simular leitura do sensor
-        function updateSensorPreview() {
-            // Simular uma leitura entre 2 e 120 cm
-            const simulatedReading = 15 + Math.random() * 100;
-            document.getElementById('sensorReading').textContent = simulatedReading.toFixed(1);
-            
-            // Atualizar marcador na barra (0-120 cm)
-            const marker = document.getElementById('sensorMarker');
-            const percentage = Math.min(Math.max(simulatedReading / 120 * 100, 0), 100);
-            marker.style.left = percentage + '%';
-        }
-        
-        // Atualizar a leitura a cada 2 segundos
-        setInterval(updateSensorPreview, 2000);
-        updateSensorPreview(); // Chamar imediatamente
-        
-        // Validação do formulário
-        document.getElementById('configForm').onsubmit = function(e) {
-            e.preventDefault();
-            
-            const altura = parseFloat(document.getElementById('altura').value);
-            const volume = parseFloat(document.getElementById('volume').value);
-            const token = document.getElementById('token').value;
-            
-            let errors = [];
-            
-            if (altura < 20 || altura > 500) {
-                errors.push('Altura deve estar entre 20 e 500 cm');
-            }
-            
-            if (volume < 100 || volume > 50000) {
-                errors.push('Volume deve estar entre 100 e 50000 litros');
-            }
-            
-            if (token.length < 6) {
-                errors.push('Token deve ter pelo menos 6 caracteres');
-            }
-            
-            if (errors.length > 0) {
-                alert('❌ Erros de validação:\n\n' + errors.join('\n'));
-                return false;
-            }
-            
-            // Mostrar mensagem de sucesso
-            alert('✅ Configurações salvas com sucesso!\n\nO sistema será reinicializado com as novas configurações.');
-            
-            // Em um sistema real, aqui enviaríamos os dados para o ESP32
-            // Por enquanto, apenas recarregamos a página
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
-            
-            return true;
-        };
-        
-        // Inicializar
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🎨 Painel de configuração moderno carregado');
-        });
-    </script>
+      }
+    });
+
+    socket.onopen = () => {
+      console.log("✅ Conectado ao servidor WebSocket");
+      const authMsg = {
+        type: "auth",
+        device: "DASHBOARD_WEB",
+        role: "dashboard",
+        token: "esp32_token_secreto_2024"
+      };
+      socket.send(JSON.stringify(authMsg));
+    };
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log("📩 Dados recebidos:", data);
+
+      if (data.type === "lora_data" || data.type === "update") {
+        document.getElementById("distance").textContent = data.distance;
+        document.getElementById("level").textContent = data.level;
+        document.getElementById("percentage").textContent = data.percentage;
+        document.getElementById("liters").textContent = data.liters;
+        const sensorStatus = document.getElementById("sensorStatus");
+        sensorStatus.textContent = data.sensor_ok ? "OK" : "FALHA";
+        sensorStatus.className = data.sensor_ok ? "status ok" : "status alert";
+
+        document.getElementById("rssi").textContent = data.rssi || "--";
+        document.getElementById("snr").textContent = data.snr || "--";
+        document.getElementById("rxCount").textContent = data.rx_count || "--";
+        document.getElementById("lastDevice").textContent = data.device || "--";
+      }
+
+      if (data.type === "consumo_data") {
+        consumoChart.data.datasets[0].data = data.consumo_diario || Array(24).fill(0);
+        consumoChart.update();
+      }
+    };
+
+    socket.onclose = () => {
+      console.log("❌ Conexão fechada");
+    };
+
+    socket.onerror = (error) => {
+      console.error("❌ Erro WebSocket:", error);
+    };
+  </script>
 </body>
 </html>
