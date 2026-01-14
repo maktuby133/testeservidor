@@ -1,50 +1,35 @@
-// server.js - Servidor WebSocket completo para ESP32 LoRa
+// server.js - Servidor WebSocket para Render (HTTPS/WSS)
 const WebSocket = require('ws');
 const express = require('express');
 const http = require('http');
-const https = require('https');
-const fs = require('fs');
-const path = require('path');
 require('dotenv').config();
 
 const app = express();
 
 // ====== CONFIGURAÇÕES ======
-const HTTP_PORT = process.env.HTTP_PORT || 3000;
-const HTTPS_PORT = process.env.HTTPS_PORT || 443;
-const NODE_ENV = process.env.NODE_ENV || 'development';
-const ALLOWED_TOKENS = process.env.ALLOWED_TOKENS ? process.env.ALLOWED_TOKENS.split(',') : ['esp32_token_secreto_2024'];
+const PORT = process.env.PORT || 3000;
+const NODE_ENV = process.env.NODE_ENV || 'production';
+const ALLOWED_TOKENS = process.env.ALLOWED_TOKENS ? 
+  process.env.ALLOWED_TOKENS.split(',') : 
+  ['esp32_token_secreto_2024'];
 
-// ====== SERVIDORES ======
-const httpServer = http.createServer(app);
-let httpsServer = null;
+console.log('🚀 Iniciando servidor...');
+console.log(`📝 Porta: ${PORT}`);
+console.log(`🌍 Ambiente: ${NODE_ENV}`);
+console.log(`🔐 Tokens permitidos: ${ALLOWED_TOKENS.length}`);
 
-// Verificar se temos certificados SSL (para produção)
-const sslOptions = {
-  key: process.env.SSL_KEY_PATH ? fs.readFileSync(process.env.SSL_KEY_PATH) : null,
-  cert: process.env.SSL_CERT_PATH ? fs.readFileSync(process.env.SSL_CERT_PATH) : null
-};
+// ====== SERVIDOR HTTP (Render fornece HTTPS automaticamente) ======
+const server = http.createServer(app);
 
-if (sslOptions.key && sslOptions.cert) {
-  httpsServer = https.createServer(sslOptions, app);
-  console.log('🔐 Certificados SSL carregados');
-} else {
-  console.log('⚠️ Sem certificados SSL - usando apenas HTTP');
-}
-
-// ====== WEBSOCKET SERVERS ======
-const wssHTTP = new WebSocket.Server({ 
-  server: httpServer,
-  perMessageDeflate: false  // Importante para ESP32
+// ====== WEBSOCKET SERVER ======
+// No Render, usamos HTTP porque o Render faz o upgrade para HTTPS
+const wss = new WebSocket.Server({ 
+  server,
+  perMessageDeflate: false,  // Importante para ESP32
+  clientTracking: true
 });
 
-let wssHTTPS = null;
-if (httpsServer) {
-  wssHTTPS = new WebSocket.Server({ 
-    server: httpsServer,
-    perMessageDeflate: false
-  });
-}
+console.log('✅ WebSocket Server criado');
 
 // ====== DADOS DO SISTEMA ======
 const systemData = {
@@ -88,6 +73,12 @@ const systemData = {
 app.use(express.json());
 app.use(express.static('public'));
 
+// Logging middleware
+app.use((req, res, next) => {
+  console.log(`📨 ${req.method} ${req.path} - ${req.ip}`);
+  next();
+});
+
 // ====== ROTAS API ======
 
 // Rota de saúde
@@ -98,9 +89,10 @@ app.get('/health', (req, res) => {
     uptime: process.uptime(),
     serverTime: new Date().toISOString(),
     connections: {
-      http: wssHTTP.clients.size,
-      https: wssHTTPS ? wssHTTPS.clients.size : 0,
-      total: wssHTTP.clients.size + (wssHTTPS ? wssHTTPS.clients.size : 0)
+      total: wss.clients.size,
+      transmitters: systemData.clients.transmitters.size,
+      receivers: systemData.clients.receivers.size,
+      dashboards: systemData.clients.dashboards.size
     },
     data: {
       caixaAgua: systemData.caixaAgua,
@@ -112,57 +104,121 @@ app.get('/health', (req, res) => {
 
 // Rota principal
 app.get('/', (req, res) => {
+  const isSecure = req.headers['x-forwarded-proto'] === 'https';
+  const protocol = isSecure ? 'wss' : 'ws';
+  const host = req.headers.host;
+  
   res.send(`
     <!DOCTYPE html>
     <html>
     <head>
       <title>Monitor Caixa d'Água - WebSocket Server</title>
+      <meta charset="UTF-8">
       <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .status { padding: 20px; border-radius: 10px; margin: 10px 0; }
+        body { 
+          font-family: Arial, sans-serif; 
+          margin: 40px;
+          background: #f5f5f5;
+        }
+        .container {
+          max-width: 800px;
+          margin: 0 auto;
+          background: white;
+          padding: 30px;
+          border-radius: 10px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2c3e50; }
+        .status { 
+          padding: 20px; 
+          border-radius: 10px; 
+          margin: 15px 0; 
+        }
         .online { background: #d4edda; color: #155724; }
         .offline { background: #f8d7da; color: #721c24; }
         .info { background: #d1ecf1; color: #0c5460; }
+        .warning { background: #fff3cd; color: #856404; }
+        .stat { margin: 10px 0; }
+        .stat strong { display: inline-block; width: 200px; }
+        code { 
+          background: #f4f4f4; 
+          padding: 2px 8px; 
+          border-radius: 4px;
+          font-family: monospace;
+        }
       </style>
     </head>
     <body>
-      <h1>💧 Monitor Caixa d'Água - WebSocket Server</h1>
-      <div class="status info">
-        <strong>Status do Servidor:</strong> ONLINE<br>
-        <strong>Ambiente:</strong> ${NODE_ENV}<br>
-        <strong>HTTP Port:</strong> ${HTTP_PORT}<br>
-        <strong>HTTPS Port:</strong> ${HTTPS_PORT}<br>
-        <strong>Uptime:</strong> ${process.uptime().toFixed(0)} segundos<br>
-        <strong>Iniciado em:</strong> ${systemData.startTime.toLocaleString()}
-      </div>
-      <div class="status ${systemData.caixaAgua.sensorOK ? 'online' : 'offline'}">
-        <h3>📊 Dados da Caixa d'Água</h3>
-        <strong>Dispositivo:</strong> ${systemData.caixaAgua.deviceID || 'Nenhum'}<br>
-        <strong>Nível:</strong> ${systemData.caixaAgua.percentage}%<br>
-        <strong>Litros:</strong> ${systemData.caixaAgua.liters}L<br>
-        <strong>Sensor:</strong> ${systemData.caixaAgua.sensorOK ? '✅ OK' : '❌ FALHA'}<br>
-        <strong>Última atualização:</strong> ${systemData.caixaAgua.lastUpdate ? new Date(systemData.caixaAgua.lastUpdate).toLocaleTimeString() : 'Nunca'}
-      </div>
-      <div class="status info">
-        <h3>🔗 Conexões WebSocket</h3>
-        <strong>HTTP (ws://):</strong> ${wssHTTP.clients.size} clientes<br>
-        <strong>HTTPS (wss://):</strong> ${wssHTTPS ? wssHTTPS.clients.size : 0} clientes<br>
-        <strong>Total:</strong> ${wssHTTP.clients.size + (wssHTTPS ? wssHTTPS.clients.size : 0)} clientes
-      </div>
-      <div class="status info">
-        <h3>📡 LoRa Stats</h3>
-        <strong>Último dispositivo:</strong> ${systemData.loraStats.lastDevice}<br>
-        <strong>RSSI:</strong> ${systemData.loraStats.rssi} dBm<br>
-        <strong>SNR:</strong> ${systemData.loraStats.snr} dB<br>
-        <strong>Pacotes recebidos:</strong> ${systemData.loraStats.rxCount}
-      </div>
-      <div>
-        <h3>🔗 Endpoints:</h3>
-        <ul>
-          <li><a href="/health">/health</a> - Status do servidor</li>
-          <li><a href="/api/data">/api/data</a> - Dados JSON</li>
-          <li><a href="/dashboard">/dashboard</a> - Dashboard (se disponível)</li>
-        </ul>
+      <div class="container">
+        <h1>💧 Monitor Caixa d'Água</h1>
+        
+        <div class="status info">
+          <h3>🌐 Informações do Servidor</h3>
+          <div class="stat"><strong>Status:</strong> 🟢 ONLINE</div>
+          <div class="stat"><strong>Ambiente:</strong> ${NODE_ENV}</div>
+          <div class="stat"><strong>Porta:</strong> ${PORT}</div>
+          <div class="stat"><strong>Protocolo:</strong> ${isSecure ? '🔐 HTTPS/WSS' : '⚠️ HTTP/WS'}</div>
+          <div class="stat"><strong>Uptime:</strong> ${process.uptime().toFixed(0)} segundos</div>
+          <div class="stat"><strong>Iniciado em:</strong> ${systemData.startTime.toLocaleString('pt-BR')}</div>
+        </div>
+
+        <div class="status ${isSecure ? 'online' : 'warning'}">
+          <h3>🔗 Conexão WebSocket</h3>
+          <div class="stat"><strong>URL:</strong> <code>${protocol}://${host}</code></div>
+          <div class="stat"><strong>Seguro:</strong> ${isSecure ? '✅ SIM (SSL/TLS)' : '⚠️ NÃO'}</div>
+          <div class="stat"><strong>Clientes conectados:</strong> ${wss.clients.size}</div>
+        </div>
+        
+        <div class="status ${systemData.caixaAgua.sensorOK ? 'online' : 'offline'}">
+          <h3>📊 Dados da Caixa d'Água</h3>
+          <div class="stat"><strong>Dispositivo:</strong> ${systemData.caixaAgua.deviceID || 'Nenhum'}</div>
+          <div class="stat"><strong>Nível:</strong> ${systemData.caixaAgua.percentage}%</div>
+          <div class="stat"><strong>Litros:</strong> ${systemData.caixaAgua.liters}L</div>
+          <div class="stat"><strong>Sensor:</strong> ${systemData.caixaAgua.sensorOK ? '✅ OK' : '❌ FALHA'}</div>
+          <div class="stat"><strong>Última atualização:</strong> ${systemData.caixaAgua.lastUpdate ? new Date(systemData.caixaAgua.lastUpdate).toLocaleString('pt-BR') : 'Nunca'}</div>
+        </div>
+        
+        <div class="status info">
+          <h3>🔗 Conexões Ativas</h3>
+          <div class="stat"><strong>Transmissores:</strong> ${systemData.clients.transmitters.size}</div>
+          <div class="stat"><strong>Receptores:</strong> ${systemData.clients.receivers.size}</div>
+          <div class="stat"><strong>Dashboards:</strong> ${systemData.clients.dashboards.size}</div>
+          <div class="stat"><strong>Total:</strong> ${wss.clients.size}</div>
+        </div>
+        
+        <div class="status info">
+          <h3>📡 LoRa Stats</h3>
+          <div class="stat"><strong>Último dispositivo:</strong> ${systemData.loraStats.lastDevice || 'N/A'}</div>
+          <div class="stat"><strong>RSSI:</strong> ${systemData.loraStats.rssi} dBm</div>
+          <div class="stat"><strong>SNR:</strong> ${systemData.loraStats.snr} dB</div>
+          <div class="stat"><strong>Pacotes recebidos:</strong> ${systemData.loraStats.rxCount}</div>
+        </div>
+
+        <div class="status info">
+          <h3>📈 Métricas</h3>
+          <div class="stat"><strong>Total de conexões:</strong> ${systemData.metrics.totalConnections}</div>
+          <div class="stat"><strong>Mensagens recebidas:</strong> ${systemData.metrics.messagesReceived}</div>
+          <div class="stat"><strong>Mensagens enviadas:</strong> ${systemData.metrics.messagesSent}</div>
+          <div class="stat"><strong>Erros:</strong> ${systemData.metrics.errors}</div>
+        </div>
+        
+        <div>
+          <h3>🔗 Endpoints API:</h3>
+          <ul>
+            <li><a href="/health">/health</a> - Status do servidor (JSON)</li>
+            <li><a href="/api/data">/api/data</a> - Dados completos (JSON)</li>
+          </ul>
+        </div>
+
+        <div class="status warning">
+          <h3>⚙️ Configuração ESP32</h3>
+          <p>Para conectar o ESP32, use:</p>
+          <code>
+            const char* server = "${host.split(':')[0]}";<br>
+            const int port = 443;<br>
+            webSocket.beginSSL(server, port, "/", "", "");
+          </code>
+        </div>
       </div>
     </body>
     </html>
@@ -188,270 +244,190 @@ app.get('/api/data', (req, res) => {
   });
 });
 
-// API para reset de consumo
-app.post('/api/reset-consumo', (req, res) => {
-  const { token } = req.body;
+// ====== WEBSOCKET CONNECTION HANDLER ======
+wss.on('connection', (ws, req) => {
+  const clientId = generateClientId();
+  const clientIp = req.socket.remoteAddress || req.headers['x-forwarded-for'];
+  let clientType = 'unknown';
+  let authenticated = false;
+  let deviceId = '';
   
-  if (!token || !ALLOWED_TOKENS.includes(token)) {
-    return res.status(401).json({
-      success: false,
-      message: 'Token inválido'
-    });
-  }
+  console.log(`🔗 Nova conexão WebSocket: ${clientId} de ${clientIp}`);
+  systemData.metrics.totalConnections++;
   
-  // Resetar consumo
-  systemData.consumo = {
-    hora: 0,
-    hoje: 0,
-    diario: Array(24).fill(0),
-    ultimoReset: new Date().toISOString()
-  };
+  // Heartbeat
+  let isAlive = true;
   
-  // Enviar comando para todos os receptores
-  broadcastToReceivers('reset_consumo');
-  
-  res.json({
-    success: true,
-    message: 'Consumo resetado com sucesso',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// API para histórico
-app.get('/api/history', (req, res) => {
-  res.json({
-    success: true,
-    consumo: systemData.consumo,
-    loraStats: systemData.loraStats,
-    lastUpdate: systemData.caixaAgua.lastUpdate
-  });
-});
-
-// ====== FUNÇÕES WEBSOCKET ======
-
-function setupWebSocketServer(wss, protocol) {
-  wss.on('connection', (ws, req) => {
-    const clientId = generateClientId();
-    const clientIp = req.socket.remoteAddress;
-    let clientType = 'unknown';
-    let authenticated = false;
-    let deviceId = '';
+  const heartbeatInterval = setInterval(() => {
+    if (!isAlive) {
+      console.log(`💔 Cliente ${clientId} inativo - desconectando`);
+      ws.terminate();
+      return;
+    }
     
-    console.log(`🔗 [${protocol}] Nova conexão: ${clientId} from ${clientIp}`);
-    systemData.metrics.totalConnections++;
-    
-    // Heartbeat
-    let isAlive = true;
-    const heartbeatInterval = setInterval(() => {
-      if (!isAlive) {
-        console.log(`💔 [${protocol}] Cliente ${clientId} inativo - desconectando`);
-        ws.terminate();
-        return;
-      }
+    isAlive = false;
+    ws.ping();
+  }, 30000);
+  
+  ws.on('pong', () => {
+    isAlive = true;
+  });
+  
+  ws.on('message', (message) => {
+    try {
+      systemData.metrics.messagesReceived++;
+      const data = JSON.parse(message.toString());
       
-      isAlive = false;
-      ws.ping();
-    }, 30000);
-    
-    ws.on('pong', () => {
-      isAlive = true;
-    });
-    
-    ws.on('message', (message) => {
-      try {
-        systemData.metrics.messagesReceived++;
-        const data = JSON.parse(message.toString());
+      console.log(`📨 Mensagem de ${deviceId || clientId}: ${data.type}`);
+      
+      // Autenticação
+      if (data.type === 'auth') {
+        const { token, device, role } = data;
         
-        // Autenticação
-        if (data.type === 'auth') {
-          return handleAuth(ws, data, clientId, clientIp, protocol);
-        }
+        console.log(`🔐 Autenticação: ${device} (${role}) com token: ${token}`);
         
-        // Apenas processar mensagens de clientes autenticados
-        if (!authenticated) {
+        // Verificar token
+        if (!token || !ALLOWED_TOKENS.includes(token)) {
+          console.log(`❌ Token inválido: ${token}`);
           ws.send(JSON.stringify({
-            type: 'error',
-            message: 'Não autenticado',
-            code: 'UNAUTHORIZED'
+            type: 'auth_error',
+            message: 'Token de autenticação inválido'
           }));
+          ws.close();
           return;
         }
         
-        // Processar diferentes tipos de mensagens
-        switch(data.type) {
-          case 'lora_data':
-            handleLoRaData(data, deviceId);
-            broadcastToDashboards(data);
+        authenticated = true;
+        clientType = role;
+        deviceId = device;
+        
+        // Adicionar ao grupo
+        const clientInfo = { 
+          ws, 
+          deviceId, 
+          ip: clientIp,
+          lastSeen: new Date(),
+          connectedAt: new Date()
+        };
+        
+        switch(role) {
+          case 'transmitter':
+            systemData.clients.transmitters.set(clientId, clientInfo);
+            console.log(`📡 Transmissor autenticado: ${deviceId}`);
             break;
-            
-          case 'status':
-            updateClientStatus(clientId, clientType, data);
+          case 'receiver':
+            systemData.clients.receivers.set(clientId, clientInfo);
+            console.log(`🏠 Receptor autenticado: ${deviceId}`);
             break;
-            
-          case 'ping':
-            ws.send(JSON.stringify({
-              type: 'pong',
-              timestamp: Date.now()
-            }));
+          case 'dashboard':
+            systemData.clients.dashboards.set(clientId, clientInfo);
+            console.log(`📊 Dashboard autenticado: ${deviceId}`);
             break;
-            
-          case 'get_data':
-            sendSystemData(ws, deviceId);
-            break;
-            
-          case 'get_consumo':
-            sendConsumoData(ws);
-            break;
-            
-          case 'reset_consumo':
-            handleResetConsumo(ws, deviceId);
-            break;
-            
-          default:
-            console.log(`📨 [${protocol}] Mensagem não reconhecida de ${deviceId}:`, data.type);
         }
         
-      } catch (error) {
-        console.error(`❌ [${protocol}] Erro ao processar mensagem de ${clientId}:`, error);
-        systemData.metrics.errors++;
+        // Confirmar autenticação
+        ws.send(JSON.stringify({
+          type: 'auth_success',
+          message: 'Autenticado com sucesso',
+          clientId,
+          deviceId,
+          role,
+          timestamp: new Date().toISOString(),
+          serverInfo: {
+            version: '2.1.0',
+            environment: NODE_ENV
+          }
+        }));
+        
+        return;
+      }
+      
+      // Verificar autenticação
+      if (!authenticated) {
         ws.send(JSON.stringify({
           type: 'error',
-          message: 'Erro ao processar mensagem',
-          error: error.message
+          message: 'Não autenticado'
         }));
+        return;
       }
-    });
-    
-    ws.on('close', () => {
-      console.log(`🔌 [${protocol}] Conexão fechada: ${clientId} (${clientType})`);
-      clearInterval(heartbeatInterval);
       
-      // Remover dos grupos
-      systemData.clients.transmitters.delete(clientId);
-      systemData.clients.receivers.delete(clientId);
-      systemData.clients.dashboards.delete(clientId);
-    });
-    
-    ws.on('error', (error) => {
-      console.error(`❌ [${protocol}] Erro no cliente ${clientId}:`, error);
-      systemData.metrics.errors++;
-    });
-    
-    // Enviar mensagem de boas-vindas
-    setTimeout(() => {
-      if (ws.readyState === ws.OPEN) {
-        ws.send(JSON.stringify({
-          type: 'welcome',
-          message: 'Conectado ao servidor WebSocket',
-          serverTime: new Date().toISOString(),
-          protocol: protocol,
-          requiresAuth: true
-        }));
+      // Processar mensagens
+      switch(data.type) {
+        case 'lora_data':
+          handleLoRaData(data, deviceId);
+          broadcastToDashboards(data);
+          break;
+          
+        case 'status':
+          updateClientStatus(clientId, clientType, data);
+          break;
+          
+        case 'ping':
+          ws.send(JSON.stringify({
+            type: 'pong',
+            timestamp: Date.now()
+          }));
+          break;
+          
+        case 'get_data':
+          sendSystemData(ws, deviceId);
+          break;
+          
+        case 'get_consumo':
+          sendConsumoData(ws);
+          break;
+          
+        case 'reset_consumo':
+          handleResetConsumo(ws, deviceId);
+          break;
+          
+        default:
+          console.log(`❓ Tipo de mensagem não reconhecido: ${data.type}`);
       }
-    }, 1000);
+      
+    } catch (error) {
+      console.error(`❌ Erro ao processar mensagem:`, error);
+      systemData.metrics.errors++;
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Erro ao processar mensagem',
+        error: error.message
+      }));
+    }
   });
-}
+  
+  ws.on('close', () => {
+    console.log(`🔌 Conexão fechada: ${deviceId || clientId} (${clientType})`);
+    clearInterval(heartbeatInterval);
+    
+    systemData.clients.transmitters.delete(clientId);
+    systemData.clients.receivers.delete(clientId);
+    systemData.clients.dashboards.delete(clientId);
+  });
+  
+  ws.on('error', (error) => {
+    console.error(`❌ Erro no WebSocket ${clientId}:`, error);
+    systemData.metrics.errors++;
+  });
+  
+  // Mensagem de boas-vindas
+  setTimeout(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'welcome',
+        message: 'Conectado ao servidor WebSocket',
+        serverTime: new Date().toISOString(),
+        requiresAuth: true
+      }));
+    }
+  }, 500);
+});
 
 // ====== HANDLERS ======
 
-function handleAuth(ws, data, clientId, clientIp, protocol) {
-  const { token, device, role } = data;
-  
-  console.log(`🔐 [${protocol}] Tentativa de autenticação: ${device} (${role})`);
-  
-  // Verificar token
-  if (!token || !ALLOWED_TOKENS.includes(token)) {
-    console.log(`❌ [${protocol}] Token inválido de ${device}: ${token}`);
-    ws.send(JSON.stringify({
-      type: 'auth_error',
-      message: 'Token de autenticação inválido'
-    }));
-    ws.close();
-    return;
-  }
-  
-  // Verificar dispositivo e role
-  if (!device || !role) {
-    ws.send(JSON.stringify({
-      type: 'auth_error',
-      message: 'Dispositivo ou role não especificados'
-    }));
-    ws.close();
-    return;
-  }
-  
-  const clientType = role;
-  const deviceId = device;
-  
-  // Adicionar ao grupo correto
-  switch(clientType) {
-    case 'transmitter':
-      systemData.clients.transmitters.set(clientId, { 
-        ws, 
-        deviceId, 
-        ip: clientIp,
-        protocol,
-        lastSeen: new Date(),
-        connectedAt: new Date()
-      });
-      console.log(`📡 [${protocol}] Transmissor conectado: ${deviceId}`);
-      break;
-      
-    case 'receiver':
-      systemData.clients.receivers.set(clientId, { 
-        ws, 
-        deviceId, 
-        ip: clientIp,
-        protocol,
-        lastSeen: new Date(),
-        connectedAt: new Date()
-      });
-      console.log(`🏠 [${protocol}] Receptor conectado: ${deviceId}`);
-      break;
-      
-    case 'dashboard':
-      systemData.clients.dashboards.set(clientId, { 
-        ws, 
-        deviceId, 
-        ip: clientIp,
-        protocol,
-        lastSeen: new Date(),
-        connectedAt: new Date()
-      });
-      console.log(`📊 [${protocol}] Dashboard conectado: ${deviceId}`);
-      break;
-      
-    default:
-      console.log(`❓ [${protocol}] Cliente desconhecido: ${deviceId} (${clientType})`);
-  }
-  
-  // Enviar confirmação
-  ws.send(JSON.stringify({
-    type: 'auth_success',
-    message: 'Autenticado com sucesso',
-    clientId: clientId,
-    deviceId: deviceId,
-    role: clientType,
-    timestamp: new Date().toISOString(),
-    serverInfo: {
-      version: '2.0.0',
-      environment: NODE_ENV,
-      supports: ['lora_data', 'status', 'consumo_data', 'reset_consumo']
-    }
-  }));
-  
-  // Se for dashboard, enviar dados atuais
-  if (clientType === 'dashboard') {
-    setTimeout(() => {
-      sendSystemData(ws, deviceId);
-    }, 500);
-  }
-}
-
 function handleLoRaData(data, deviceId) {
-  console.log(`📡 Dados LoRa de ${deviceId}: ${data.liters}L (${data.percentage}%)`);
+  console.log(`📡 LoRa de ${deviceId}: ${data.liters}L (${data.percentage}%)`);
   
-  // Atualizar dados da caixa d'água
   systemData.caixaAgua = {
     distance: data.distance || 0,
     level: data.level || 0,
@@ -462,7 +438,6 @@ function handleLoRaData(data, deviceId) {
     deviceID: deviceId
   };
   
-  // Atualizar stats LoRa
   if (data.rssi !== undefined) {
     systemData.loraStats = {
       rssi: data.rssi,
@@ -473,7 +448,6 @@ function handleLoRaData(data, deviceId) {
     };
   }
   
-  // Atualizar consumo se veio do receptor
   if (data.consumo_hora !== undefined) {
     systemData.consumo.hora = data.consumo_hora;
   }
@@ -481,13 +455,10 @@ function handleLoRaData(data, deviceId) {
   if (data.consumo_hoje !== undefined) {
     systemData.consumo.hoje = data.consumo_hoje;
   }
-  
-  // Log detalhado
-  console.log(`💧 Atualização: ${data.liters}L | ${data.percentage}% | RSSI: ${data.rssi || 'N/A'} dBm`);
 }
 
 function handleResetConsumo(ws, deviceId) {
-  console.log(`🔄 Reset de consumo solicitado por ${deviceId}`);
+  console.log(`🔄 Reset de consumo por ${deviceId}`);
   
   systemData.consumo = {
     hora: 0,
@@ -496,14 +467,12 @@ function handleResetConsumo(ws, deviceId) {
     ultimoReset: new Date().toISOString()
   };
   
-  // Confirmar para o cliente
   ws.send(JSON.stringify({
     type: 'reset_confirmation',
-    message: 'Consumo resetado com sucesso',
+    message: 'Consumo resetado',
     timestamp: new Date().toISOString()
   }));
   
-  // Notificar dashboards
   broadcastToDashboards({
     type: 'consumo_reset',
     resetBy: deviceId,
@@ -519,43 +488,34 @@ function generateClientId() {
 }
 
 function updateClientStatus(clientId, clientType, data) {
-  const clientGroup = getClientGroup(clientType);
-  if (clientGroup && clientGroup.has(clientId)) {
-    const client = clientGroup.get(clientId);
+  const groups = {
+    'transmitter': systemData.clients.transmitters,
+    'receiver': systemData.clients.receivers,
+    'dashboard': systemData.clients.dashboards
+  };
+  
+  const group = groups[clientType];
+  if (group && group.has(clientId)) {
+    const client = group.get(clientId);
     client.lastSeen = new Date();
     client.status = data;
   }
 }
 
-function getClientGroup(clientType) {
-  switch(clientType) {
-    case 'transmitter': return systemData.clients.transmitters;
-    case 'receiver': return systemData.clients.receivers;
-    case 'dashboard': return systemData.clients.dashboards;
-    default: return null;
-  }
-}
-
 function broadcastToDashboards(data) {
-  systemData.clients.dashboards.forEach((client, id) => {
-    if (client.ws.readyState === client.ws.OPEN) {
+  let sent = 0;
+  systemData.clients.dashboards.forEach((client) => {
+    if (client.ws.readyState === WebSocket.OPEN) {
       client.ws.send(JSON.stringify({
         ...data,
         broadcast: true,
         timestamp: new Date().toISOString()
       }));
-      systemData.metrics.messagesSent++;
+      sent++;
     }
   });
-}
-
-function broadcastToReceivers(command) {
-  systemData.clients.receivers.forEach((client, id) => {
-    if (client.ws.readyState === client.ws.OPEN) {
-      client.ws.send(command);
-      systemData.metrics.messagesSent++;
-    }
-  });
+  systemData.metrics.messagesSent += sent;
+  if (sent > 0) console.log(`📤 Broadcast para ${sent} dashboards`);
 }
 
 function sendSystemData(ws, deviceId) {
@@ -582,75 +542,52 @@ function sendConsumoData(ws) {
 // ====== LIMPEZA DE CLIENTES INATIVOS ======
 setInterval(() => {
   const now = new Date();
-  const inactiveTime = 120000; // 2 minutos
+  const timeout = 120000; // 2 minutos
   
-  [systemData.clients.transmitters, systemData.clients.receivers, systemData.clients.dashboards].forEach(group => {
-    group.forEach((client, id) => {
-      if (now - client.lastSeen > inactiveTime) {
-        console.log(`🧹 Removendo cliente inativo: ${id} (${client.deviceId})`);
-        if (client.ws.readyState === client.ws.OPEN) {
-          client.ws.close();
+  [systemData.clients.transmitters, systemData.clients.receivers, systemData.clients.dashboards]
+    .forEach(group => {
+      group.forEach((client, id) => {
+        if (now - client.lastSeen > timeout) {
+          console.log(`🧹 Removendo cliente inativo: ${client.deviceId}`);
+          if (client.ws.readyState === WebSocket.OPEN) {
+            client.ws.close();
+          }
+          group.delete(id);
         }
-        group.delete(id);
-      }
+      });
     });
-  });
-}, 60000); // Verificar a cada minuto
+}, 60000);
 
-// ====== INICIALIZAR SERVIDORES ======
-
-// Configurar WebSocket para HTTP
-setupWebSocketServer(wssHTTP, 'HTTP');
-
-// Configurar WebSocket para HTTPS (se disponível)
-if (wssHTTPS) {
-  setupWebSocketServer(wssHTTPS, 'HTTPS');
-}
-
-// Iniciar servidor HTTP
-httpServer.listen(HTTP_PORT, () => {
-  console.log(`🚀 Servidor HTTP WebSocket iniciado na porta ${HTTP_PORT}`);
-  console.log(`🔗 WebSocket URL: ws://localhost:${HTTP_PORT}`);
+// ====== INICIAR SERVIDOR ======
+server.listen(PORT, () => {
+  console.log('═══════════════════════════════════════════');
+  console.log('🚀 SERVIDOR WEBSOCKET INICIADO COM SUCESSO');
+  console.log('═══════════════════════════════════════════');
+  console.log(`📡 Porta: ${PORT}`);
   console.log(`🌍 Ambiente: ${NODE_ENV}`);
   console.log(`🔐 Tokens permitidos: ${ALLOWED_TOKENS.length}`);
-  console.log(`⏰ Iniciado em: ${systemData.startTime.toLocaleString()}`);
-  console.log(`📡 Aguardando conexões de ESP32...`);
+  console.log(`⏰ Iniciado: ${systemData.startTime.toLocaleString('pt-BR')}`);
+  console.log('📱 Aguardando conexões ESP32...');
+  console.log('═══════════════════════════════════════════');
 });
 
-// Iniciar servidor HTTPS (se disponível)
-if (httpsServer) {
-  httpsServer.listen(HTTPS_PORT, () => {
-    console.log(`🔐 Servidor HTTPS WebSocket iniciado na porta ${HTTPS_PORT}`);
-    console.log(`🔗 WebSocket Secure URL: wss://localhost:${HTTPS_PORT}`);
-  });
-}
-
-// ====== TRATAMENTO DE SHUTDOWN ======
-process.on('SIGTERM', () => {
-  console.log('🛑 Recebido SIGTERM, encerrando...');
+// ====== SHUTDOWN GRACEFUL ======
+const shutdown = () => {
+  console.log('\n🛑 Encerrando servidor...');
   
-  // Fechar todas as conexões WebSocket
-  wssHTTP.clients.forEach(client => {
-    if (client.readyState === client.OPEN) {
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
       client.close();
     }
   });
-  
-  if (wssHTTPS) {
-    wssHTTPS.clients.forEach(client => {
-      if (client.readyState === client.OPEN) {
-        client.close();
-      }
-    });
-  }
   
   server.close(() => {
     console.log('✅ Servidor encerrado');
     process.exit(0);
   });
-});
+  
+  setTimeout(() => process.exit(1), 10000);
+};
 
-process.on('SIGINT', () => {
-  console.log('🛑 Recebido SIGINT, encerrando...');
-  process.exit(0);
-});
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
