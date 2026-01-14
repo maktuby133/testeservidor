@@ -273,4 +273,55 @@ function generateClientId() {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
-function getClientGroup(clientType)
+function getClientGroup(clientType) {
+  switch(clientType) {
+    case 'transmitter': return clients.transmitters;
+    case 'receiver': return clients.receivers;
+    case 'dashboard': return clients.dashboards;
+    default: return null;
+  }
+}
+
+// Limpeza de clientes inativos
+setInterval(() => {
+  const now = new Date();
+  const inactiveTime = 120000; // 2 minutos
+
+  [clients.transmitters, clients.receivers, clients.dashboards].forEach(group => {
+    group.forEach((client, id) => {
+      if (now - client.lastSeen > inactiveTime) {
+        console.log(`🧹 Removendo cliente inativo: ${id}`);
+        if (client.ws.readyState === WebSocket.OPEN) {
+          client.ws.close();
+        }
+        group.delete(id);
+      }
+    });
+  });
+}, 60000); // Verificar a cada minuto
+
+// Iniciar servidor
+server.listen(PORT, () => {
+  console.log(`🚀 Servidor WebSocket iniciado na porta ${PORT}`);
+  console.log(`🌍 Ambiente: ${NODE_ENV}`);
+  console.log(`🔐 Tokens permitidos: ${ALLOWED_TOKENS.length}`);
+  console.log(`⏰ Iniciado em: ${metrics.startTime.toISOString()}`);
+});
+
+// Tratamento de shutdown
+process.on('SIGTERM', () => {
+  console.log('🛑 Recebido SIGTERM, encerrando...');
+  server.close(() => {
+    console.log('✅ Servidor encerrado');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('🛑 Recebido SIGINT, encerrando...');
+  server.close(() => {
+    console.log('✅ Servidor encerrado');
+    process.exit(0);
+  });
+});
+
