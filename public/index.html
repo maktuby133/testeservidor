@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Dashboard Caixa d'Água</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, sans-serif;
@@ -48,7 +49,7 @@
       font-weight: bold;
       color: #333;
     }
-    /* Caixa d'água com barra sobreposta */
+    /* Caixa d'água */
     .water-tank {
       position: relative;
       width: 300px;
@@ -63,17 +64,52 @@
       position: absolute;
       bottom: 0;
       width: 100%;
-      background: rgba(0, 120, 215, 0.6);
       transition: height 0.5s ease;
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
+    }
+    .wave {
+      position: absolute;
+      bottom: 0;
+      width: 200%;
+      height: 100%;
+      background: rgba(0, 120, 215, 0.6);
+      border-radius: 40%;
+      animation: wave-animation 4s infinite linear;
+    }
+    .wave:nth-child(2) {
+      animation-duration: 6s;
+      opacity: 0.5;
+    }
+    @keyframes wave-animation {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
     }
     .water-text {
+      position: relative;
+      z-index: 2;
       font-size: 2em;
       font-weight: bold;
       color: #fff;
       text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+    }
+    /* Área dos gráficos */
+    .charts {
+      max-width: 1000px;
+      margin: 40px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .charts h2 {
+      text-align: center;
+      color: #0078D7;
+    }
+    canvas {
+      margin: 20px 0;
     }
   </style>
 </head>
@@ -87,6 +123,8 @@
       <h2>Caixa d'Água</h2>
       <div class="water-tank">
         <div class="water-level" id="waterLevel" style="height:0%">
+          <div class="wave"></div>
+          <div class="wave"></div>
           <div class="water-text" id="waterText">0%</div>
         </div>
       </div>
@@ -120,6 +158,14 @@
     </div>
   </div>
 
+  <!-- Gráficos -->
+  <div class="charts">
+    <h2>📈 Consumo de Água</h2>
+    <canvas id="dailyChart"></canvas>
+    <canvas id="weeklyChart"></canvas>
+    <canvas id="monthlyChart"></canvas>
+  </div>
+
   <script>
     async function fetchData() {
       try {
@@ -149,6 +195,45 @@
 
     setInterval(fetchData, 5000);
     fetchData();
+
+    // ====== Gráficos de consumo (dados simulados) ======
+    const dailyChart = new Chart(document.getElementById('dailyChart'), {
+      type: 'bar',
+      data: {
+        labels: ['00h', '06h', '12h', '18h', '24h'],
+        datasets: [{
+          label: 'Consumo Diário (L)',
+          data: [200, 150, 300, 250, 180],
+          backgroundColor: '#0078D7'
+        }]
+      }
+    });
+
+    const weeklyChart = new Chart(document.getElementById('weeklyChart'), {
+      type: 'line',
+      data: {
+        labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
+        datasets: [{
+          label: 'Consumo Semanal (L)',
+          data: [1200, 1350, 1100, 1400, 1500, 1600, 1300],
+          borderColor: '#00B4DB',
+          fill: false,
+          tension: 0.3
+        }]
+      }
+    });
+
+    const monthlyChart = new Chart(document.getElementById('monthlyChart'), {
+      type: 'bar',
+      data: {
+        labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
+        datasets: [{
+          label: 'Consumo Mensal (L)',
+          data: [4500, 4800, 5000, 4700, 5200, 5100],
+          backgroundColor: '#00B4DB'
+        }]
+      }
+    });
   </script>
 </body>
 </html>
