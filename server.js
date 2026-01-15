@@ -1,4 +1,5 @@
 import express from "express";
+import path from "path";
 
 const app = express();
 app.use(express.json());
@@ -18,7 +19,6 @@ app.post("/api/lora", (req, res) => {
     timestamp: timestamp || new Date().toISOString()
   };
 
-  // Armazena no histórico (máx. 50 registros)
   historico.push(registro);
   if (historico.length > 50) historico.shift();
 
@@ -37,8 +37,15 @@ app.get("/api/lora", (req, res) => {
 
   res.json({
     ...ultimo,
-    historico: historico.slice(-7) // últimos 7 registros
+    historico: historico.slice(-7)
   });
+});
+
+// Servir index.html na raiz
+app.use(express.static("public")); // pasta onde fica o index.html
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(process.cwd(), "public", "index.html"));
 });
 
 const PORT = process.env.PORT || 3000;
