@@ -1,14 +1,15 @@
 import express from "express";
-import cors from "cors";
 
 const app = express();
 app.use(express.json());
-app.use(cors());
 
+// Memória temporária para histórico
 let historico = [];
 
+// Recebe dados do ESP32 receptor
 app.post("/api/lora", (req, res) => {
   const { device, percentage, liters, sensor_ok, timestamp } = req.body;
+
   const registro = {
     device: device || "ESP32",
     percentage: percentage || 0,
@@ -16,11 +17,15 @@ app.post("/api/lora", (req, res) => {
     sensor_ok: sensor_ok ?? true,
     timestamp: timestamp || new Date().toISOString()
   };
+
+  // Armazena no histórico (máx. 50 registros)
   historico.push(registro);
   if (historico.length > 50) historico.shift();
+
   res.json({ status: "ok", recebido: registro });
 });
 
+// Fornece dados para o dashboard
 app.get("/api/lora", (req, res) => {
   const ultimo = historico[historico.length - 1] || {
     device: "ESP32",
@@ -29,9 +34,10 @@ app.get("/api/lora", (req, res) => {
     sensor_ok: true,
     timestamp: null
   };
+
   res.json({
     ...ultimo,
-    historico: historico.slice(-7)
+    historico: historico.slice(-7) // últimos 7 registros
   });
 });
 
