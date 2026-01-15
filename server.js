@@ -1,5 +1,4 @@
-// server.js - Servidor WebSocket + Frontend
-const WebSocket = require('ws');
+// server.js - Servidor Express + REST API
 const express = require('express');
 const http = require('http');
 const path = require('path');
@@ -8,16 +7,12 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 
-// ✅ WebSocket único na raiz "/"
-const wss = new WebSocket.Server({ server, path: "/" });
-
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // 🚨 Apenas o token do projeto da caixa d’água
-const ALLOWED_TOKENS = ['esp32_token_secreto_2024'];
+const ALLOWED_TOKEN = "esp32_token_secreto_2024";
 
-// Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -31,45 +26,20 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy', environment: NODE_ENV });
 });
 
-// WebSocket
-wss.on('connection', (ws) => {
-  console.log("✅ Cliente WebSocket conectado");
-  let authenticated = false;
+// ✅ Rota para receber dados LoRa via POST
+app.post('/api/lora', (req, res) => {
+  const token = req.headers['authorization'];
+  const deviceId = req.headers['x-device-id'];
 
-  ws.on('message', (msg) => {
-    try {
-      const data = JSON.parse(msg);
+  if (token !== ALLOWED_TOKEN) {
+    return res.status(401).json({ error: 'Token inválido' });
+  }
 
-      // Autenticação
-      if (data.type === 'auth') {
-        if (!ALLOWED_TOKENS.includes(data.token)) {
-          ws.send(JSON.stringify({ type: 'auth_error', message: 'Token inválido' }));
-          ws.close();
-          return;
-        }
-        authenticated = true;
-        ws.send(JSON.stringify({ type: 'auth_success', device: data.device }));
-        console.log("🔑 Autenticado:", data.device);
-      }
+  const data = req.body;
+  console.log("📡 Dados LoRa recebidos:", data);
 
-      // Dados LoRa
-      if (authenticated && data.type === 'lora_data') {
-        console.log("📡 Dados LoRa recebidos:", data);
-        // Broadcast para todos dashboards conectados
-        wss.clients.forEach(client => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: 'update', ...data }));
-          }
-        });
-      }
-    } catch (err) {
-      console.error("❌ Erro ao processar mensagem:", err);
-    }
-  });
-
-  ws.on('close', () => {
-    console.log("❌ Cliente WebSocket desconectado");
-  });
+  // Aqui você pode salvar em banco de dados ou repassar para dashboard
+  res.json({ status: 'ok', device: deviceId });
 });
 
 // Iniciar servidor
