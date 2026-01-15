@@ -2,193 +2,63 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>💧 Monitoramento Caixa d'Água</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Chart.js para gráficos -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+  <title>Dashboard Caixa d'Água</title>
   <style>
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #0077cc, #00c6ff);
-      margin: 0;
-      padding: 0;
-      color: #fff;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    header {
-      text-align: center;
-      padding: 30px 20px;
-      animation: fadeInDown 1s ease;
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
     }
     h1 {
-      font-size: 2.5em;
-      margin: 0;
-      color: #fff;
-      text-shadow: 2px 2px 6px rgba(0,0,0,0.3);
-    }
-    p {
-      margin: 5px 0;
-    }
-    .dashboard {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
-      width: 90%;
-      max-width: 1200px;
-      margin: 20px auto;
+      color: #333;
     }
     .card {
-      background: rgba(255,255,255,0.15);
-      backdrop-filter: blur(10px);
-      border-radius: 15px;
-      padding: 20px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-      animation: fadeInUp 1s ease;
-      transition: transform 0.3s;
-    }
-    .card:hover {
-      transform: translateY(-5px) scale(1.02);
-    }
-    .card h2 {
-      margin-top: 0;
-      font-size: 1.4em;
-      color: #fff;
-      border-bottom: 1px solid rgba(255,255,255,0.3);
-      padding-bottom: 10px;
+      background: #fff;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     .value {
-      font-size: 1.2em;
-      margin: 8px 0;
-    }
-    .status.ok { color: #00ff88; font-weight: bold; }
-    .status.alert { color: #ff4444; font-weight: bold; }
-    canvas {
-      margin-top: 15px;
-    }
-    footer {
-      text-align: center;
-      padding: 20px;
-      font-size: 0.9em;
-      color: rgba(255,255,255,0.8);
-    }
-    @keyframes fadeInDown {
-      from { opacity: 0; transform: translateY(-30px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
+      font-size: 1.5em;
+      color: #0078D7;
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>💧 Monitoramento da Caixa d'Água</h1>
-    <p>Dados em tempo real via LoRa + WebSocket</p>
-  </header>
-
-  <div class="dashboard">
-    <div class="card">
-      <h2>📊 Nível da Caixa</h2>
-      <p class="value">Distância: <span id="distance">--</span> cm</p>
-      <p class="value">Altura: <span id="level">--</span> cm</p>
-      <p class="value">Percentual: <span id="percentage">--</span>%</p>
-      <p class="value">Volume: <span id="liters">--</span> L</p>
-      <p>Sensor: <span id="sensorStatus" class="status">--</span></p>
-    </div>
-
-    <div class="card">
-      <h2>📡 Status LoRa</h2>
-      <p class="value">RSSI: <span id="rssi">--</span> dBm</p>
-      <p class="value">SNR: <span id="snr">--</span> dB</p>
-      <p class="value">Pacotes RX: <span id="rxCount">--</span></p>
-      <p class="value">Último dispositivo: <span id="lastDevice">--</span></p>
-    </div>
-
-    <div class="card">
-      <h2>📈 Consumo Diário</h2>
-      <canvas id="consumoChart"></canvas>
-    </div>
+  <h1>📊 Dashboard Caixa d'Água</h1>
+  <div class="card">
+    <p><strong>Dispositivo:</strong> <span id="device">-</span></p>
+    <p><strong>Distância:</strong> <span id="distance" class="value">-</span> cm</p>
+    <p><strong>Nível:</strong> <span id="level" class="value">-</span></p>
+    <p><strong>Porcentagem:</strong> <span id="percentage" class="value">-</span>%</p>
+    <p><strong>Litros:</strong> <span id="liters" class="value">-</span> L</p>
+    <p><strong>Sensor OK:</strong> <span id="sensor_ok">-</span></p>
   </div>
 
-  <footer>
-    <p>🏠 Sistema de Automação - LoRa + ESP32 + WebSocket</p>
-  </footer>
-
   <script>
-    const wsUrl = "wss://testeservidor-6opr.onrender.com";
-    const socket = new WebSocket(wsUrl);
+    async function fetchData() {
+      try {
+        const response = await fetch('/api/lora', {
+          method: 'GET'
+        });
+        const data = await response.json();
 
-    // Gráfico de consumo
-    const ctx = document.getElementById('consumoChart').getContext('2d');
-    const consumoChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: Array.from({length: 24}, (_, i) => i + "h"),
-        datasets: [{
-          label: 'Consumo (L)',
-          data: Array(24).fill(0),
-          backgroundColor: 'rgba(0, 255, 136, 0.6)',
-          borderColor: '#00ff88',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: { beginAtZero: true }
-        }
+        // Atualiza os elementos na tela
+        document.getElementById('device').textContent = data.device || 'RECEPTOR_CASA';
+        document.getElementById('distance').textContent = data.distance ?? '-';
+        document.getElementById('level').textContent = data.level ?? '-';
+        document.getElementById('percentage').textContent = data.percentage ?? '-';
+        document.getElementById('liters').textContent = data.liters ?? '-';
+        document.getElementById('sensor_ok').textContent = data.sensor_ok ? '✅' : '❌';
+      } catch (err) {
+        console.error("Erro ao buscar dados:", err);
       }
-    });
+    }
 
-    socket.onopen = () => {
-      console.log("✅ Conectado ao servidor WebSocket");
-      const authMsg = {
-        type: "auth",
-        device: "DASHBOARD_WEB",
-        role: "dashboard",
-        token: "esp32_token_secreto_2024"
-      };
-      socket.send(JSON.stringify(authMsg));
-    };
-
-    socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log("📩 Dados recebidos:", data);
-
-      if (data.type === "lora_data" || data.type === "update") {
-        document.getElementById("distance").textContent = data.distance;
-        document.getElementById("level").textContent = data.level;
-        document.getElementById("percentage").textContent = data.percentage;
-        document.getElementById("liters").textContent = data.liters;
-        const sensorStatus = document.getElementById("sensorStatus");
-        sensorStatus.textContent = data.sensor_ok ? "OK" : "FALHA";
-        sensorStatus.className = data.sensor_ok ? "status ok" : "status alert";
-
-        document.getElementById("rssi").textContent = data.rssi || "--";
-        document.getElementById("snr").textContent = data.snr || "--";
-        document.getElementById("rxCount").textContent = data.rx_count || "--";
-        document.getElementById("lastDevice").textContent = data.device || "--";
-      }
-
-      if (data.type === "consumo_data") {
-        consumoChart.data.datasets[0].data = data.consumo_diario || Array(24).fill(0);
-        consumoChart.update();
-      }
-    };
-
-    socket.onclose = () => {
-      console.log("❌ Conexão fechada");
-    };
-
-    socket.onerror = (error) => {
-      console.error("❌ Erro WebSocket:", error);
-    };
+    // Atualiza a cada 5 segundos
+    setInterval(fetchData, 5000);
+    fetchData();
   </script>
 </body>
 </html>
