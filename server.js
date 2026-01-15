@@ -13,9 +13,9 @@ const wss = new WebSocket.Server({ server, path: "/" });
 
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
-const ALLOWED_TOKENS = process.env.ALLOWED_TOKENS
-  ? process.env.ALLOWED_TOKENS.split(',')
-  : ['esp32_token_secreto_2024'];
+
+// 🚨 Apenas o token do projeto da caixa d’água
+const ALLOWED_TOKENS = ['esp32_token_secreto_2024'];
 
 // Middleware
 app.use(express.json());
