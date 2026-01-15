@@ -8,8 +8,9 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 
-// ✅ WebSocket agora com rota dedicada /ws
-const wss = new WebSocket.Server({ server, path: "/ws" });
+// ✅ WebSocket aceitando conexões na raiz "/" e em "/ws"
+const wssRoot = new WebSocket.Server({ server, path: "/" });
+const wssWs   = new WebSocket.Server({ server, path: "/ws" });
 
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -31,51 +32,52 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy', environment: NODE_ENV });
 });
 
-// Rota de API para dados do sistema (exemplo)
-app.get('/api/system', (req, res) => {
-  res.json({ success: true, message: "API funcionando" });
-});
+// Função para configurar cada servidor WebSocket
+function setupWebSocket(wss) {
+  wss.on('connection', (ws) => {
+    console.log("✅ Cliente WebSocket conectado");
+    let authenticated = false;
 
-// WebSocket
-wss.on('connection', (ws) => {
-  console.log("✅ Cliente WebSocket conectado");
-  let authenticated = false;
+    ws.on('message', (msg) => {
+      try {
+        const data = JSON.parse(msg);
 
-  ws.on('message', (msg) => {
-    try {
-      const data = JSON.parse(msg);
-
-      // Autenticação
-      if (data.type === 'auth') {
-        if (!ALLOWED_TOKENS.includes(data.token)) {
-          ws.send(JSON.stringify({ type: 'auth_error', message: 'Token inválido' }));
-          ws.close();
-          return;
-        }
-        authenticated = true;
-        ws.send(JSON.stringify({ type: 'auth_success', device: data.device }));
-        console.log("🔑 Autenticado:", data.device);
-      }
-
-      // Dados LoRa
-      if (authenticated && data.type === 'lora_data') {
-        console.log("📡 Dados LoRa recebidos:", data);
-        // Broadcast para todos dashboards conectados
-        wss.clients.forEach(client => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: 'update', ...data }));
+        // Autenticação
+        if (data.type === 'auth') {
+          if (!ALLOWED_TOKENS.includes(data.token)) {
+            ws.send(JSON.stringify({ type: 'auth_error', message: 'Token inválido' }));
+            ws.close();
+            return;
           }
-        });
-      }
-    } catch (err) {
-      console.error("❌ Erro ao processar mensagem:", err);
-    }
-  });
+          authenticated = true;
+          ws.send(JSON.stringify({ type: 'auth_success', device: data.device }));
+          console.log("🔑 Autenticado:", data.device);
+        }
 
-  ws.on('close', () => {
-    console.log("❌ Cliente WebSocket desconectado");
+        // Dados LoRa
+        if (authenticated && data.type === 'lora_data') {
+          console.log("📡 Dados LoRa recebidos:", data);
+          // Broadcast para todos dashboards conectados
+          wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({ type: 'update', ...data }));
+            }
+          });
+        }
+      } catch (err) {
+        console.error("❌ Erro ao processar mensagem:", err);
+      }
+    });
+
+    ws.on('close', () => {
+      console.log("❌ Cliente WebSocket desconectado");
+    });
   });
-});
+}
+
+// Configurar ambos servidores WebSocket
+setupWebSocket(wssRoot);
+setupWebSocket(wssWs);
 
 // Iniciar servidor
 server.listen(PORT, () => {
