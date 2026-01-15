@@ -13,6 +13,9 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 // 🚨 Apenas o token do projeto da caixa d’água
 const ALLOWED_TOKEN = "esp32_token_secreto_2024";
 
+// Variável para guardar último dado recebido
+let lastLoRaData = null;
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -38,8 +41,18 @@ app.post('/api/lora', (req, res) => {
   const data = req.body;
   console.log("📡 Dados LoRa recebidos:", data);
 
-  // Aqui você pode salvar em banco de dados ou repassar para dashboard
+  // Guardar último dado
+  lastLoRaData = { ...data, device: deviceId, timestamp: Date.now() };
+
   res.json({ status: 'ok', device: deviceId });
+});
+
+// ✅ Rota para consultar último dado LoRa
+app.get('/api/lora', (req, res) => {
+  if (!lastLoRaData) {
+    return res.json({ status: 'empty', message: 'Nenhum dado recebido ainda' });
+  }
+  res.json(lastLoRaData);
 });
 
 // Iniciar servidor
