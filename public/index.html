@@ -5,58 +5,148 @@
   <title>Dashboard Caixa d'Água</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      padding: 20px;
-    }
-    h1 {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: linear-gradient(135deg, #0078D7, #00B4DB);
+      margin: 0;
+      padding: 0;
       color: #333;
+    }
+    header {
+      background: rgba(255,255,255,0.9);
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.8em;
+      color: #0078D7;
+    }
+    .container {
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
     }
     .card {
       background: #fff;
-      padding: 15px;
-      margin: 10px 0;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      border-radius: 12px;
+      padding: 20px;
+      flex: 1 1 250px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .card h2 {
+      margin-top: 0;
+      font-size: 1.4em;
+      color: #0078D7;
     }
     .value {
-      font-size: 1.5em;
-      color: #0078D7;
+      font-size: 2em;
+      font-weight: bold;
+      color: #333;
+    }
+    /* Caixa d'água com barra sobreposta */
+    .water-tank {
+      position: relative;
+      width: 300px;
+      height: 400px;
+      margin: 0 auto;
+      background: url('https://ik.imagekit.io/o7q7lmyva/Caixa-5000-frontal-sl-1024x762.png?updatedAt=1763608669534') no-repeat center;
+      background-size: contain;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .water-level {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      background: rgba(0, 120, 215, 0.6);
+      transition: height 0.5s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .water-text {
+      font-size: 2em;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
     }
   </style>
 </head>
 <body>
-  <h1>📊 Dashboard Caixa d'Água</h1>
-  <div class="card">
-    <p><strong>Dispositivo:</strong> <span id="device">-</span></p>
-    <p><strong>Distância:</strong> <span id="distance" class="value">-</span> cm</p>
-    <p><strong>Nível:</strong> <span id="level" class="value">-</span></p>
-    <p><strong>Porcentagem:</strong> <span id="percentage" class="value">-</span>%</p>
-    <p><strong>Litros:</strong> <span id="liters" class="value">-</span> L</p>
-    <p><strong>Sensor OK:</strong> <span id="sensor_ok">-</span></p>
+  <header>
+    <h1>📊 Dashboard Caixa d'Água</h1>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>Caixa d'Água</h2>
+      <div class="water-tank">
+        <div class="water-level" id="waterLevel" style="height:0%">
+          <div class="water-text" id="waterText">0%</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Litros</h2>
+      <p class="value" id="liters">-</p>
+    </div>
+
+    <div class="card">
+      <h2>Distância</h2>
+      <p class="value" id="distance">-</p>
+      <p>cm</p>
+    </div>
+
+    <div class="card">
+      <h2>Nível</h2>
+      <p class="value" id="level">-</p>
+      <p>cm</p>
+    </div>
+
+    <div class="card">
+      <h2>Sensor</h2>
+      <p class="value" id="sensor_ok">-</p>
+    </div>
+
+    <div class="card">
+      <h2>Última atualização</h2>
+      <p class="value" id="timestamp">-</p>
+    </div>
   </div>
 
   <script>
     async function fetchData() {
       try {
-        const response = await fetch('/api/lora', {
-          method: 'GET'
-        });
+        const response = await fetch('/api/lora');
         const data = await response.json();
 
-        // Atualiza os elementos na tela
-        document.getElementById('device').textContent = data.device || 'RECEPTOR_CASA';
+        if (data.status === 'empty') {
+          document.getElementById('waterText').textContent = "Sem dados";
+          return;
+        }
+
+        // Atualiza barra de nível
+        const percentage = data.percentage ?? 0;
+        document.getElementById('waterLevel').style.height = percentage + "%";
+        document.getElementById('waterText').textContent = percentage + "%";
+
+        // Atualiza outros dados
+        document.getElementById('liters').textContent = data.liters ?? '-';
         document.getElementById('distance').textContent = data.distance ?? '-';
         document.getElementById('level').textContent = data.level ?? '-';
-        document.getElementById('percentage').textContent = data.percentage ?? '-';
-        document.getElementById('liters').textContent = data.liters ?? '-';
-        document.getElementById('sensor_ok').textContent = data.sensor_ok ? '✅' : '❌';
+        document.getElementById('sensor_ok').textContent = data.sensor_ok ? '✅ OK' : '❌ Falha';
+        document.getElementById('timestamp').textContent = new Date(data.timestamp).toLocaleString();
       } catch (err) {
         console.error("Erro ao buscar dados:", err);
       }
     }
 
-    // Atualiza a cada 5 segundos
     setInterval(fetchData, 5000);
     fetchData();
   </script>
