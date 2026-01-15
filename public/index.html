@@ -2,168 +2,881 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard Caixa d'Água</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌊 Monitor Inteligente de Caixa d'Água</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f0f4f8;
+    :root {
+      --primary: #0077b6;
+      --primary-dark: #023e8a;
+      --secondary: #00b4d8;
+      --success: #38b000;
+      --warning: #ff9e00;
+      --danger: #e63946;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gray: #6c757d;
+      --water-blue: #48cae4;
+      --water-deep: #0096c7;
+    }
+
+    * {
       margin: 0;
       padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: var(--dark);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* HEADER */
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 5px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+    }
+
+    .header h1 {
+      color: var(--primary-dark);
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    .header h1 i {
+      color: var(--secondary);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .subtitle {
+      color: var(--gray);
+      font-size: 1.1rem;
+      font-weight: 400;
+    }
+
+    /* MAIN CONTENT */
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 30px;
+      margin-bottom: 30px;
+    }
+
+    @media (max-width: 992px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* TANK SECTION */
+    .tank-section {
+      background: white;
+      border-radius: 20px;
+      padding: 25px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
       display: flex;
       flex-direction: column;
       align-items: center;
     }
 
-    h1 {
-      margin: 20px;
-      color: #004080;
+    .tank-section h2 {
+      color: var(--primary-dark);
+      margin-bottom: 20px;
+      font-size: 1.8rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    .tank {
+    .tank-container {
       position: relative;
-      width: 250px;
+      width: 100%;
+      max-width: 300px;
       height: 400px;
-      border: 4px solid #004080;
-      border-radius: 10px;
-      background: #e6f2ff;
+      border: 8px solid var(--primary-dark);
+      border-radius: 20px;
+      background: linear-gradient(to bottom, #e3f2fd, #bbdefb);
       overflow: hidden;
-      margin-bottom: 30px;
+      margin-bottom: 25px;
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.1);
     }
 
-    .water-level {
+    .water {
       position: absolute;
       bottom: 0;
       width: 100%;
-      transition: height 0.5s ease;
-      overflow: hidden;
+      background: linear-gradient(to top, var(--water-blue), var(--water-deep));
+      transition: height 1s ease;
+      border-radius: 0 0 12px 12px;
     }
 
-    .wave, .wave::before, .wave::after {
+    .water-wave {
       position: absolute;
-      bottom: 0;
+      top: -20px;
       width: 200%;
-      height: 100%;
+      height: 40px;
+      background: rgba(255, 255, 255, 0.3);
       border-radius: 40%;
-      animation: wave-animation 6s infinite linear;
-      transform: translate3d(0,0,0);
+      animation: wave 8s infinite linear;
     }
 
-    .wave {
-      background: rgba(0, 120, 215, 0.6);
-      animation-duration: 4s;
-    }
-
-    .wave::before {
-      content: "";
-      background: rgba(0, 120, 215, 0.4);
+    .water-wave:nth-child(2) {
+      top: -15px;
+      opacity: 0.5;
       animation-duration: 6s;
     }
 
-    .wave::after {
-      content: "";
-      background: rgba(0, 120, 215, 0.3);
-      animation-duration: 8s;
+    .water-wave:nth-child(3) {
+      top: -10px;
+      opacity: 0.3;
+      animation-duration: 10s;
     }
 
-    @keyframes wave-animation {
-      from { transform: translateX(0); }
-      to { transform: translateX(-50%); }
+    @keyframes wave {
+      0% { transform: translateX(0) rotate(0deg); }
+      100% { transform: translateX(-50%) rotate(360deg); }
     }
 
-    .level-text {
+    .tank-info {
       position: absolute;
-      top: 10px;
+      top: 20px;
       width: 100%;
       text-align: center;
-      font-size: 22px;
-      font-weight: bold;
-      color: #004080;
+      z-index: 10;
+    }
+
+    .percentage {
+      font-size: 3rem;
+      font-weight: 700;
+      color: var(--primary-dark);
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .volume {
+      font-size: 1.5rem;
+      color: var(--dark);
+      font-weight: 500;
+    }
+
+    .tank-scale {
+      position: absolute;
+      left: -40px;
+      top: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px 0;
+    }
+
+    .scale-mark {
+      position: relative;
+      text-align: right;
+      padding-right: 10px;
+      color: var(--gray);
+      font-size: 0.9rem;
+    }
+
+    .scale-mark::after {
+      content: '';
+      position: absolute;
+      right: -30px;
+      top: 50%;
+      width: 20px;
+      height: 2px;
+      background: var(--gray);
+    }
+
+    /* STATS CARDS */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      width: 100%;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      color: white;
+    }
+
+    .stat-icon.distance { background: linear-gradient(135deg, #667eea, #764ba2); }
+    .stat-icon.level { background: linear-gradient(135deg, #f093fb, #f5576c); }
+    .stat-icon.volume { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+    .stat-icon.status { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+
+    .stat-info h3 {
+      font-size: 0.9rem;
+      color: var(--gray);
+      font-weight: 500;
+      margin-bottom: 5px;
+    }
+
+    .stat-info p {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    /* CHART SECTION */
+    .chart-section {
+      background: white;
+      border-radius: 20px;
+      padding: 25px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .chart-header h2 {
+      color: var(--primary-dark);
+      font-size: 1.8rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .time-selector {
+      display: flex;
+      gap: 10px;
+    }
+
+    .time-btn {
+      padding: 8px 15px;
+      background: #e9ecef;
+      border: none;
+      border-radius: 8px;
+      color: var(--gray);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .time-btn.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .time-btn:hover:not(.active) {
+      background: #dee2e6;
     }
 
     .chart-container {
-      width: 90%;
-      max-width: 700px;
-      background: #fff;
-      border-radius: 8px;
+      position: relative;
+      height: 300px;
+      width: 100%;
+    }
+
+    /* HISTORY SECTION */
+    .history-section {
+      background: white;
+      border-radius: 20px;
+      padding: 25px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    .history-section h2 {
+      color: var(--primary-dark);
+      font-size: 1.8rem;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .history-table thead {
+      background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+      color: white;
+    }
+
+    .history-table th {
       padding: 15px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      text-align: left;
+      font-weight: 500;
+    }
+
+    .history-table tbody tr {
+      border-bottom: 1px solid #eee;
+      transition: background 0.3s ease;
+    }
+
+    .history-table tbody tr:hover {
+      background: #f8f9fa;
+    }
+
+    .history-table td {
+      padding: 15px;
+    }
+
+    .status-badge {
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .status-badge.ok {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-badge.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    /* FOOTER */
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--gray);
+      font-size: 0.9rem;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+      margin-top: 20px;
+    }
+
+    .update-info {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .last-update {
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    .refresh-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .refresh-btn:hover {
+      background: var(--primary-dark);
+      transform: rotate(180deg);
+    }
+
+    /* LOADING */
+    .loading {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 200px;
+      font-size: 1.2rem;
+      color: var(--gray);
+    }
+
+    .loading i {
+      margin-right: 10px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      .header h1 {
+        font-size: 2rem;
+      }
+      
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .time-selector {
+        flex-wrap: wrap;
+      }
+      
+      .history-table {
+        display: block;
+        overflow-x: auto;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>Monitoramento da Caixa d'Água</h1>
+  <div class="container">
+    <!-- HEADER -->
+    <header class="header">
+      <h1><i class="fas fa-water"></i> Monitor Inteligente de Caixa d'Água</h1>
+      <p class="subtitle">Sistema IoT para monitoramento em tempo real do nível e volume de água</p>
+    </header>
 
-  <div class="tank">
-    <div class="water-level" id="waterLevel">
-      <div class="wave"></div>
-    </div>
-    <div class="level-text" id="levelText">0%</div>
-  </div>
-
-  <div class="chart-container">
-    <h2>Histórico de Nível</h2>
-    <canvas id="nivelChart"></canvas>
+    <!-- MAIN CONTENT -->
+    <main>
+      <div class="content">
+        <!-- LEFT COLUMN: TANK AND STATS -->
+        <div class="tank-section">
+          <h2><i class="fas fa-tint"></i> Nível Atual</h2>
+          
+          <div class="tank-container">
+            <!-- Water Level -->
+            <div class="water" id="waterLevel">
+              <div class="water-wave"></div>
+              <div class="water-wave"></div>
+              <div class="water-wave"></div>
+            </div>
+            
+            <!-- Tank Scale -->
+            <div class="tank-scale">
+              <div class="scale-mark">100%</div>
+              <div class="scale-mark">75%</div>
+              <div class="scale-mark">50%</div>
+              <div class="scale-mark">25%</div>
+              <div class="scale-mark">0%</div>
+            </div>
+            
+            <!-- Tank Info -->
+            <div class="tank-info">
+              <div class="percentage" id="percentageText">0%</div>
+              <div class="volume" id="volumeText">0 / 5000 L</div>
+            </div>
+          </div>
+          
+          <!-- Stats Cards -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon distance">
+                <i class="fas fa-ruler"></i>
+              </div>
+              <div class="stat-info">
+                <h3>Distância do Sensor</h3>
+                <p id="distanceText">-- cm</p>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon level">
+                <i class="fas fa-chart-line"></i>
+              </div>
+              <div class="stat-info">
+                <h3>Nível de Água</h3>
+                <p id="levelText">-- cm</p>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon volume">
+                <i class="fas fa-weight-hanging"></i>
+              </div>
+              <div class="stat-info">
+                <h3>Volume Disponível</h3>
+                <p id="litersText">0 L</p>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon status">
+                <i class="fas fa-check-circle"></i>
+              </div>
+              <div class="stat-info">
+                <h3>Status do Sensor</h3>
+                <p id="sensorStatusText">Online</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- RIGHT COLUMN: CHART -->
+        <div class="chart-section">
+          <div class="chart-header">
+            <h2><i class="fas fa-chart-area"></i> Histórico de Nível</h2>
+            <div class="time-selector">
+              <button class="time-btn active" data-hours="24">24h</button>
+              <button class="time-btn" data-hours="48">48h</button>
+              <button class="time-btn" data-hours="168">7 Dias</button>
+              <button class="time-btn" data-hours="720">30 Dias</button>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="nivelChart"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <!-- HISTORY TABLE -->
+      <div class="history-section">
+        <h2><i class="fas fa-history"></i> Histórico de Leituras</h2>
+        <div class="loading" id="historyLoading">
+          <i class="fas fa-spinner"></i> Carregando histórico...
+        </div>
+        <table class="history-table" id="historyTable" style="display: none;">
+          <thead>
+            <tr>
+              <th>Data/Hora</th>
+              <th>Dispositivo</th>
+              <th>Nível (%)</th>
+              <th>Volume (L)</th>
+              <th>Distância (cm)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody">
+            <!-- Dados serão inseridos aqui via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </main>
+    
+    <!-- FOOTER -->
+    <footer class="footer">
+      <p>Sistema de Monitoramento IoT - Desenvolvido com ESP32 e LoRa</p>
+      <div class="update-info">
+        <button class="refresh-btn" id="refreshBtn">
+          <i class="fas fa-sync-alt"></i>
+        </button>
+        <span>Última atualização: <span class="last-update" id="lastUpdate">--:--:--</span></span>
+      </div>
+    </footer>
   </div>
 
   <script>
-    let chart;
+    // Variáveis globais
+    let chart = null;
+    let currentData = {
+      percentage: 0,
+      liters: 0,
+      distance: 0,
+      level: 0,
+      sensor_ok: true,
+      device: "ESP32",
+      timestamp: null
+    };
 
-    async function carregarDados() {
+    // Inicialização
+    document.addEventListener('DOMContentLoaded', function() {
+      // Configurar botões de tempo
+      document.querySelectorAll('.time-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          carregarDados(this.dataset.hours);
+        });
+      });
+      
+      // Botão de refresh
+      document.getElementById('refreshBtn').addEventListener('click', function() {
+        carregarDados();
+        this.classList.add('rotating');
+        setTimeout(() => this.classList.remove('rotating'), 1000);
+      });
+      
+      // Carregar dados inicialmente
+      carregarDados();
+      
+      // Atualizar a cada 30 segundos
+      setInterval(carregarDados, 30000);
+    });
+
+    // Função principal para carregar dados
+    async function carregarDados(hours = 24) {
       try {
-        const resposta = await fetch("/api/lora"); // Render ou local
-        const dados = await resposta.json();
-
-        // Atualiza nível da caixa
-        const nivel = dados.percentage || 0;
-        const waterLevel = document.getElementById("waterLevel");
-        const levelText = document.getElementById("levelText");
-        waterLevel.style.height = nivel + "%";
-        levelText.textContent = nivel + "%";
-
-        // Atualiza gráfico
-        const historico = dados.historico || [];
-        const labels = historico.map(item => item.timestamp || item.data);
-        const valores = historico.map(item => item.percentage);
-
-        if (!chart) {
-          const ctx = document.getElementById("nivelChart").getContext("2d");
-          chart = new Chart(ctx, {
-            type: "line",
-            data: {
-              labels: labels,
-              datasets: [{
-                label: "Nível (%)",
-                data: valores,
-                borderColor: "#0078d7",
-                backgroundColor: "rgba(0,120,215,0.2)",
-                fill: true,
-                tension: 0.3
-              }]
-            },
-            options: {
-              responsive: true,
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  max: 100
-                }
-              }
-            }
-          });
-        } else {
-          chart.data.labels = labels;
-          chart.data.datasets[0].data = valores;
-          chart.update();
+        // Atualizar última atualização
+        document.getElementById('lastUpdate').textContent = 
+          new Date().toLocaleTimeString('pt-BR');
+        
+        // Buscar dados da API
+        const response = await fetch('/api/lora');
+        if (!response.ok) throw new Error('Erro na resposta da API');
+        
+        const data = await response.json();
+        
+        // Atualizar dados atuais
+        currentData = {
+          percentage: data.percentage || 0,
+          liters: data.liters || 0,
+          distance: data.distance || 0,
+          level: data.level || 0,
+          sensor_ok: data.sensor_ok !== false,
+          device: data.device || "ESP32",
+          timestamp: data.timestamp || new Date().toISOString()
+        };
+        
+        // Atualizar interface
+        atualizarInterface();
+        
+        // Carregar histórico se disponível
+        if (data.historico && data.historico.length > 0) {
+          atualizarHistorico(data.historico);
+          atualizarGrafico(data.historico);
         }
-
-      } catch (e) {
-        console.error("Erro ao carregar dados:", e);
+        
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        document.getElementById('sensorStatusText').textContent = "Offline";
+        document.getElementById('sensorStatusText').style.color = "#e63946";
       }
     }
 
-    setInterval(carregarDados, 5000);
-    carregarDados();
+    // Atualizar elementos da interface
+    function atualizarInterface() {
+      const { percentage, liters, distance, level, sensor_ok } = currentData;
+      
+      // Tanque de água
+      const waterLevel = document.getElementById('waterLevel');
+      waterLevel.style.height = `${percentage}%`;
+      
+      // Textos informativos
+      document.getElementById('percentageText').textContent = `${percentage}%`;
+      document.getElementById('volumeText').textContent = `${liters} / 5000 L`;
+      document.getElementById('distanceText').textContent = `${distance.toFixed(1)} cm`;
+      document.getElementById('levelText').textContent = `${level} cm`;
+      document.getElementById('litersText').textContent = `${liters} L`;
+      
+      // Status do sensor
+      const statusElement = document.getElementById('sensorStatusText');
+      if (sensor_ok) {
+        statusElement.textContent = "Online ✅";
+        statusElement.style.color = "#38b000";
+      } else {
+        statusElement.textContent = "Erro ❌";
+        statusElement.style.color = "#e63946";
+      }
+      
+      // Cor da água baseada no nível
+      updateWaterColor(percentage);
+    }
+
+    // Atualizar cor da água baseada no nível
+    function updateWaterColor(percentage) {
+      const water = document.querySelector('.water');
+      if (percentage < 20) {
+        water.style.background = 'linear-gradient(to top, #ff6b6b, #ee5a52)';
+      } else if (percentage < 50) {
+        water.style.background = 'linear-gradient(to top, #ffa726, #ff9800)';
+      } else {
+        water.style.background = 'linear-gradient(to top, var(--water-blue), var(--water-deep))';
+      }
+    }
+
+    // Atualizar tabela de histórico
+    function atualizarHistorico(historico) {
+      const historyBody = document.getElementById('historyBody');
+      const loading = document.getElementById('historyLoading');
+      const table = document.getElementById('historyTable');
+      
+      // Esconder loading e mostrar tabela
+      loading.style.display = 'none';
+      table.style.display = 'table';
+      
+      // Limpar tabela
+      historyBody.innerHTML = '';
+      
+      // Ordenar por timestamp (mais recente primeiro)
+      historico.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      
+      // Adicionar linhas
+      historico.slice(0, 10).forEach(item => {
+        const row = document.createElement('tr');
+        
+        // Formatar data
+        const date = new Date(item.timestamp);
+        const formattedDate = date.toLocaleString('pt-BR');
+        
+        row.innerHTML = `
+          <td>${formattedDate}</td>
+          <td>${item.device || 'ESP32'}</td>
+          <td>${item.percentage || 0}%</td>
+          <td>${item.liters || 0} L</td>
+          <td>${item.distance ? item.distance.toFixed(1) : '--'} cm</td>
+          <td><span class="status-badge ${item.sensor_ok !== false ? 'ok' : 'error'}">
+            ${item.sensor_ok !== false ? 'OK' : 'ERRO'}
+          </span></td>
+        `;
+        
+        historyBody.appendChild(row);
+      });
+    }
+
+    // Atualizar gráfico
+    function atualizarGrafico(historico) {
+      const ctx = document.getElementById('nivelChart').getContext('2d');
+      
+      // Ordenar por timestamp
+      historico.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      
+      // Preparar dados
+      const labels = historico.map(item => {
+        const date = new Date(item.timestamp);
+        return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      });
+      
+      const data = historico.map(item => item.percentage || 0);
+      
+      // Criar ou atualizar gráfico
+      if (!chart) {
+        chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Nível da Água (%)',
+              data: data,
+              borderColor: '#0077b6',
+              backgroundColor: 'rgba(0, 119, 182, 0.1)',
+              borderWidth: 3,
+              fill: true,
+              tension: 0.4,
+              pointBackgroundColor: '#023e8a',
+              pointBorderColor: '#ffffff',
+              pointBorderWidth: 2,
+              pointRadius: 5,
+              pointHoverRadius: 8
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: true,
+                position: 'top',
+              },
+              tooltip: {
+                mode: 'index',
+                intersect: false,
+                callbacks: {
+                  label: function(context) {
+                    return `Nível: ${context.parsed.y}%`;
+                  }
+                }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100,
+                grid: {
+                  color: 'rgba(0,0,0,0.05)'
+                },
+                ticks: {
+                  callback: function(value) {
+                    return value + '%';
+                  }
+                }
+              },
+              x: {
+                grid: {
+                  display: false
+                }
+              }
+            },
+            interaction: {
+              intersect: false,
+              mode: 'nearest'
+            }
+          }
+        });
+      } else {
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = data;
+        chart.update();
+      }
+    }
+
+    // Simulação de dados (para teste sem API)
+    function simularDados() {
+      const porcentagem = Math.floor(Math.random() * 100);
+      const litros = Math.floor(porcentagem * 5000 / 100);
+      const distancia = 15 + (100 - porcentagem) * 0.95;
+      const nivel = 110 - (distancia - 15);
+      
+      return {
+        percentage: porcentagem,
+        liters: litros,
+        distance: distancia.toFixed(1),
+        level: nivel.toFixed(0),
+        sensor_ok: true,
+        device: "TX_CAIXA_01",
+        timestamp: new Date().toISOString()
+      };
+    }
+    
+    // Para teste local sem API, descomente a linha abaixo:
+    // window.simularDados = simularDados;
   </script>
 </body>
 </html>
