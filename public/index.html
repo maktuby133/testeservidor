@@ -124,6 +124,17 @@
 
     .api-status.connected { color: var(--success); }
     .api-status.disconnected { color: var(--danger); }
+    .lora-status.connected { color: var(--success); }
+    .lora-status.disconnected { 
+      color: var(--danger); 
+      font-weight: bold;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
 
     /* MAIN CONTENT */
     .content {
@@ -646,6 +657,10 @@
         <span class="status-value api-status connected" id="apiStatus">Conectado</span>
       </div>
       <div class="status-item">
+        <span class="status-label">Status LoRa:</span>
+        <span class="status-value lora-status connected" id="loraStatus">Conectado</span>
+      </div>
+      <div class="status-item">
         <span class="status-label">Última Leitura:</span>
         <span class="status-value" id="lastReadingTime">--:--:--</span>
       </div>
@@ -771,6 +786,7 @@
                 <th>Distância (cm)</th>
                 <th>Nível (cm)</th>
                 <th>Status</th>
+                <th>LoRa</th>
               </tr>
             </thead>
             <tbody id="historyBody">
@@ -810,11 +826,15 @@
       level: 0,
       sensor_ok: true,
       device: "ESP32",
-      timestamp: null
+      timestamp: null,
+      lora_connected: true
     };
     
     let connectionStatus = 'disconnected';
+    let loraConnectionStatus = 'connected';
     let updateInterval = null;
+    let loraStatusCheckInterval = null;
+    let lastLoRaPacketTime = Date.now();
 
     // Inicialização
     document.addEventListener('DOMContentLoaded', function() {
@@ -843,6 +863,9 @@
       // Atualizar a cada 10 segundos
       updateInterval = setInterval(carregarDados, 10000);
       
+      // Verificar status LoRa a cada 5 segundos
+      loraStatusCheckInterval = setInterval(verificarStatusLoRa, 5000);
+      
       // Testar conexão inicial
       testarConexaoAPI();
     });
@@ -850,6 +873,12 @@
     // Função para mostrar alertas
     function showAlert(message, type = 'info') {
       const alertContainer = document.getElementById('alertContainer');
+      
+      // Remover alertas antigos se houver muitos
+      const alerts = alertContainer.querySelectorAll('.alert');
+      if (alerts.length > 3) {
+        alerts[0].remove();
+      }
       
       const alert = document.createElement('div');
       alert.className = `alert ${type}`;
@@ -862,7 +891,9 @@
       
       // Remover após 5 segundos
       setTimeout(() => {
-        alert.remove();
+        if (alert.parentNode) {
+          alert.remove();
+        }
       }, 5000);
     }
 
@@ -878,6 +909,52 @@
         document.getElementById('apiStatus').textContent = 'Desconectado';
         document.getElementById('apiStatus').className = 'status-value api-status disconnected';
         showAlert('❌ Não foi possível conectar à API. Verifique o servidor.', 'error');
+      }
+    }
+
+    // Função para verificar status LoRa do servidor
+    async function verificarStatusLoRa() {
+      try {
+        const response = await fetch('/api/lora/status');
+        if (response.ok) {
+          const statusData = await response.json();
+          
+          // Verificar se há status de conexão LoRa
+          if (statusData.lora_connection) {
+            const loraConnected = statusData.lora_connection.connected;
+            const timeSinceLastPacket = statusData.lora_connection.time_since_last_packet;
+            
+            // Atualizar status LoRa no painel
+            const loraStatusElement = document.getElementById('loraStatus');
+            if (loraStatusElement) {
+              loraStatusElement.textContent = loraConnected ? 'Conectado' : 'Desconectado';
+              loraStatusElement.className = `status-value lora-status ${loraConnected ? 'connected' : 'disconnected'}`;
+              
+              // Atualizar variável global
+              loraConnectionStatus = loraConnected ? 'connected' : 'disconnected';
+              
+              // Mostrar alerta se LoRa desconectado por mais de 10 segundos
+              if (!loraConnected && timeSinceLastPacket > 10000) {
+                const minutes = Math.floor(timeSinceLastPacket / 60000);
+                const seconds = Math.floor((timeSinceLastPacket % 60000) / 1000);
+                
+                showAlert(`⚠️ ALERTA: Sem comunicação LoRa há ${minutes > 0 ? minutes + 'min ' : ''}${seconds} segundos! Verifique transmissor.`, 'warning');
+              }
+              
+              // Atualizar último tempo de pacote
+              if (statusData.last_reading && statusData.last_reading.timestamp) {
+                try {
+                  const lastPacketDate = new Date(statusData.last_reading.timestamp);
+                  lastLoRaPacketTime = lastPacketDate.getTime();
+                } catch (e) {
+                  console.warn('Erro ao parsear timestamp:', e);
+                }
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Não foi possível verificar status LoRa:', error);
       }
     }
 
@@ -905,6 +982,26 @@
           throw new Error('API retornou dados vazios');
         }
         
+        // CORREÇÃO: Processar timestamp corretamente
+        let timestamp;
+        if (data.timestamp) {
+          try {
+            // Tentar parsear o timestamp
+            if (typeof data.timestamp === 'string') {
+              timestamp = new Date(data.timestamp).toISOString();
+            } else if (typeof data.timestamp === 'number') {
+              timestamp = new Date(data.timestamp).toISOString();
+            } else {
+              timestamp = new Date().toISOString();
+            }
+          } catch (e) {
+            console.warn('Erro ao processar timestamp, usando horário atual:', e);
+            timestamp = new Date().toISOString();
+          }
+        } else {
+          timestamp = new Date().toISOString();
+        }
+        
         // Atualizar dados atuais
         currentData = {
           percentage: parseInt(data.percentage) || 0,
@@ -913,10 +1010,12 @@
           level: parseInt(data.level) || 0,
           sensor_ok: data.sensor_ok !== false,
           device: data.device || "ESP32",
-          timestamp: data.timestamp || new Date().toISOString()
+          timestamp: timestamp,
+          lora_connected: data.lora_connection_status ? data.lora_connection_status.connected : true
         };
         
         console.log('🎯 Dados processados:', currentData);
+        console.log('⏰ Timestamp usado:', timestamp);
         
         // Atualizar interface
         atualizarInterface();
@@ -932,10 +1031,41 @@
             `${data.historico.length} recebidos`;
         }
         
+        // Atualizar status LoRa se disponível
+        if (data.lora_connection_status) {
+          const loraConnected = data.lora_connection_status.connected;
+          document.getElementById('loraStatus').textContent = loraConnected ? 'Conectado' : 'Desconectado';
+          document.getElementById('loraStatus').className = `status-value lora-status ${loraConnected ? 'connected' : 'disconnected'}`;
+          loraConnectionStatus = loraConnected ? 'connected' : 'disconnected';
+        }
+        
         // Carregar histórico se disponível
         if (data.historico && data.historico.length > 0) {
-          atualizarHistorico(data.historico);
-          atualizarGrafico(data.historico);
+          // CORREÇÃO: Garantir timestamps corretos no histórico
+          const historicoCorrigido = data.historico.map(item => {
+            let itemTimestamp;
+            if (item.timestamp) {
+              try {
+                itemTimestamp = new Date(item.timestamp).toISOString();
+              } catch (e) {
+                itemTimestamp = new Date().toISOString();
+              }
+            } else if (item.received_at) {
+              itemTimestamp = new Date(item.received_at).toISOString();
+            } else if (item.server_timestamp) {
+              itemTimestamp = new Date(item.server_timestamp).toISOString();
+            } else {
+              itemTimestamp = new Date().toISOString();
+            }
+            
+            return {
+              ...item,
+              timestamp: itemTimestamp
+            };
+          });
+          
+          atualizarHistorico(historicoCorrigido);
+          atualizarGrafico(historicoCorrigido);
         }
         
         // Atualizar último update
@@ -971,7 +1101,8 @@
             level: testData.level,
             sensor_ok: testData.sensor_ok,
             device: testData.device,
-            timestamp: testData.timestamp
+            timestamp: testData.timestamp || new Date().toISOString(),
+            lora_connected: true
           };
           atualizarInterface();
           console.log('✅ Dados de teste carregados');
@@ -989,7 +1120,7 @@
 
     // Atualizar elementos da interface
     function atualizarInterface() {
-      const { percentage, liters, distance, level, sensor_ok, device } = currentData;
+      const { percentage, liters, distance, level, sensor_ok, device, lora_connected } = currentData;
       
       console.log(`📊 Atualizando interface: ${percentage}%, ${liters}L, ${distance}cm, ${level}cm`);
       
@@ -1018,6 +1149,10 @@
       
       // Cor da água baseada no nível
       updateWaterColor(waterPercentage);
+      
+      // Status LoRa
+      document.getElementById('loraStatus').textContent = lora_connected ? 'Conectado' : 'Desconectado';
+      document.getElementById('loraStatus').className = `status-value lora-status ${lora_connected ? 'connected' : 'disconnected'}`;
     }
 
     // Atualizar cor da água baseada no nível
@@ -1056,9 +1191,19 @@
       historico.slice(0, 15).forEach(item => {
         const row = document.createElement('tr');
         
-        // Formatar data
-        const date = new Date(item.timestamp);
-        const formattedDate = date.toLocaleString('pt-BR');
+        // CORREÇÃO: Formatar data corretamente
+        let formattedDate = '--/--/-- --:--';
+        try {
+          const date = new Date(item.timestamp);
+          if (!isNaN(date.getTime())) {
+            formattedDate = date.toLocaleString('pt-BR');
+          }
+        } catch (e) {
+          console.warn('Erro ao formatar data:', e);
+        }
+        
+        // Verificar se tem status LoRa
+        const loraStatus = item.lora_connection_status ? item.lora_connection_status.connected : true;
         
         row.innerHTML = `
           <td>${formattedDate}</td>
@@ -1070,6 +1215,9 @@
           <td><span class="status-badge ${item.sensor_ok !== false ? 'ok' : 'error'}">
             ${item.sensor_ok !== false ? 'OK' : 'ERRO'}
           </span></td>
+          <td><span class="status-badge ${loraStatus ? 'ok' : 'error'}">
+            ${loraStatus ? 'OK' : 'ERRO'}
+          </span></td>
         `;
         
         historyBody.appendChild(row);
@@ -1080,13 +1228,21 @@
     function atualizarGrafico(historico) {
       const ctx = document.getElementById('nivelChart').getContext('2d');
       
-      // Ordenar por timestamp
+      // Ordenar por timestamp (mais antigo primeiro para gráfico)
       historico.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
       
-      // Preparar dados
+      // Preparar dados - CORREÇÃO: usar timestamps corretos
       const labels = historico.map(item => {
-        const date = new Date(item.timestamp);
-        return date;
+        try {
+          const date = new Date(item.timestamp);
+          if (!isNaN(date.getTime())) {
+            return date;
+          } else {
+            return new Date();
+          }
+        } catch (e) {
+          return new Date();
+        }
       });
       
       const data = historico.map(item => item.percentage || 0);
@@ -1128,8 +1284,12 @@
                     return `Nível: ${context.parsed.y}%`;
                   },
                   title: function(context) {
-                    const date = new Date(context[0].parsed.x);
-                    return date.toLocaleString('pt-BR');
+                    try {
+                      const date = new Date(context[0].parsed.x);
+                      return date.toLocaleString('pt-BR');
+                    } catch (e) {
+                      return 'Data inválida';
+                    }
                   }
                 }
               }
@@ -1187,7 +1347,8 @@
         level: Math.floor(nivel),
         sensor_ok: Math.random() > 0.1,
         device: "TX_CAIXA_01",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        lora_connected: Math.random() > 0.2 // 80% de chance de estar conectado
       };
     }
 
@@ -1196,11 +1357,14 @@
       console.log('=== 🐛 MODO DEBUG ===');
       console.log('Dados atuais:', currentData);
       console.log('Status conexão:', connectionStatus);
+      console.log('Status LoRa:', loraConnectionStatus);
+      console.log('Último pacote LoRa:', new Date(lastLoRaPacketTime).toLocaleString());
       console.log('Elementos DOM:');
       console.log('- Distância:', document.getElementById('distanceText').textContent);
       console.log('- Nível:', document.getElementById('levelText').textContent);
       console.log('- Porcentagem:', document.getElementById('percentageText').textContent);
       console.log('- Volume:', document.getElementById('litersText').textContent);
+      console.log('- Status LoRa:', document.getElementById('loraStatus').textContent);
       
       // Testar conexão com API
       fetch('/api/lora')
@@ -1210,6 +1374,7 @@
         })
         .then(data => {
           console.log('Resposta API completa:', data);
+          console.log('Timestamp correção:', data.timestamp_correction);
           
           if (!data.distance && data.distance !== 0) {
             console.warn('⚠️ Campo "distance" não encontrado na resposta');
@@ -1241,6 +1406,7 @@
     window.debugData = debugData;
     window.simularDados = simularDados;
     window.carregarDados = carregarDados;
+    window.verificarStatusLoRa = verificarStatusLoRa;
   </script>
 </body>
 </html>
