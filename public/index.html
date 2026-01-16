@@ -21,6 +21,7 @@
       --gray: #6c757d;
       --water-blue: #48cae4;
       --water-deep: #0096c7;
+      --waiting: #6c757d;
     }
 
     * {
@@ -192,6 +193,11 @@
       border-radius: 0 0 12px 12px;
     }
 
+    .water.waiting {
+      background: linear-gradient(to top, var(--waiting), #adb5bd);
+      animation: waitingPulse 2s infinite;
+    }
+
     .water-wave {
       position: absolute;
       top: -20px;
@@ -219,6 +225,11 @@
       100% { transform: translateX(-50%) rotate(360deg); }
     }
 
+    @keyframes waitingPulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 0.4; }
+    }
+
     .tank-info {
       position: absolute;
       top: 50%;
@@ -233,6 +244,11 @@
       min-width: 200px;
     }
 
+    .tank-info.waiting {
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px dashed var(--waiting);
+    }
+
     .percentage {
       font-size: 3.5rem;
       font-weight: 700;
@@ -242,10 +258,33 @@
       margin-bottom: 5px;
     }
 
+    .percentage.waiting {
+      color: var(--waiting);
+      font-size: 2.5rem;
+    }
+
     .volume {
       font-size: 1.3rem;
       color: var(--dark);
       font-weight: 500;
+    }
+
+    .volume.waiting {
+      color: var(--waiting);
+      font-weight: 600;
+    }
+
+    .waiting-message {
+      font-size: 1.2rem;
+      color: var(--waiting);
+      font-weight: 600;
+      margin-top: 10px;
+      animation: textPulse 2s infinite;
+    }
+
+    @keyframes textPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
     }
 
     .tank-scale {
@@ -298,6 +337,11 @@
       cursor: pointer;
     }
 
+    .stat-card.waiting {
+      background: #f8f9fa;
+      border: 2px dashed var(--waiting);
+    }
+
     .stat-card:hover {
       transform: translateY(-5px);
       box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
@@ -318,6 +362,15 @@
     .stat-icon.level { background: linear-gradient(135deg, #f093fb, #f5576c); }
     .stat-icon.volume { background: linear-gradient(135deg, #4facfe, #00f2fe); }
     .stat-icon.status { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+    .stat-icon.waiting { 
+      background: linear-gradient(135deg, var(--waiting), #adb5bd); 
+      animation: iconPulse 2s infinite;
+    }
+
+    @keyframes iconPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
 
     .stat-info h3 {
       font-size: 0.9rem;
@@ -330,6 +383,12 @@
       font-size: 1.5rem;
       font-weight: 600;
       color: var(--dark);
+    }
+
+    .stat-info p.waiting {
+      color: var(--waiting);
+      font-size: 1.2rem;
+      font-style: italic;
     }
 
     /* CHART SECTION */
@@ -384,6 +443,23 @@
       position: relative;
       height: 300px;
       width: 100%;
+    }
+
+    .chart-waiting {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--waiting);
+      text-align: center;
+      padding: 20px;
+    }
+
+    .chart-waiting i {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      animation: spin 2s infinite linear;
     }
 
     /* HISTORY SECTION */
@@ -458,6 +534,12 @@
     .status-badge.error {
       background: #f8d7da;
       color: #721c24;
+    }
+
+    .status-badge.waiting {
+      background: #e9ecef;
+      color: var(--waiting);
+      font-style: italic;
     }
 
     /* FOOTER */
@@ -555,6 +637,12 @@
       border-left: 4px solid #ffeaa7;
     }
 
+    .alert.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border-left: 4px solid #bee5eb;
+    }
+
     @keyframes slideIn {
       from { transform: translateY(-20px); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
@@ -620,6 +708,10 @@
       
       .percentage {
         font-size: 2.8rem;
+      }
+      
+      .percentage.waiting {
+        font-size: 2rem;
       }
     }
 
@@ -702,15 +794,18 @@
             </div>
             
             <!-- Tank Info -->
-            <div class="tank-info">
+            <div class="tank-info" id="tankInfo">
               <div class="percentage" id="percentageText">0%</div>
               <div class="volume" id="volumeText">0 / 5000 L</div>
+              <div class="waiting-message" id="waitingMessage" style="display: none;">
+                <i class="fas fa-sync-alt"></i> Aguardando dados...
+              </div>
             </div>
           </div>
           
           <!-- Stats Cards -->
           <div class="stats-grid">
-            <div class="stat-card" onclick="showDetails('distance')">
+            <div class="stat-card" id="distanceCard" onclick="showDetails('distance')">
               <div class="stat-icon distance">
                 <i class="fas fa-ruler"></i>
               </div>
@@ -720,7 +815,7 @@
               </div>
             </div>
             
-            <div class="stat-card" onclick="showDetails('level')">
+            <div class="stat-card" id="levelCard" onclick="showDetails('level')">
               <div class="stat-icon level">
                 <i class="fas fa-chart-line"></i>
               </div>
@@ -730,7 +825,7 @@
               </div>
             </div>
             
-            <div class="stat-card" onclick="showDetails('volume')">
+            <div class="stat-card" id="volumeCard" onclick="showDetails('volume')">
               <div class="stat-icon volume">
                 <i class="fas fa-weight-hanging"></i>
               </div>
@@ -740,7 +835,7 @@
               </div>
             </div>
             
-            <div class="stat-card" onclick="showDetails('status')">
+            <div class="stat-card" id="sensorCard" onclick="showDetails('status')">
               <div class="stat-icon status">
                 <i class="fas fa-check-circle"></i>
               </div>
@@ -765,6 +860,11 @@
           </div>
           <div class="chart-container">
             <canvas id="nivelChart"></canvas>
+            <div class="chart-waiting" id="chartWaiting" style="display: none;">
+              <i class="fas fa-sync-alt fa-spin"></i>
+              <h3>Aguardando dados do transmissor</h3>
+              <p>O gráfico será exibido quando os dados LoRa estiverem disponíveis</p>
+            </div>
           </div>
         </div>
       </div>
@@ -781,11 +881,11 @@
               <tr>
                 <th>Data/Hora</th>
                 <th>Dispositivo</th>
+                <th>Status</th>
                 <th>Nível (%)</th>
                 <th>Volume (L)</th>
                 <th>Distância (cm)</th>
                 <th>Nível (cm)</th>
-                <th>Status</th>
                 <th>LoRa</th>
               </tr>
             </thead>
@@ -827,18 +927,22 @@
       sensor_ok: true,
       device: "ESP32",
       timestamp: null,
-      lora_connected: true
+      lora_connected: true,
+      no_data_mode: false,
+      display_mode: "normal",
+      status: "normal"
     };
     
     let connectionStatus = 'disconnected';
     let loraConnectionStatus = 'connected';
+    let isWaitingDataMode = false;
     let updateInterval = null;
     let loraStatusCheckInterval = null;
     let lastLoRaPacketTime = Date.now();
 
     // Inicialização
     document.addEventListener('DOMContentLoaded', function() {
-      console.log('🚀 Dashboard inicializado');
+      console.log('🚀 Dashboard inicializado com modo "Aguardando Dados"');
       
       // Configurar botões de tempo
       document.querySelectorAll('.time-btn').forEach(btn => {
@@ -883,18 +987,20 @@
       const alert = document.createElement('div');
       alert.className = `alert ${type}`;
       alert.innerHTML = `
-        <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : type === 'success' ? 'check-circle' : 'info-circle'}"></i>
+        <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
         <span>${message}</span>
       `;
       
       alertContainer.appendChild(alert);
       
-      // Remover após 5 segundos
-      setTimeout(() => {
-        if (alert.parentNode) {
-          alert.remove();
-        }
-      }, 5000);
+      // Remover após 5 segundos (exceto alertas de espera)
+      if (type !== 'info') {
+        setTimeout(() => {
+          if (alert.parentNode) {
+            alert.remove();
+          }
+        }, 5000);
+      }
     }
 
     // Função para testar conexão com API
@@ -922,7 +1028,8 @@
           // Verificar se há status de conexão LoRa
           if (statusData.lora_connection) {
             const loraConnected = statusData.lora_connection.connected;
-            const timeSinceLastPacket = statusData.lora_connection.time_since_last_packet;
+            const waitingData = statusData.lora_connection.waiting_data;
+            const noDataMode = statusData.lora_connection.no_data_mode;
             
             // Atualizar status LoRa no painel
             const loraStatusElement = document.getElementById('loraStatus');
@@ -932,19 +1039,37 @@
               
               // Atualizar variável global
               loraConnectionStatus = loraConnected ? 'connected' : 'disconnected';
+              isWaitingDataMode = waitingData || noDataMode;
               
               // Mostrar alerta se LoRa desconectado por mais de 10 segundos
+              const timeSinceLastPacket = statusData.lora_connection.time_since_last_packet;
               if (!loraConnected && timeSinceLastPacket > 10000) {
                 const minutes = Math.floor(timeSinceLastPacket / 60000);
                 const seconds = Math.floor((timeSinceLastPacket % 60000) / 1000);
                 
-                showAlert(`⚠️ ALERTA: Sem comunicação LoRa há ${minutes > 0 ? minutes + 'min ' : ''}${seconds} segundos! Verifique transmissor.`, 'warning');
+                // Mostrar alerta apenas uma vez
+                if (!document.querySelector('.alert[data-type="lora-waiting"]')) {
+                  const alert = document.createElement('div');
+                  alert.className = 'alert info';
+                  alert.setAttribute('data-type', 'lora-waiting');
+                  alert.innerHTML = `
+                    <i class="fas fa-sync-alt fa-spin"></i>
+                    <span>📡 Aguardando dados do transmissor LoRa... (${minutes > 0 ? minutes + 'min ' : ''}${seconds}s)</span>
+                  `;
+                  document.getElementById('alertContainer').appendChild(alert);
+                }
+              } else {
+                // Remover alerta de espera se reconectado
+                const waitingAlert = document.querySelector('.alert[data-type="lora-waiting"]');
+                if (waitingAlert) {
+                  waitingAlert.remove();
+                }
               }
               
               // Atualizar último tempo de pacote
-              if (statusData.last_reading && statusData.last_reading.timestamp) {
+              if (statusData.last_normal_reading && statusData.last_normal_reading.timestamp) {
                 try {
-                  const lastPacketDate = new Date(statusData.last_reading.timestamp);
+                  const lastPacketDate = new Date(statusData.last_normal_reading.timestamp);
                   lastLoRaPacketTime = lastPacketDate.getTime();
                 } catch (e) {
                   console.warn('Erro ao parsear timestamp:', e);
@@ -1002,23 +1127,36 @@
           timestamp = new Date().toISOString();
         }
         
+        // Verificar se estamos no modo "Aguardando Dados"
+        const isWaiting = data.no_data_mode === true || 
+                         data.display_mode === "waiting" || 
+                         data.status === "waiting_data" ||
+                         (data.lora_connection_status && 
+                          (data.lora_connection_status.waiting_data === true || 
+                           data.lora_connection_status.no_data_mode === true));
+        
         // Atualizar dados atuais
         currentData = {
-          percentage: parseInt(data.percentage) || 0,
-          liters: parseInt(data.liters) || 0,
-          distance: parseFloat(data.distance) || 0,
-          level: parseInt(data.level) || 0,
-          sensor_ok: data.sensor_ok !== false,
+          percentage: isWaiting ? -1 : (parseInt(data.percentage) || 0),
+          liters: isWaiting ? -1 : (parseInt(data.liters) || 0),
+          distance: isWaiting ? -1 : (parseFloat(data.distance) || 0),
+          level: isWaiting ? -1 : (parseInt(data.level) || 0),
+          sensor_ok: isWaiting ? false : (data.sensor_ok !== false),
           device: data.device || "ESP32",
           timestamp: timestamp,
-          lora_connected: data.lora_connection_status ? data.lora_connection_status.connected : true
+          lora_connected: data.lora_connection_status ? data.lora_connection_status.connected : true,
+          no_data_mode: isWaiting,
+          display_mode: isWaiting ? "waiting" : "normal",
+          status: data.status || "normal",
+          message: data.message || null
         };
         
         console.log('🎯 Dados processados:', currentData);
         console.log('⏰ Timestamp usado:', timestamp);
+        console.log('📭 Modo Aguardando Dados:', isWaiting ? 'ATIVADO' : 'desativado');
         
         // Atualizar interface
-        atualizarInterface();
+        atualizarInterface(isWaiting);
         
         // Atualizar status da conexão
         connectionStatus = 'connected';
@@ -1027,16 +1165,20 @@
         
         // Atualizar contador de pacotes
         if (data.historico) {
+          const normalPackets = data.historico.filter(item => item.status === "normal").length;
+          const waitingPackets = data.historico.filter(item => item.status === "waiting_data").length;
           document.getElementById('packetsCount').textContent = 
-            `${data.historico.length} recebidos`;
+            `${normalPackets}/${waitingPackets}`;
         }
         
         // Atualizar status LoRa se disponível
         if (data.lora_connection_status) {
           const loraConnected = data.lora_connection_status.connected;
+          const waitingData = data.lora_connection_status.waiting_data;
           document.getElementById('loraStatus').textContent = loraConnected ? 'Conectado' : 'Desconectado';
           document.getElementById('loraStatus').className = `status-value lora-status ${loraConnected ? 'connected' : 'disconnected'}`;
           loraConnectionStatus = loraConnected ? 'connected' : 'disconnected';
+          isWaitingDataMode = waitingData;
         }
         
         // Carregar histórico se disponível
@@ -1065,7 +1207,14 @@
           });
           
           atualizarHistorico(historicoCorrigido);
-          atualizarGrafico(historicoCorrigido);
+          
+          // Atualizar gráfico apenas se não estiver no modo de espera
+          if (!isWaiting) {
+            const normalHistory = historicoCorrigido.filter(item => item.status === "normal");
+            if (normalHistory.length > 0) {
+              atualizarGrafico(normalHistory);
+            }
+          }
         }
         
         // Atualizar último update
@@ -1102,9 +1251,12 @@
             sensor_ok: testData.sensor_ok,
             device: testData.device,
             timestamp: testData.timestamp || new Date().toISOString(),
-            lora_connected: true
+            lora_connected: true,
+            no_data_mode: false,
+            display_mode: "normal",
+            status: "normal"
           };
-          atualizarInterface();
+          atualizarInterface(false);
           console.log('✅ Dados de teste carregados');
           showAlert('📡 Usando dados de teste', 'warning');
         }
@@ -1113,46 +1265,127 @@
         
         // Simular dados se tudo falhar
         currentData = simularDados();
-        atualizarInterface();
+        atualizarInterface(false);
         showAlert('🎛️ Modo simulação ativado', 'warning');
       }
     }
 
     // Atualizar elementos da interface
-    function atualizarInterface() {
-      const { percentage, liters, distance, level, sensor_ok, device, lora_connected } = currentData;
+    function atualizarInterface(isWaiting = false) {
+      const { percentage, liters, distance, level, sensor_ok, device, lora_connected, message } = currentData;
       
-      console.log(`📊 Atualizando interface: ${percentage}%, ${liters}L, ${distance}cm, ${level}cm`);
+      console.log(`📊 Atualizando interface (modo espera: ${isWaiting}):`, currentData);
       
       // Tanque de água
       const waterLevel = document.getElementById('waterLevel');
-      const waterPercentage = Math.max(0, Math.min(100, percentage));
+      const tankInfo = document.getElementById('tankInfo');
+      const waitingMessage = document.getElementById('waitingMessage');
+      const waterPercentage = isWaiting ? 10 : Math.max(0, Math.min(100, percentage));
+      
       waterLevel.style.height = `${waterPercentage}%`;
       
-      // Textos informativos
-      document.getElementById('percentageText').textContent = `${waterPercentage}%`;
-      document.getElementById('volumeText').textContent = `${liters} / 5000 L`;
-      document.getElementById('distanceText').textContent = `${distance.toFixed(1)} cm`;
-      document.getElementById('levelText').textContent = `${level} cm`;
-      document.getElementById('litersText').textContent = `${liters} L`;
-      document.getElementById('currentDevice').textContent = device;
-      
-      // Status do sensor
-      const statusElement = document.getElementById('sensorStatusText');
-      if (sensor_ok) {
-        statusElement.textContent = "Online ✅";
-        statusElement.style.color = "#38b000";
+      if (isWaiting) {
+        // MODO AGUARDANDO DADOS
+        waterLevel.classList.add('waiting');
+        tankInfo.classList.add('waiting');
+        
+        document.getElementById('percentageText').textContent = "---";
+        document.getElementById('percentageText').classList.add('waiting');
+        document.getElementById('volumeText').textContent = "AGUARDANDO DADOS";
+        document.getElementById('volumeText').classList.add('waiting');
+        waitingMessage.style.display = 'block';
+        
+        // Atualizar cards de estatísticas para modo de espera
+        document.getElementById('distanceText').textContent = "---";
+        document.getElementById('distanceText').classList.add('waiting');
+        document.getElementById('levelText').textContent = "---";
+        document.getElementById('levelText').classList.add('waiting');
+        document.getElementById('litersText').textContent = "---";
+        document.getElementById('litersText').classList.add('waiting');
+        document.getElementById('sensorStatusText').textContent = "AGUARDANDO";
+        document.getElementById('sensorStatusText').classList.add('waiting');
+        
+        // Atualizar ícones dos cards
+        document.querySelectorAll('.stat-icon').forEach(icon => {
+          icon.classList.add('waiting');
+        });
+        
+        document.querySelectorAll('.stat-card').forEach(card => {
+          card.classList.add('waiting');
+        });
+        
+        // Mostrar mensagem no gráfico
+        document.getElementById('chartWaiting').style.display = 'flex';
+        if (chart) {
+          chart.canvas.style.display = 'none';
+        }
+        
+        // Cor da água no modo de espera (cinza)
+        waterLevel.style.background = 'linear-gradient(to top, var(--waiting), #adb5bd)';
+        
       } else {
-        statusElement.textContent = "Erro ❌";
-        statusElement.style.color = "#e63946";
+        // MODO NORMAL - Dados recebidos
+        waterLevel.classList.remove('waiting');
+        tankInfo.classList.remove('waiting');
+        
+        // Textos informativos
+        document.getElementById('percentageText').textContent = `${waterPercentage}%`;
+        document.getElementById('percentageText').classList.remove('waiting');
+        document.getElementById('volumeText').textContent = `${liters} / 5000 L`;
+        document.getElementById('volumeText').classList.remove('waiting');
+        waitingMessage.style.display = 'none';
+        
+        // Cards de estatísticas
+        document.getElementById('distanceText').textContent = `${distance.toFixed(1)} cm`;
+        document.getElementById('distanceText').classList.remove('waiting');
+        document.getElementById('levelText').textContent = `${level} cm`;
+        document.getElementById('levelText').classList.remove('waiting');
+        document.getElementById('litersText').textContent = `${liters} L`;
+        document.getElementById('litersText').classList.remove('waiting');
+        
+        // Status do sensor
+        const statusElement = document.getElementById('sensorStatusText');
+        if (sensor_ok) {
+          statusElement.textContent = "Online ✅";
+          statusElement.style.color = "#38b000";
+          statusElement.classList.remove('waiting');
+        } else {
+          statusElement.textContent = "Erro ❌";
+          statusElement.style.color = "#e63946";
+          statusElement.classList.remove('waiting');
+        }
+        
+        // Remover classes de espera dos cards
+        document.querySelectorAll('.stat-icon').forEach(icon => {
+          icon.classList.remove('waiting');
+        });
+        
+        document.querySelectorAll('.stat-card').forEach(card => {
+          card.classList.remove('waiting');
+        });
+        
+        // Mostrar gráfico
+        document.getElementById('chartWaiting').style.display = 'none';
+        if (chart) {
+          chart.canvas.style.display = 'block';
+        }
+        
+        // Cor da água baseada no nível
+        updateWaterColor(waterPercentage);
       }
       
-      // Cor da água baseada no nível
-      updateWaterColor(waterPercentage);
+      // Dispositivo atual
+      document.getElementById('currentDevice').textContent = device;
       
       // Status LoRa
-      document.getElementById('loraStatus').textContent = lora_connected ? 'Conectado' : 'Desconectado';
-      document.getElementById('loraStatus').className = `status-value lora-status ${lora_connected ? 'connected' : 'disconnected'}`;
+      const loraStatusText = isWaiting ? 'Desconectado' : (lora_connected ? 'Conectado' : 'Desconectado');
+      document.getElementById('loraStatus').textContent = loraStatusText;
+      document.getElementById('loraStatus').className = `status-value lora-status ${isWaiting ? 'disconnected' : (lora_connected ? 'connected' : 'disconnected')}`;
+      
+      // Mostrar mensagem personalizada se houver
+      if (message && isWaiting) {
+        showAlert(`📡 ${message}`, 'info');
+      }
     }
 
     // Atualizar cor da água baseada no nível
@@ -1202,22 +1435,29 @@
           console.warn('Erro ao formatar data:', e);
         }
         
-        // Verificar se tem status LoRa
-        const loraStatus = item.lora_connection_status ? item.lora_connection_status.connected : true;
+        // Determinar status
+        const isWaiting = item.status === "waiting_data" || item.no_data_mode === true;
+        const statusText = isWaiting ? "Aguardando" : (item.sensor_ok !== false ? "Normal" : "Erro");
+        const statusClass = isWaiting ? "waiting" : (item.sensor_ok !== false ? "ok" : "error");
+        
+        // Dados para exibir
+        const displayPercentage = isWaiting ? "---" : `${item.percentage || 0}%`;
+        const displayLiters = isWaiting ? "---" : `${item.liters || 0} L`;
+        const displayDistance = isWaiting ? "---" : `${item.distance ? parseFloat(item.distance).toFixed(1) : '--'} cm`;
+        const displayLevel = isWaiting ? "---" : `${item.level || '--'} cm`;
+        const loraStatus = item.lora_connected !== false && !isWaiting;
+        const loraStatusClass = isWaiting ? "waiting" : (loraStatus ? "ok" : "error");
+        const loraStatusText = isWaiting ? "Aguardando" : (loraStatus ? "OK" : "Erro");
         
         row.innerHTML = `
           <td>${formattedDate}</td>
           <td>${item.device || 'ESP32'}</td>
-          <td>${item.percentage || 0}%</td>
-          <td>${item.liters || 0} L</td>
-          <td>${item.distance ? parseFloat(item.distance).toFixed(1) : '--'} cm</td>
-          <td>${item.level || '--'} cm</td>
-          <td><span class="status-badge ${item.sensor_ok !== false ? 'ok' : 'error'}">
-            ${item.sensor_ok !== false ? 'OK' : 'ERRO'}
-          </span></td>
-          <td><span class="status-badge ${loraStatus ? 'ok' : 'error'}">
-            ${loraStatus ? 'OK' : 'ERRO'}
-          </span></td>
+          <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+          <td>${displayPercentage}</td>
+          <td>${displayLiters}</td>
+          <td>${displayDistance}</td>
+          <td>${displayLevel}</td>
+          <td><span class="status-badge ${loraStatusClass}">${loraStatusText}</span></td>
         `;
         
         historyBody.appendChild(row);
@@ -1228,11 +1468,23 @@
     function atualizarGrafico(historico) {
       const ctx = document.getElementById('nivelChart').getContext('2d');
       
+      // Filtrar apenas dados normais
+      const normalHistory = historico.filter(item => item.status === "normal" && item.percentage !== -1);
+      
+      if (normalHistory.length === 0) {
+        console.log('📭 Nenhum dado normal para exibir no gráfico');
+        document.getElementById('chartWaiting').style.display = 'flex';
+        if (chart) {
+          chart.canvas.style.display = 'none';
+        }
+        return;
+      }
+      
       // Ordenar por timestamp (mais antigo primeiro para gráfico)
-      historico.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      normalHistory.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
       
       // Preparar dados - CORREÇÃO: usar timestamps corretos
-      const labels = historico.map(item => {
+      const labels = normalHistory.map(item => {
         try {
           const date = new Date(item.timestamp);
           if (!isNaN(date.getTime())) {
@@ -1245,7 +1497,7 @@
         }
       });
       
-      const data = historico.map(item => item.percentage || 0);
+      const data = normalHistory.map(item => item.percentage || 0);
       
       // Criar ou atualizar gráfico
       if (!chart) {
@@ -1331,6 +1583,10 @@
         chart.data.datasets[0].data = data;
         chart.update('none');
       }
+      
+      // Garantir que o gráfico esteja visível
+      document.getElementById('chartWaiting').style.display = 'none';
+      chart.canvas.style.display = 'block';
     }
 
     // Função para simular dados
@@ -1348,7 +1604,10 @@
         sensor_ok: Math.random() > 0.1,
         device: "TX_CAIXA_01",
         timestamp: new Date().toISOString(),
-        lora_connected: Math.random() > 0.2 // 80% de chance de estar conectado
+        lora_connected: Math.random() > 0.2,
+        no_data_mode: false,
+        display_mode: "normal",
+        status: "normal"
       };
     }
 
@@ -1358,6 +1617,7 @@
       console.log('Dados atuais:', currentData);
       console.log('Status conexão:', connectionStatus);
       console.log('Status LoRa:', loraConnectionStatus);
+      console.log('Modo Aguardando Dados:', isWaitingDataMode);
       console.log('Último pacote LoRa:', new Date(lastLoRaPacketTime).toLocaleString());
       console.log('Elementos DOM:');
       console.log('- Distância:', document.getElementById('distanceText').textContent);
@@ -1365,6 +1625,7 @@
       console.log('- Porcentagem:', document.getElementById('percentageText').textContent);
       console.log('- Volume:', document.getElementById('litersText').textContent);
       console.log('- Status LoRa:', document.getElementById('loraStatus').textContent);
+      console.log('- Mensagem de espera visível:', document.getElementById('waitingMessage').style.display !== 'none');
       
       // Testar conexão com API
       fetch('/api/lora')
@@ -1375,12 +1636,10 @@
         .then(data => {
           console.log('Resposta API completa:', data);
           console.log('Timestamp correção:', data.timestamp_correction);
+          console.log('Status LoRa:', data.lora_connection_status);
           
           if (!data.distance && data.distance !== 0) {
             console.warn('⚠️ Campo "distance" não encontrado na resposta');
-          }
-          if (!data.level && data.level !== 0) {
-            console.warn('⚠️ Campo "level" não encontrado na resposta');
           }
           
           console.log('Campos disponíveis:', Object.keys(data));
@@ -1392,6 +1651,13 @@
 
     // Função para mostrar detalhes
     function showDetails(type) {
+      const isWaiting = currentData.no_data_mode || currentData.display_mode === "waiting";
+      
+      if (isWaiting) {
+        alert('⏳ AGUARDANDO DADOS DO TRANSMISSOR LoRa\n\nO sistema está esperando receber dados do transmissor. Verifique:\n\n1. Se o transmissor está ligado\n2. Se a bateria está carregada\n3. Se a distância entre os dispositivos é adequada\n4. Se as antenas estão conectadas corretamente');
+        return;
+      }
+      
       const messages = {
         distance: `Distância atual: ${currentData.distance} cm\nDistância do sensor até a superfície da água.`,
         level: `Nível atual: ${currentData.level} cm\nAltura da coluna de água na caixa.`,
