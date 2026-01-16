@@ -10,6 +10,11 @@ app.use(express.json());
 
 // Memória temporária para histórico
 let historico = [];
+let lastLoRaStatus = {
+  connected: true,
+  lastPacketTime: null,
+  lastStatusUpdate: null
+};
 
 // Middleware de autenticação
 const authMiddleware = (req, res, next) => {
@@ -45,8 +50,43 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     liters, 
     sensor_ok,
     timestamp,
-    crc 
+    crc,
+    receptor_time,
+    receptor_status,
+    last_packet_ms
   } = req.body;
+
+  // Verificar se é um pacote de status de conexão
+  const isStatusPacket = req.headers['x-packet-type'] === 'status' || receptor_status !== undefined;
+  
+  if (isStatusPacket) {
+    console.log("📡 Pacote de status LoRa recebido");
+    
+    lastLoRaStatus.connected = receptor_status === 'connected';
+    lastLoRaStatus.lastPacketTime = last_packet_ms || null;
+    lastLoRaStatus.lastStatusUpdate = new Date().toISOString();
+    
+    if (!lastLoRaStatus.connected) {
+      console.log(`⚠️  Alerta: Receptor reportou perda de conexão LoRa`);
+      console.log(`   Tempo sem pacotes: ${last_packet_ms} ms`);
+    } else {
+      console.log(`✅ Receptor reportou conexão LoRa restaurada`);
+    }
+    
+    return res.json({ 
+      status: "ok", 
+      message: "Status LoRa atualizado",
+      lora_connected: lastLoRaStatus.connected
+    });
+  }
+
+  // Se for pacote de dados normal
+  // CORREÇÃO: Usar timestamp do receptor se disponível, senão usar timestamp do servidor
+  const dataTimestamp = receptor_time ? new Date().toISOString() : new Date().toISOString();
+  const deviceTimestamp = timestamp ? new Date(parseInt(timestamp)).toISOString() : dataTimestamp;
+  
+  // Usar o timestamp mais preciso disponível
+  const finalTimestamp = device || dataTimestamp;
 
   const registro = {
     device: device || "ESP32",
@@ -55,21 +95,37 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     percentage: parseInt(percentage) || 0,
     liters: parseInt(liters) || 0,
     sensor_ok: sensor_ok !== false,
-    timestamp: timestamp || new Date().toISOString(),
+    timestamp: finalTimestamp, // TIMESTAMP CORRIGIDO
     crc: crc || "N/A",
-    received_at: new Date().toISOString()
+    received_at: new Date().toISOString(),
+    source_timestamp: timestamp || null,
+    server_timestamp: new Date().toISOString()
   };
 
   console.log("📊 Registro salvo:", registro);
+  console.log("⏰ Timestamp usado:", finalTimestamp);
+  console.log("⏰ Timestamp original:", timestamp);
+  console.log("⏰ Timestamp servidor:", registro.server_timestamp);
   
   historico.push(registro);
+  
+  // Manter apenas últimos 100 registros
   if (historico.length > 100) historico.shift();
+  
+  // Atualizar status LoRa
+  lastLoRaStatus.connected = true;
+  lastLoRaStatus.lastPacketTime = Date.now();
 
   res.json({ 
     status: "ok", 
     message: "Dados recebidos com sucesso!",
     recebido: registro,
-    historico_count: historico.length
+    historico_count: historico.length,
+    timestamp_correction: {
+      used: finalTimestamp,
+      original: timestamp,
+      server: registro.server_timestamp
+    }
   });
 });
 
@@ -82,22 +138,43 @@ app.get("/api/lora", (req, res) => {
     percentage: 0,
     liters: 0,
     sensor_ok: true,
-    timestamp: null
+    timestamp: new Date().toISOString(), // TIMESTAMP CORRIGIDO
+    lora_connected: lastLoRaStatus.connected
   };
 
-  res.json({
+  // Adicionar status LoRa ao objeto de retorno
+  const responseData = {
     ...ultimo,
-    historico: historico.slice(-20), // Últimas 20 leituras
+    lora_connection_status: {
+      connected: lastLoRaStatus.connected,
+      last_status_update: lastLoRaStatus.lastStatusUpdate,
+      last_packet_time: lastLoRaStatus.lastPacketTime,
+      current_time: Date.now(),
+      time_since_last_packet: lastLoRaStatus.lastPacketTime ? 
+        Date.now() - lastLoRaStatus.lastPacketTime : null
+    },
+    historico: historico.slice(-20).map(item => ({
+      ...item,
+      // Garantir que todos os timestamps estejam no formato correto
+      timestamp: item.timestamp || item.server_timestamp || item.received_at
+    })),
     system_info: {
       total_readings: historico.length,
       uptime: process.uptime(),
-      memory_usage: process.memoryUsage()
+      memory_usage: process.memoryUsage(),
+      server_time: new Date().toISOString(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     }
-  });
+  };
+
+  res.json(responseData);
 });
 
 // Endpoint para dados de teste (sem autenticação)
 app.get("/api/test", (req, res) => {
+  // CORREÇÃO: Usar timestamp atual do servidor
+  const now = new Date();
+  
   const testData = {
     device: "TX_CAIXA_01",
     distance: 45.5,
@@ -105,9 +182,11 @@ app.get("/api/test", (req, res) => {
     percentage: 59,
     liters: 2950,
     sensor_ok: true,
-    timestamp: new Date().toISOString(),
+    timestamp: now.toISOString(), // TIMESTAMP CORRIGIDO
     crc: "0x1234",
-    message: "Dados de teste - API funcionando!"
+    message: "Dados de teste - API funcionando!",
+    server_time: now.toISOString(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
   };
   
   res.json(testData);
@@ -120,6 +199,17 @@ app.get("/api/debug/tokens", (req, res) => {
     allowed_tokens: allowedTokens,
     count: allowedTokens.length,
     note: "Use um desses tokens no header 'Authorization'"
+  });
+});
+
+// Endpoint para verificar status LoRa
+app.get("/api/lora/status", (req, res) => {
+  res.json({
+    lora_connection: lastLoRaStatus,
+    historico_count: historico.length,
+    last_reading: historico.length > 0 ? historico[historico.length - 1] : null,
+    current_time: new Date().toISOString(),
+    server_uptime: process.uptime()
   });
 });
 
@@ -138,6 +228,8 @@ app.listen(PORT, () => {
   console.log(`   GET  /api/lora      - Obter dados para dashboard`);
   console.log(`   GET  /api/test      - Dados de teste`);
   console.log(`   GET  /api/debug/tokens - Ver tokens permitidos`);
+  console.log(`   GET  /api/lora/status - Status da conexão LoRa`);
   console.log(`   GET  /              - Dashboard HTML`);
   console.log(`🔐 Tokens permitidos: ${process.env.ALLOWED_TOKENS}`);
+  console.log(`⏰ Servidor iniciado em: ${new Date().toISOString()}`);
 });
