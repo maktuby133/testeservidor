@@ -1208,8 +1208,11 @@
         
         if (minutesDisconnected > 5) {
           // Atualizar mensagem a cada 5 minutos
-          document.getElementById('receptorDisconnectedMessage').innerHTML = 
-            `<i class="fas fa-exclamation-triangle"></i> RECEPTOR DESCONECTADO há ${minutesDisconnected} minutos`;
+          const messageElement = document.getElementById('receptorDisconnectedMessage');
+          if (messageElement) {
+            messageElement.innerHTML = 
+              `<i class="fas fa-exclamation-triangle"></i> RECEPTOR DESCONECTADO há ${minutesDisconnected} minutos`;
+          }
         }
       }
     }
@@ -1218,11 +1221,6 @@
     async function carregarDados(hours = 24) {
       try {
         console.log('🔄 Buscando dados da API...');
-        
-        // Atualizar último horário de tentativa
-        const now = new Date();
-        document.getElementById('lastReadingTime').textContent = 
-          now.toLocaleTimeString('pt-BR');
         
         // Buscar dados da API
         const response = await fetch('/api/lora');
@@ -1313,8 +1311,11 @@
         
         // Atualizar status da conexão
         connectionStatus = 'connected';
-        document.getElementById('apiStatus').textContent = 'Conectado';
-        document.getElementById('apiStatus').className = 'status-value api-status connected';
+        const apiStatusElement = document.getElementById('apiStatus');
+        if (apiStatusElement) {
+          apiStatusElement.textContent = 'Conectado';
+          apiStatusElement.className = 'status-value api-status connected';
+        }
         
         // Atualizar status do receptor
         const receptorStatusElement = document.getElementById('receptorStatus');
@@ -1324,14 +1325,17 @@
         }
         
         // Atualizar status LoRa se disponível
-        if (data.lora_connection_status && !isReceptorDisconnected) {
-          const loraConnected = data.lora_connection_status.connected;
-          document.getElementById('loraStatus').textContent = loraConnected ? 'Conectado' : 'Desconectado';
-          document.getElementById('loraStatus').className = `status-value lora-status ${loraConnected ? 'connected' : 'disconnected'}`;
-          loraConnectionStatus = loraConnected ? 'connected' : 'disconnected';
-        } else {
-          document.getElementById('loraStatus').textContent = '--';
-          document.getElementById('loraStatus').className = 'status-value lora-status';
+        const loraStatusElement = document.getElementById('loraStatus');
+        if (loraStatusElement) {
+          if (data.lora_connection_status && !isReceptorDisconnected) {
+            const loraConnected = data.lora_connection_status.connected;
+            loraStatusElement.textContent = loraConnected ? 'Conectado' : 'Desconectado';
+            loraStatusElement.className = `status-value lora-status ${loraConnected ? 'connected' : 'disconnected'}`;
+            loraConnectionStatus = loraConnected ? 'connected' : 'disconnected';
+          } else {
+            loraStatusElement.textContent = '--';
+            loraStatusElement.className = 'status-value lora-status';
+          }
         }
         
         // Carregar histórico se disponível e receptor conectado (APENAS 5 LINHAS)
@@ -1370,18 +1374,25 @@
         } else if (isReceptorDisconnected) {
           // Receptor desconectado - mostrar mensagem especial
           atualizarHistorico([]);
-          document.getElementById('receptorDisconnectedChart').style.display = 'flex';
-          document.getElementById('receptorDisconnectedTable').style.display = 'block';
-          document.getElementById('historyTableContainer').style.display = 'none';
-          document.getElementById('chartWaiting').style.display = 'none';
+          const receptorDisconnectedChart = document.getElementById('receptorDisconnectedChart');
+          const receptorDisconnectedTable = document.getElementById('receptorDisconnectedTable');
+          const historyTableContainer = document.getElementById('historyTableContainer');
+          const chartWaiting = document.getElementById('chartWaiting');
+          
+          if (receptorDisconnectedChart) receptorDisconnectedChart.style.display = 'flex';
+          if (receptorDisconnectedTable) receptorDisconnectedTable.style.display = 'block';
+          if (historyTableContainer) historyTableContainer.style.display = 'none';
+          if (chartWaiting) chartWaiting.style.display = 'none';
           if (chart) {
             chart.canvas.style.display = 'none';
           }
         }
         
         // Atualizar último update
-        document.getElementById('lastUpdate').textContent = 
-          new Date().toLocaleTimeString('pt-BR');
+        const lastUpdateElement = document.getElementById('lastUpdate');
+        if (lastUpdateElement) {
+          lastUpdateElement.textContent = new Date().toLocaleTimeString('pt-BR');
+        }
         
       } catch (error) {
         console.error('❌ Erro ao carregar dados:', error);
@@ -1410,6 +1421,17 @@
       const waitingMessage = document.getElementById('waitingMessage');
       const receptorDisconnectedMessage = document.getElementById('receptorDisconnectedMessage');
       const tankSection = document.getElementById('tankSection');
+      const percentageText = document.getElementById('percentageText');
+      const volumeText = document.getElementById('volumeText');
+      const distanceText = document.getElementById('distanceText');
+      const levelText = document.getElementById('levelText');
+      const litersText = document.getElementById('litersText');
+      const sensorStatusText = document.getElementById('sensorStatusText');
+      
+      if (!waterLevel || !tankInfo || !percentageText || !volumeText) {
+        console.error('❌ Elementos DOM não encontrados!');
+        return;
+      }
       
       if (isReceptorDisconnected) {
         // MODO RECEPTOR DESCONECTADO
@@ -1418,26 +1440,34 @@
         waterLevel.classList.remove('waiting');
         
         tankInfo.classList.add('receptor-disconnected');
-        tankSection.classList.add('receptor-disconnected-panel');
+        if (tankSection) tankSection.classList.add('receptor-disconnected-panel');
         
-        document.getElementById('percentageText').textContent = "---";
-        document.getElementById('percentageText').classList.add('receptor-disconnected');
-        document.getElementById('volumeText').textContent = "RECEPTOR DESCONECTADO";
-        document.getElementById('volumeText').classList.add('receptor-disconnected');
+        percentageText.textContent = "---";
+        percentageText.classList.add('receptor-disconnected');
+        volumeText.textContent = "RECEPTOR DESCONECTADO";
+        volumeText.classList.add('receptor-disconnected');
         
-        waitingMessage.style.display = 'none';
-        receptorDisconnectedMessage.style.display = 'block';
+        if (waitingMessage) waitingMessage.style.display = 'none';
+        if (receptorDisconnectedMessage) receptorDisconnectedMessage.style.display = 'block';
         
         // Atualizar cards de estatísticas
-        document.getElementById('distanceText').textContent = "---";
-        document.getElementById('distanceText').classList.add('receptor-disconnected');
-        document.getElementById('levelText').textContent = "---";
-        document.getElementById('levelText').classList.add('receptor-disconnected');
-        document.getElementById('litersText').textContent = "---";
-        document.getElementById('litersText').classList.add('receptor-disconnected');
-        document.getElementById('sensorStatusText').textContent = "DESCONECTADO";
-        document.getElementById('sensorStatusText').style.color = "#e63946";
-        document.getElementById('sensorStatusText').classList.add('receptor-disconnected');
+        if (distanceText) {
+          distanceText.textContent = "---";
+          distanceText.classList.add('receptor-disconnected');
+        }
+        if (levelText) {
+          levelText.textContent = "---";
+          levelText.classList.add('receptor-disconnected');
+        }
+        if (litersText) {
+          litersText.textContent = "---";
+          litersText.classList.add('receptor-disconnected');
+        }
+        if (sensorStatusText) {
+          sensorStatusText.textContent = "DESCONECTADO";
+          sensorStatusText.style.color = "#e63946";
+          sensorStatusText.classList.add('receptor-disconnected');
+        }
         
         // Atualizar ícones dos cards
         document.querySelectorAll('.stat-icon').forEach(icon => {
@@ -1461,38 +1491,45 @@
         waterLevel.classList.remove('receptor-disconnected');
         
         tankInfo.classList.add('waiting');
-        tankSection.classList.remove('receptor-disconnected-panel');
+        if (tankSection) tankSection.classList.remove('receptor-disconnected-panel');
         
-        document.getElementById('percentageText').textContent = isWaiting ? "---" : `${waterPercentage}%`;
-        document.getElementById('percentageText').classList.add(isWaiting ? 'waiting' : '');
-        document.getElementById('volumeText').textContent = isWaiting ? "AGUARDANDO DADOS" : `${liters} / 5000 L`;
-        document.getElementById('volumeText').classList.add(isWaiting ? 'waiting' : '');
+        percentageText.textContent = isWaiting ? "---" : `${waterPercentage}%`;
+        percentageText.classList.add(isWaiting ? 'waiting' : '');
+        volumeText.textContent = isWaiting ? "AGUARDANDO DADOS" : `${liters} / 5000 L`;
+        volumeText.classList.add(isWaiting ? 'waiting' : '');
         
-        waitingMessage.style.display = isWaiting ? 'block' : 'none';
-        receptorDisconnectedMessage.style.display = 'none';
+        if (waitingMessage) waitingMessage.style.display = isWaiting ? 'block' : 'none';
+        if (receptorDisconnectedMessage) receptorDisconnectedMessage.style.display = 'none';
         
         // Atualizar cards de estatísticas
-        document.getElementById('distanceText').textContent = isWaiting ? "---" : `${distance.toFixed(1)} cm`;
-        document.getElementById('distanceText').classList.add(isWaiting ? 'waiting' : '');
-        document.getElementById('levelText').textContent = isWaiting ? "---" : `${level} cm`;
-        document.getElementById('levelText').classList.add(isWaiting ? 'waiting' : '');
-        document.getElementById('litersText').textContent = isWaiting ? "---" : `${liters} L`;
-        document.getElementById('litersText').classList.add(isWaiting ? 'waiting' : '');
+        if (distanceText) {
+          distanceText.textContent = isWaiting ? "---" : `${distance.toFixed(1)} cm`;
+          distanceText.classList.add(isWaiting ? 'waiting' : '');
+        }
+        if (levelText) {
+          levelText.textContent = isWaiting ? "---" : `${level} cm`;
+          levelText.classList.add(isWaiting ? 'waiting' : '');
+        }
+        if (litersText) {
+          litersText.textContent = isWaiting ? "---" : `${liters} L`;
+          litersText.classList.add(isWaiting ? 'waiting' : '');
+        }
         
         // Status do sensor
-        const statusElement = document.getElementById('sensorStatusText');
-        if (isWaiting) {
-          statusElement.textContent = "AGUARDANDO";
-          statusElement.style.color = "#6c757d";
-          statusElement.classList.add('waiting');
-        } else if (sensor_ok) {
-          statusElement.textContent = "Online ✅";
-          statusElement.style.color = "#38b000";
-          statusElement.classList.remove('waiting');
-        } else {
-          statusElement.textContent = "Erro ❌";
-          statusElement.style.color = "#e63946";
-          statusElement.classList.remove('waiting');
+        if (sensorStatusText) {
+          if (isWaiting) {
+            sensorStatusText.textContent = "AGUARDANDO";
+            sensorStatusText.style.color = "#6c757d";
+            sensorStatusText.classList.add('waiting');
+          } else if (sensor_ok) {
+            sensorStatusText.textContent = "Online ✅";
+            sensorStatusText.style.color = "#38b000";
+            sensorStatusText.classList.remove('waiting');
+          } else {
+            sensorStatusText.textContent = "Erro ❌";
+            sensorStatusText.style.color = "#e63946";
+            sensorStatusText.classList.remove('waiting');
+          }
         }
         
         // Atualizar ícones dos cards
@@ -1504,10 +1541,10 @@
             icon.classList.remove('waiting', 'receptor-disconnected');
             // Restaurar classes originais
             const parentCard = icon.closest('.stat-card');
-            if (parentCard.id === 'distanceCard') icon.classList.add('distance');
-            if (parentCard.id === 'levelCard') icon.classList.add('level');
-            if (parentCard.id === 'volumeCard') icon.classList.add('volume');
-            if (parentCard.id === 'sensorCard') icon.classList.add('status');
+            if (parentCard && parentCard.id === 'distanceCard') icon.classList.add('distance');
+            if (parentCard && parentCard.id === 'levelCard') icon.classList.add('level');
+            if (parentCard && parentCard.id === 'volumeCard') icon.classList.add('volume');
+            if (parentCard && parentCard.id === 'sensorCard') icon.classList.add('status');
           }
         });
         
@@ -1534,34 +1571,41 @@
         
         waterLevel.classList.remove('waiting', 'receptor-disconnected');
         tankInfo.classList.remove('waiting', 'receptor-disconnected');
-        tankSection.classList.remove('receptor-disconnected-panel');
+        if (tankSection) tankSection.classList.remove('receptor-disconnected-panel');
         
-        document.getElementById('percentageText').textContent = `${waterPercentage}%`;
-        document.getElementById('percentageText').classList.remove('waiting', 'receptor-disconnected');
-        document.getElementById('volumeText').textContent = `${liters} / 5000 L`;
-        document.getElementById('volumeText').classList.remove('waiting', 'receptor-disconnected');
+        percentageText.textContent = `${waterPercentage}%`;
+        percentageText.classList.remove('waiting', 'receptor-disconnected');
+        volumeText.textContent = `${liters} / 5000 L`;
+        volumeText.classList.remove('waiting', 'receptor-disconnected');
         
-        waitingMessage.style.display = 'none';
-        receptorDisconnectedMessage.style.display = 'none';
+        if (waitingMessage) waitingMessage.style.display = 'none';
+        if (receptorDisconnectedMessage) receptorDisconnectedMessage.style.display = 'none';
         
         // Cards de estatísticas
-        document.getElementById('distanceText').textContent = `${distance.toFixed(1)} cm`;
-        document.getElementById('distanceText').classList.remove('waiting', 'receptor-disconnected');
-        document.getElementById('levelText').textContent = `${level} cm`;
-        document.getElementById('levelText').classList.remove('waiting', 'receptor-disconnected');
-        document.getElementById('litersText').textContent = `${liters} L`;
-        document.getElementById('litersText').classList.remove('waiting', 'receptor-disconnected');
+        if (distanceText) {
+          distanceText.textContent = `${distance.toFixed(1)} cm`;
+          distanceText.classList.remove('waiting', 'receptor-disconnected');
+        }
+        if (levelText) {
+          levelText.textContent = `${level} cm`;
+          levelText.classList.remove('waiting', 'receptor-disconnected');
+        }
+        if (litersText) {
+          litersText.textContent = `${liters} L`;
+          litersText.classList.remove('waiting', 'receptor-disconnected');
+        }
         
         // Status do sensor
-        const statusElement = document.getElementById('sensorStatusText');
-        if (sensor_ok) {
-          statusElement.textContent = "Online ✅";
-          statusElement.style.color = "#38b000";
-          statusElement.classList.remove('waiting', 'receptor-disconnected');
-        } else {
-          statusElement.textContent = "Erro ❌";
-          statusElement.style.color = "#e63946";
-          statusElement.classList.remove('waiting', 'receptor-disconnected');
+        if (sensorStatusText) {
+          if (sensor_ok) {
+            sensorStatusText.textContent = "Online ✅";
+            sensorStatusText.style.color = "#38b000";
+            sensorStatusText.classList.remove('waiting', 'receptor-disconnected');
+          } else {
+            sensorStatusText.textContent = "Erro ❌";
+            sensorStatusText.style.color = "#e63946";
+            sensorStatusText.classList.remove('waiting', 'receptor-disconnected');
+          }
         }
         
         // Remover classes de espera dos cards
@@ -1569,10 +1613,10 @@
           icon.classList.remove('waiting', 'receptor-disconnected');
           // Restaurar classes originais
           const parentCard = icon.closest('.stat-card');
-          if (parentCard.id === 'distanceCard') icon.classList.add('distance');
-          if (parentCard.id === 'levelCard') icon.classList.add('level');
-          if (parentCard.id === 'volumeCard') icon.classList.add('volume');
-          if (parentCard.id === 'sensorCard') icon.classList.add('status');
+          if (parentCard && parentCard.id === 'distanceCard') icon.classList.add('distance');
+          if (parentCard && parentCard.id === 'levelCard') icon.classList.add('level');
+          if (parentCard && parentCard.id === 'volumeCard') icon.classList.add('volume');
+          if (parentCard && parentCard.id === 'sensorCard') icon.classList.add('status');
         });
         
         document.querySelectorAll('.stat-card').forEach(card => {
@@ -1583,17 +1627,19 @@
         updateWaterColor(waterPercentage);
       }
       
-      // Dispositivo atual
-      document.getElementById('currentDevice').textContent = device;
-      
       // Atualizar keep-alive status
-      document.getElementById('keepAliveStatus').textContent = 'ativo';
-      document.getElementById('keepAliveStatus').style.color = '#38b000';
+      const keepAliveStatus = document.getElementById('keepAliveStatus');
+      if (keepAliveStatus) {
+        keepAliveStatus.textContent = 'ativo';
+        keepAliveStatus.style.color = '#38b000';
+      }
     }
 
     // Atualizar cor da água baseada no nível
     function updateWaterColor(percentage) {
       const water = document.querySelector('.water');
+      if (!water) return;
+      
       if (percentage < 10) {
         water.style.background = 'linear-gradient(to top, #e63946, #d00000)';
       } else if (percentage < 20) {
@@ -1629,7 +1675,7 @@
       if (receptorDisconnectedTable) receptorDisconnectedTable.style.display = 'none';
       
       // Limpar tabela
-      historyBody.innerHTML = '';
+      if (historyBody) historyBody.innerHTML = '';
       
       // Ordenar por timestamp (mais recente primeiro) e pegar apenas 5
       historico.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -1685,21 +1731,24 @@
           <td><span class="status-badge ${receptorStatusClass}">${receptorStatusText}</span></td>
         `;
         
-        historyBody.appendChild(row);
+        if (historyBody) historyBody.appendChild(row);
       });
     }
 
     // Atualizar gráfico
     function atualizarGrafico(historico) {
-      const ctx = document.getElementById('nivelChart').getContext('2d');
+      const ctx = document.getElementById('nivelChart');
+      if (!ctx) return;
       
       // Filtrar apenas dados normais
       const normalHistory = historico.filter(item => item.status === "normal" && item.percentage !== -1);
       
       if (normalHistory.length === 0) {
         console.log('📭 Nenhum dado normal para exibir no gráfico');
-        document.getElementById('chartWaiting').style.display = 'flex';
-        document.getElementById('receptorDisconnectedChart').style.display = 'none';
+        const chartWaiting = document.getElementById('chartWaiting');
+        const receptorDisconnectedChart = document.getElementById('receptorDisconnectedChart');
+        if (chartWaiting) chartWaiting.style.display = 'flex';
+        if (receptorDisconnectedChart) receptorDisconnectedChart.style.display = 'none';
         if (chart) {
           chart.canvas.style.display = 'none';
         }
@@ -1727,7 +1776,7 @@
       
       // Criar ou atualizar gráfico
       if (!chart) {
-        chart = new Chart(ctx, {
+        chart = new Chart(ctx.getContext('2d'), {
           type: 'line',
           data: {
             labels: labels,
@@ -1811,9 +1860,13 @@
       }
       
       // Garantir que o gráfico esteja visível
-      document.getElementById('chartWaiting').style.display = 'none';
-      document.getElementById('receptorDisconnectedChart').style.display = 'none';
-      chart.canvas.style.display = 'block';
+      const chartWaiting = document.getElementById('chartWaiting');
+      const receptorDisconnectedChart = document.getElementById('receptorDisconnectedChart');
+      if (chartWaiting) chartWaiting.style.display = 'none';
+      if (receptorDisconnectedChart) receptorDisconnectedChart.style.display = 'none';
+      if (chart) {
+        chart.canvas.style.display = 'block';
+      }
     }
 
     // Função para simular dados
