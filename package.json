@@ -1,7 +1,7 @@
 {
   "name": "lora-water-monitor-server",
-  "version": "2.0.0",
-  "description": "Servidor WebSocket para monitoramento de caixa d'água via LoRa",
+  "version": "2.1.0",
+  "description": "Servidor para monitoramento de caixa d'água via LoRa com suporte a modo 'Aguardando Dados'",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -14,12 +14,12 @@
   },
   "keywords": [
     "lora",
-    "websocket",
     "esp32",
     "caixa-dagua",
     "monitoramento",
     "iot",
-    "radio"
+    "radio",
+    "dashboard"
   ],
   "author": "Seu Nome",
   "license": "MIT",
