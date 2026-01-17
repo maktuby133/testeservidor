@@ -26,53 +26,89 @@ let receptorStatus = {
   connected: true,
   lastConnection: Date.now(),
   lastPacketTime: null,
-  connectionTimeout: 60000, // 60 segundos para considerar desconectado (aumentado)
+  lastHttpRequest: Date.now(), // Para medir tempo desde última requisição HTTP
+  connectionTimeout: 120000, // 120 segundos para considerar desconectado (2 minutos)
+  httpTimeout: 30000, // 30 segundos para considerar "aguardando LoRa"
   reconnectionCount: 0,
-  wifiSignal: -50 // Valor padrão
+  wifiSignal: -50,
+  lastWifiSignalUpdate: Date.now()
 };
 
-// Função para verificar se receptor está conectado
+// Função para verificar status do receptor CORRIGIDA
 function checkReceptorConnection() {
   const now = Date.now();
-  const timeSinceLastPacket = receptorStatus.lastPacketTime ? 
-    now - receptorStatus.lastPacketTime : Infinity;
+  const timeSinceLastHttp = now - receptorStatus.lastHttpRequest;
   
-  const shouldBeConnected = timeSinceLastPacket < receptorStatus.connectionTimeout;
+  console.log(`🔍 Verificação status receptor:`);
+  console.log(`   Última requisição HTTP há: ${Math.floor(timeSinceLastHttp/1000)} segundos`);
+  console.log(`   Último pacote LoRa há: ${receptorStatus.lastPacketTime ? Math.floor((now - receptorStatus.lastPacketTime)/1000) : 'Nunca'} segundos`);
+  console.log(`   Receptor marcado como: ${receptorStatus.connected ? 'CONECTADO' : 'DESCONECTADO'}`);
+  
+  // REGRA 1: Receptor está DESCONECTADO se não envia requisições HTTP há mais de 2 minutos
+  // (Isso significa que ESP32 perdeu WiFi ou desligou)
+  const shouldBeConnected = timeSinceLastHttp < receptorStatus.connectionTimeout;
   
   if (receptorStatus.connected !== shouldBeConnected) {
     receptorStatus.connected = shouldBeConnected;
     
     if (!receptorStatus.connected) {
-      console.log(`⚠️  RECEPTOR DESCONECTADO! Sem pacotes há ${Math.floor(timeSinceLastPacket/1000)} segundos`);
-      console.log(`   Último pacote: ${receptorStatus.lastPacketTime ? new Date(receptorStatus.lastPacketTime).toLocaleString() : 'Nunca'}`);
+      console.log(`\n⚠️  ⚠️  ⚠️  RECEPTOR ESP32 DESCONECTADO!`);
+      console.log(`   Sem requisições HTTP há ${Math.floor(timeSinceLastHttp/1000)} segundos`);
+      console.log(`   Provável causa: ESP32 perdeu WiFi, desligou ou sem energia`);
+      console.log(`   Último contato: ${new Date(receptorStatus.lastHttpRequest).toLocaleTimeString()}\n`);
       
-      // Limpar histórico quando receptor desconectar
+      // Limpar histórico quando receptor realmente desconectar
       historico = [];
-      console.log("   📭 Histórico LIMPO devido à desconexão do receptor");
+      console.log("   📭 Histórico LIMPO devido à desconexão REAL do receptor");
       
-      // Atualizar status LoRa
+      // Atualizar status LoRa também
       lastLoRaStatus.connected = false;
       lastLoRaStatus.waitingData = true;
       lastLoRaStatus.noDataMode = true;
       lastLoRaStatus.lastStatusUpdate = new Date().toISOString();
     } else {
       receptorStatus.reconnectionCount++;
-      console.log(`✅ RECEPTOR RECONECTADO! Reconexão #${receptorStatus.reconnectionCount}`);
+      console.log(`\n✅ RECEPTOR ESP32 RECONECTADO!`);
+      console.log(`   Reconexão #${receptorStatus.reconnectionCount}`);
+      console.log(`   Recebida requisição HTTP após ${Math.floor(timeSinceLastHttp/1000)} segundos\n`);
     }
+  }
+  
+  // REGRA 2: Aguardando LoRa se receptor envia HTTP mas não tem dados LoRa há mais de 30 segundos
+  // (Isso é separado da conexão WiFi do receptor)
+  const timeSinceLoRaPacket = receptorStatus.lastPacketTime ? now - receptorStatus.lastPacketTime : Infinity;
+  const isWaitingLoRa = receptorStatus.connected && timeSinceLoRaPacket > receptorStatus.httpTimeout;
+  
+  if (isWaitingLoRa && !lastLoRaStatus.waitingData) {
+    console.log(`\n📡 STATUS LoRa: AGUARDANDO TRANSMISSÃO`);
+    console.log(`   Receptor conectado ao WiFi/servidor`);
+    console.log(`   Mas sem dados LoRa há ${Math.floor(timeSinceLoRaPacket/1000)} segundos`);
+    console.log(`   Causa: Transmissor off, fora de alcance ou problemas LoRa\n`);
+    
+    lastLoRaStatus.connected = false;
+    lastLoRaStatus.waitingData = true;
+    lastLoRaStatus.noDataMode = true;
+    lastLoRaStatus.lastStatusUpdate = new Date().toISOString();
+  } else if (!isWaitingLoRa && lastLoRaStatus.waitingData && receptorStatus.connected) {
+    console.log(`\n✅ STATUS LoRa: TRANSMISSÃO RESTAURADA`);
+    console.log(`   Recebendo dados LoRa normalmente\n`);
+    
+    lastLoRaStatus.connected = true;
+    lastLoRaStatus.waitingData = false;
+    lastLoRaStatus.noDataMode = false;
   }
 }
 
-// Executar verificação a cada 15 segundos
-setInterval(checkReceptorConnection, 15000);
+// Executar verificação a cada 10 segundos
+setInterval(checkReceptorConnection, 10000);
 
 // Middleware de autenticação
 const authMiddleware = (req, res, next) => {
   const token = req.headers.authorization;
   const allowedTokens = process.env.ALLOWED_TOKENS?.split(',') || [];
   
-  console.log("🔐 Verificação de token:");
-  console.log("   Token recebido:", token);
-  console.log("   Tokens permitidos:", allowedTokens);
+  // Atualizar tempo da última requisição HTTP (receptor está vivo!)
+  receptorStatus.lastHttpRequest = Date.now();
   
   if (!token || !allowedTokens.includes(token)) {
     console.log("❌ Token inválido ou não fornecido");
@@ -83,13 +119,12 @@ const authMiddleware = (req, res, next) => {
     });
   }
   
-  console.log("✅ Token válido");
   next();
 };
 
 // Recebe dados do ESP32 receptor
 app.post("/api/lora", authMiddleware, (req, res) => {
-  console.log("📥 Dados recebidos:", req.body);
+  console.log("📥 Dados recebidos:", JSON.stringify(req.body, null, 2));
   
   const { 
     device, 
@@ -111,39 +146,39 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     lora_snr
   } = req.body;
 
-  // ATUALIZAR STATUS DO RECEPTOR (sempre que receber pacote)
+  // ATUALIZAR STATUS DO RECEPTOR - ele está enviando HTTP, então está CONECTADO
   receptorStatus.lastConnection = Date.now();
-  receptorStatus.lastPacketTime = Date.now();
+  receptorStatus.lastHttpRequest = Date.now();
   receptorStatus.connected = true;
   
   // Atualizar qualidade do WiFi se disponível
   if (wifi_rssi !== undefined) {
     receptorStatus.wifiSignal = wifi_rssi;
+    receptorStatus.lastWifiSignalUpdate = Date.now();
   }
 
-  // Verificar se é um pacote de status de conexão
+  // Verificar tipo de pacote
   const isStatusPacket = req.headers['x-packet-type'] === 'status' || receptor_status !== undefined;
-  
-  // Verificar se é um pacote de "sem dados" (aguardando dados)
   const isNoDataPacket = req.headers['x-no-data'] === 'true' || no_data === true || no_data_mode === true;
   
   if (isNoDataPacket) {
-    console.log("📭 PACOTE SEM DADOS - Modo 'Aguardando Dados' ativado");
+    console.log("📭 PACOTE DE STATUS: AGUARDANDO TRANSMISSÃO LoRa");
     
-    // Atualizar qualidade do sinal LoRa se disponível
+    // Atualizar sinal LoRa se disponível
     if (lora_rssi !== undefined) {
       lastLoRaStatus.rssi = lora_rssi;
       lastLoRaStatus.snr = lora_snr;
       lastLoRaStatus.signalQuality = calculateSignalQuality(lora_rssi, lora_snr);
     }
     
+    // IMPORTANTE: Receptor está CONECTADO, apenas aguardando LoRa
     lastLoRaStatus.connected = false;
-    lastLoRaStatus.noDataMode = true;
     lastLoRaStatus.waitingData = true;
+    lastLoRaStatus.noDataMode = true;
     lastLoRaStatus.lastStatusUpdate = new Date().toISOString();
     
-    // Criar registro especial para "Aguardando Dados"
-    const noDataRecord = {
+    // Criar registro especial para "Aguardando LoRa"
+    const waitingLoRaRecord = {
       device: device || "RECEPTOR_CASA",
       distance: -1,
       level: -1,
@@ -151,15 +186,15 @@ app.post("/api/lora", authMiddleware, (req, res) => {
       liters: -1,
       sensor_ok: false,
       timestamp: new Date().toISOString(),
-      crc: "NO_DATA",
+      crc: "WAITING_LORA",
       received_at: new Date().toISOString(),
       source_timestamp: timestamp || null,
       server_timestamp: new Date().toISOString(),
-      status: "waiting_lora",
-      message: message || "Aguardando dados do transmissor LoRa",
+      status: "waiting_lora", // Status correto
+      message: message || "Aguardando transmissão LoRa - Receptor conectado",
       lora_connected: false,
       no_data_mode: true,
-      receptor_connected: true,
+      receptor_connected: true, // IMPORTANTE: Receptor CONECTADO
       wifi_signal: wifi_rssi || null,
       lora_signal: {
         rssi: lora_rssi || null,
@@ -168,26 +203,24 @@ app.post("/api/lora", authMiddleware, (req, res) => {
       }
     };
     
-    historico.push(noDataRecord);
-    
-    // Manter apenas últimos 100 registros
+    historico.push(waitingLoRaRecord);
     if (historico.length > 100) historico.shift();
     
     return res.json({ 
       status: "ok", 
-      message: "Status 'Aguardando Dados' registrado",
-      record: noDataRecord,
+      message: "Status 'Aguardando LoRa' registrado",
+      record: waitingLoRaRecord,
       lora_connected: false,
-      no_data_mode: true,
-      receptor_connected: true,
-      signal_quality: lastLoRaStatus.signalQuality
+      waiting_data: true,
+      receptor_connected: true, // Receptor está conectado
+      signal_quality: lastLoRaStatus.signalQuality,
+      status_type: "waiting_lora"
     });
   }
   
   if (isStatusPacket) {
     console.log("📡 Pacote de status LoRa recebido");
     
-    // Atualizar qualidade do sinal LoRa se disponível
     if (lora_rssi !== undefined) {
       lastLoRaStatus.rssi = lora_rssi;
       lastLoRaStatus.snr = lora_snr;
@@ -195,33 +228,16 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     }
     
     lastLoRaStatus.connected = receptor_status === 'connected';
-    lastLoRaStatus.noDataMode = no_data_mode === true;
     lastLoRaStatus.waitingData = receptor_status === 'disconnected';
-    lastLoRaStatus.lastPacketTime = last_packet_ms || null;
+    lastLoRaStatus.noDataMode = no_data_mode === true;
     lastLoRaStatus.lastStatusUpdate = new Date().toISOString();
-    
-    if (!lastLoRaStatus.connected) {
-      console.log(`⚠️  Alerta: Receptor reportou perda de conexão LoRa`);
-      console.log(`   Tempo sem pacotes: ${last_packet_ms} ms`);
-      console.log(`   Modo sem dados: ${lastLoRaStatus.noDataMode ? 'ATIVADO' : 'desativado'}`);
-      if (lora_rssi !== undefined) {
-        console.log(`   RSSI: ${lora_rssi} dBm | SNR: ${lora_snr} dB | Qualidade: ${lastLoRaStatus.signalQuality}%`);
-      }
-    } else {
-      console.log(`✅ Receptor reportou conexão LoRa restaurada`);
-      lastLoRaStatus.waitingData = false;
-      lastLoRaStatus.noDataMode = false;
-      if (lora_rssi !== undefined) {
-        console.log(`   RSSI: ${lora_rssi} dBm | SNR: ${lora_snr} dB | Qualidade: ${lastLoRaStatus.signalQuality}%`);
-      }
-    }
     
     return res.json({ 
       status: "ok", 
       message: "Status LoRa atualizado",
       lora_connected: lastLoRaStatus.connected,
       waiting_data: lastLoRaStatus.waitingData,
-      receptor_connected: true,
+      receptor_connected: true, // Receptor está conectado
       signal_quality: lastLoRaStatus.signalQuality,
       lora_signal: {
         rssi: lastLoRaStatus.rssi,
@@ -231,21 +247,23 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     });
   }
 
-  // Se for pacote de dados normal
-  const dataTimestamp = receptor_time ? new Date().toISOString() : new Date().toISOString();
-  const deviceTimestamp = timestamp ? new Date(parseInt(timestamp)).toISOString() : dataTimestamp;
+  // PACOTE NORMAL DE DADOS LoRa
+  console.log("📦 PACOTE NORMAL LoRa RECEBIDO");
   
-  const finalTimestamp = deviceTimestamp || dataTimestamp;
+  const finalTimestamp = timestamp ? new Date(parseInt(timestamp)).toISOString() : new Date().toISOString();
 
-  // Atualizar qualidade do sinal LoRa se disponível
+  // Atualizar sinal LoRa
   if (lora_rssi !== undefined) {
     lastLoRaStatus.rssi = lora_rssi;
     lastLoRaStatus.snr = lora_snr;
     lastLoRaStatus.signalQuality = calculateSignalQuality(lora_rssi, lora_snr);
   }
 
+  // Registrar tempo do último pacote LoRa
+  receptorStatus.lastPacketTime = Date.now();
+  
   const registro = {
-    device: device || "ESP32",
+    device: device || "ESP32_TX",
     distance: parseFloat(distance) || 0,
     level: parseInt(level) || 0,
     percentage: parseInt(percentage) || 0,
@@ -259,7 +277,7 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     status: "normal",
     lora_connected: true,
     no_data_mode: false,
-    receptor_connected: true,
+    receptor_connected: true, // Receptor conectado
     wifi_signal: wifi_rssi || null,
     lora_signal: {
       rssi: lora_rssi || null,
@@ -269,14 +287,13 @@ app.post("/api/lora", authMiddleware, (req, res) => {
   };
 
   console.log("📊 Registro salvo:", registro);
-  console.log("⏰ Receptor CONECTADO - Último contato:", new Date().toLocaleTimeString());
+  console.log("⏰ Receptor WiFi: CONECTADO");
+  console.log("📡 LoRa: TRANSMITINDO DADOS");
   if (lora_rssi !== undefined) {
     console.log(`   📶 Sinal LoRa: RSSI=${lora_rssi} dBm, SNR=${lora_snr} dB, Qualidade=${lastLoRaStatus.signalQuality}%`);
   }
   
   historico.push(registro);
-  
-  // Manter apenas últimos 100 registros
   if (historico.length > 100) historico.shift();
   
   // Atualizar status LoRa
@@ -287,30 +304,24 @@ app.post("/api/lora", authMiddleware, (req, res) => {
 
   res.json({ 
     status: "ok", 
-    message: "Dados recebidos com sucesso!",
+    message: "Dados LoRa recebidos com sucesso!",
     recebido: registro,
     historico_count: historico.length,
     receptor_connected: true,
+    lora_connected: true,
     signal_quality: lastLoRaStatus.signalQuality,
     lora_signal: {
       rssi: lastLoRaStatus.rssi,
       snr: lastLoRaStatus.snr,
       quality: lastLoRaStatus.signalQuality
-    },
-    timestamp_correction: {
-      used: finalTimestamp,
-      original: timestamp,
-      server: registro.server_timestamp
     }
   });
 });
 
-// Função para calcular qualidade do sinal (0-100%)
+// Função para calcular qualidade do sinal
 function calculateSignalQuality(rssi, snr) {
   if (rssi === null || rssi === undefined) return 50;
   
-  // RSSI típico LoRa: -30 dBm (excelente) a -120 dBm (muito ruim)
-  // Ajustamos para 0-100%
   let quality = 0;
   
   if (rssi >= -40) quality = 100;
@@ -323,7 +334,6 @@ function calculateSignalQuality(rssi, snr) {
   else if (rssi >= -110) quality = 15;
   else quality = 5;
   
-  // Ajustar baseado no SNR se disponível
   if (snr !== null && snr !== undefined) {
     if (snr > 10) quality = Math.min(100, quality + 15);
     else if (snr > 5) quality = Math.min(100, quality + 10);
@@ -336,16 +346,28 @@ function calculateSignalQuality(rssi, snr) {
 
 // Fornece dados para o dashboard
 app.get("/api/lora", (req, res) => {
-  // Verificar status do receptor
+  // Atualizar que recebemos uma requisição HTTP (dashboard acessando)
+  receptorStatus.lastHttpRequest = Date.now();
+  
+  // Verificar status
   checkReceptorConnection();
   
   let ultimo;
-  let receptorDisconnectedMode = false;
+  let displayMode = "normal";
+  let statusMessage = "Sistema funcionando normalmente";
   
+  console.log(`\n📊 Dashboard solicitando dados:`);
+  console.log(`   Receptor conectado: ${receptorStatus.connected ? 'SIM' : 'NÃO'}`);
+  console.log(`   LoRa conectado: ${lastLoRaStatus.connected ? 'SIM' : 'NÃO'}`);
+  console.log(`   Aguardando LoRa: ${lastLoRaStatus.waitingData ? 'SIM' : 'NÃO'}`);
+  
+  // DECISÃO DE STATUS BASEADA NAS NOVAS REGRAS:
+  
+  // 1. RECEPTOR DESCONECTADO (perdeu WiFi/desligou)
   if (!receptorStatus.connected) {
-    // MODO RECEPTOR DESCONECTADO
-    receptorDisconnectedMode = true;
-    console.log("📡 Dashboard acessado - RECEPTOR DESCONECTADO");
+    console.log("   → MODO: RECEPTOR DESCONECTADO");
+    displayMode = "receptor_disconnected";
+    statusMessage = "RECEPTOR ESP32 DESCONECTADO - Verifique WiFi/alimentação";
     
     ultimo = {
       device: "RECEPTOR_CASA",
@@ -356,11 +378,11 @@ app.get("/api/lora", (req, res) => {
       sensor_ok: false,
       timestamp: new Date().toISOString(),
       status: "receptor_disconnected",
-      message: "RECEPTOR DESCONECTADO - Aguardando reconexão",
+      message: statusMessage,
       lora_connected: false,
       no_data_mode: true,
-      display_mode: "receptor_disconnected",
-      receptor_connected: false,
+      display_mode: displayMode,
+      receptor_connected: false, // IMPORTANTE: false aqui
       wifi_signal: receptorStatus.wifiSignal,
       lora_signal: {
         rssi: lastLoRaStatus.rssi,
@@ -369,58 +391,58 @@ app.get("/api/lora", (req, res) => {
       }
     };
     
-  } else {
-    // Receptor está conectado
-    // VERIFICAÇÃO CORRIGIDA: Não confundir "sem dados LoRa" com "receptor desconectado"
-    const recentNormalData = historico.filter(item => 
-      item.status === "normal" && 
-      new Date(item.timestamp) > new Date(Date.now() - 30000)
-    );
+  } 
+  // 2. RECEPTOR CONECTADO mas AGUARDANDO LoRa
+  else if (receptorStatus.connected && lastLoRaStatus.waitingData) {
+    console.log("   → MODO: AGUARDANDO TRANSMISSÃO LoRa");
+    displayMode = "waiting_lora";
+    statusMessage = "Aguardando transmissão LoRa - Receptor conectado";
     
-    const recentWaitingData = historico.filter(item => 
-      (item.status === "waiting_lora" || item.no_data_mode === true) && 
-      new Date(item.timestamp) > new Date(Date.now() - 30000)
-    );
+    ultimo = {
+      device: "RECEPTOR_CASA",
+      distance: -1,
+      level: -1,
+      percentage: -1,
+      liters: -1,
+      sensor_ok: false,
+      timestamp: new Date().toISOString(),
+      status: "waiting_lora",
+      message: statusMessage,
+      lora_connected: false,
+      no_data_mode: true,
+      display_mode: displayMode,
+      receptor_connected: true, // IMPORTANTE: true aqui
+      wifi_signal: receptorStatus.wifiSignal,
+      lora_signal: {
+        rssi: lastLoRaStatus.rssi,
+        snr: lastLoRaStatus.snr,
+        quality: lastLoRaStatus.signalQuality
+      }
+    };
+    
+  }
+  // 3. TUDO NORMAL - Recebendo dados LoRa
+  else if (receptorStatus.connected && lastLoRaStatus.connected) {
+    console.log("   → MODO: NORMAL");
+    
+    // Buscar último dado normal
+    const recentNormalData = historico.filter(item => item.status === "normal");
     
     if (recentNormalData.length > 0) {
-      // Usar o último dado normal
       ultimo = recentNormalData[recentNormalData.length - 1];
-    } else if (recentWaitingData.length > 0 || lastLoRaStatus.waitingData || lastLoRaStatus.noDataMode) {
-      // CORREÇÃO: Se tem dados recentes de "aguardando LoRa", receptor está CONECTADO
-      ultimo = {
-        device: "RECEPTOR_CASA",
-        distance: -1,
-        level: -1,
-        percentage: -1,
-        liters: -1,
-        sensor_ok: false,
-        timestamp: new Date().toISOString(),
-        status: "waiting_lora", // Status correto: aguardando LoRa
-        message: "Aguardando dados do transmissor LoRa",
-        lora_connected: false,
-        no_data_mode: true,
-        display_mode: "waiting",
-        receptor_connected: true, // IMPORTANTE: Receptor está CONECTADO
-        wifi_signal: receptorStatus.wifiSignal,
-        lora_signal: {
-          rssi: lastLoRaStatus.rssi,
-          snr: lastLoRaStatus.snr,
-          quality: lastLoRaStatus.signalQuality
-        }
-      };
-    } else if (historico.length > 0) {
-      // Usar o último registro histórico
-      ultimo = historico[historico.length - 1];
+      ultimo.display_mode = "normal";
+      ultimo.receptor_connected = true;
     } else {
-      // Dados padrão
       ultimo = {
-        device: "ESP32",
+        device: "ESP32_TX",
         distance: 0,
         level: 0,
         percentage: 0,
         liters: 0,
         sensor_ok: true,
         timestamp: new Date().toISOString(),
+        status: "normal",
+        message: "Sistema pronto - Aguardando primeira leitura",
         lora_connected: true,
         no_data_mode: false,
         display_mode: "normal",
@@ -433,32 +455,60 @@ app.get("/api/lora", (req, res) => {
         }
       };
     }
+    
+  }
+  // 4. FALLBACK
+  else {
+    console.log("   → MODO: INDETERMINADO (usando fallback)");
+    
+    ultimo = {
+      device: "SISTEMA",
+      distance: -1,
+      level: -1,
+      percentage: -1,
+      liters: -1,
+      sensor_ok: false,
+      timestamp: new Date().toISOString(),
+      status: "unknown",
+      message: "Status do sistema sendo verificado...",
+      lora_connected: lastLoRaStatus.connected,
+      no_data_mode: lastLoRaStatus.noDataMode,
+      display_mode: "unknown",
+      receptor_connected: receptorStatus.connected,
+      wifi_signal: receptorStatus.wifiSignal,
+      lora_signal: {
+        rssi: lastLoRaStatus.rssi,
+        snr: lastLoRaStatus.snr,
+        quality: lastLoRaStatus.signalQuality
+      }
+    };
   }
 
   // Preparar histórico baseado no status
-  let historicoParaDashboard;
-  if (receptorDisconnectedMode) {
-    // Quando receptor desconectado, enviar histórico vazio
-    historicoParaDashboard = [];
-  } else {
-    // Quando conectado, enviar histórico normal
+  let historicoParaDashboard = [];
+  
+  if (receptorStatus.connected) {
+    // Se receptor conectado, mostrar histórico
     historicoParaDashboard = historico.slice(-20).map(item => ({
       ...item,
       timestamp: item.timestamp || item.server_timestamp || item.received_at
     }));
   }
+  // Se receptor desconectado, histórico vazio (já foi limpo)
 
   const responseData = {
     ...ultimo,
     receptor_status: {
       connected: receptorStatus.connected,
-      last_connection: new Date(receptorStatus.lastConnection).toISOString(),
+      last_http_request: new Date(receptorStatus.lastHttpRequest).toISOString(),
       last_packet_time: receptorStatus.lastPacketTime ? 
         new Date(receptorStatus.lastPacketTime).toISOString() : null,
-      time_since_last_packet: receptorStatus.lastPacketTime ? 
-        Date.now() - receptorStatus.lastPacketTime : null,
+      time_since_last_http: Date.now() - receptorStatus.lastHttpRequest,
       reconnection_count: receptorStatus.reconnectionCount,
-      wifi_signal: receptorStatus.wifiSignal
+      wifi_signal: receptorStatus.wifiSignal,
+      status_description: receptorStatus.connected ? 
+        "Receptor ESP32 conectado ao WiFi e servidor" : 
+        "Receptor ESP32 desconectado - Verifique alimentação/WiFi"
     },
     lora_connection_status: {
       connected: lastLoRaStatus.connected,
@@ -471,25 +521,30 @@ app.get("/api/lora", (req, res) => {
         Date.now() - lastLoRaStatus.lastPacketTime : null,
       signal_quality: lastLoRaStatus.signalQuality,
       rssi: lastLoRaStatus.rssi,
-      snr: lastLoRaStatus.snr
+      snr: lastLoRaStatus.snr,
+      status_description: lastLoRaStatus.connected ? 
+        "Transmissão LoRa ativa" : 
+        (lastLoRaStatus.waitingData ? 
+          "Aguardando transmissão LoRa - Verifique transmissor" : 
+          "Status LoRa desconhecido")
     },
     historico: historicoParaDashboard,
     system_info: {
       total_readings: historico.length,
       normal_readings: historico.filter(item => item.status === "normal").length,
-      waiting_readings: historico.filter(item => item.status === "waiting_lora").length,
+      waiting_lora_readings: historico.filter(item => item.status === "waiting_lora").length,
       receptor_disconnected_readings: historico.filter(item => item.status === "receptor_disconnected").length,
       uptime: process.uptime(),
       server_time: new Date().toISOString(),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      receptor_disconnected_mode: receptorDisconnectedMode
+      display_mode: displayMode
     }
   };
 
   res.json(responseData);
 });
 
-// Endpoint para dados de teste (sem autenticação)
+// Endpoint para dados de teste
 app.get("/api/test", (req, res) => {
   const now = new Date();
   
@@ -520,29 +575,67 @@ app.get("/api/test", (req, res) => {
   res.json(testData);
 });
 
+// Endpoint para simular status
+app.get("/api/simulate/:status", (req, res) => {
+  const status = req.params.status;
+  
+  switch(status) {
+    case "normal":
+      receptorStatus.connected = true;
+      lastLoRaStatus.connected = true;
+      lastLoRaStatus.waitingData = false;
+      break;
+    case "waiting_lora":
+      receptorStatus.connected = true;
+      lastLoRaStatus.connected = false;
+      lastLoRaStatus.waitingData = true;
+      break;
+    case "receptor_disconnected":
+      receptorStatus.connected = false;
+      lastLoRaStatus.connected = false;
+      lastLoRaStatus.waitingData = true;
+      break;
+  }
+  
+  res.json({
+    status: "simulated",
+    receptor_connected: receptorStatus.connected,
+    lora_connected: lastLoRaStatus.connected,
+    waiting_lora: lastLoRaStatus.waitingData
+  });
+});
+
 // Endpoint para verificar status do sistema
 app.get("/api/system/status", (req, res) => {
   checkReceptorConnection();
   
   res.json({
-    receptor: receptorStatus,
-    lora: lastLoRaStatus,
+    receptor: {
+      ...receptorStatus,
+      last_http_request: new Date(receptorStatus.lastHttpRequest).toISOString(),
+      time_since_last_http: Date.now() - receptorStatus.lastHttpRequest,
+      status_description: receptorStatus.connected ? 
+        "Receptor conectado (enviando requisições HTTP)" : 
+        "Receptor desconectado (sem requisições HTTP)"
+    },
+    lora: {
+      ...lastLoRaStatus,
+      status_description: lastLoRaStatus.connected ? 
+        "LoRa transmitindo" : 
+        (lastLoRaStatus.waitingData ? 
+          "Aguardando transmissão LoRa" : 
+          "Status LoRa desconhecido")
+    },
     historico: {
       total: historico.length,
       normal: historico.filter(item => item.status === "normal").length,
-      waiting: historico.filter(item => item.status === "waiting_lora").length,
-      disconnected: historico.filter(item => item.status === "receptor_disconnected").length
-    },
-    server: {
-      uptime: process.uptime(),
-      memory: process.memoryUsage(),
-      timestamp: new Date().toISOString(),
-      node_version: process.version
+      waiting_lora: historico.filter(item => item.status === "waiting_lora").length,
+      receptor_disconnected: historico.filter(item => item.status === "receptor_disconnected").length
     }
   });
 });
 
-// Endpoint para verificar tokens (debug)
+// Endpoint para verificar tokens
 app.get("/api/debug/tokens", (req, res) => {
   const allowedTokens = process.env.ALLOWED_TOKENS?.split(',') || [];
   res.json({
@@ -557,26 +650,37 @@ app.get("/api/lora/status", (req, res) => {
   checkReceptorConnection();
   
   res.json({
-    receptor: receptorStatus,
-    lora_connection: lastLoRaStatus,
-    historico_count: historico.length,
-    last_normal_reading: historico.filter(item => item.status === "normal").slice(-1)[0] || null,
-    last_waiting_reading: historico.filter(item => item.status === "waiting_lora").slice(-1)[0] || null,
-    current_time: new Date().toISOString(),
-    server_uptime: process.uptime()
+    receptor_status: receptorStatus.connected ? "connected" : "disconnected",
+    receptor_description: receptorStatus.connected ? 
+      "ESP32 receptor conectado ao WiFi e servidor" : 
+      "ESP32 receptor desconectado (sem requisições HTTP há >2min)",
+    lora_status: lastLoRaStatus.connected ? "connected" : "disconnected",
+    lora_description: lastLoRaStatus.connected ? 
+      "Recebendo dados LoRa normalmente" : 
+      (lastLoRaStatus.waitingData ? 
+        "Aguardando transmissão LoRa (receptor conectado)" : 
+        "Status LoRa desconhecido"),
+    signal_quality: lastLoRaStatus.signalQuality,
+    current_time: new Date().toISOString()
   });
 });
 
 // Health check para Render
 app.get("/health", (req, res) => {
+  checkReceptorConnection();
+  
   res.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     receptor_connected: receptorStatus.connected,
-    receptor_last_seen: receptorStatus.lastPacketTime ? 
-      new Date(receptorStatus.lastPacketTime).toISOString() : null,
-    lora_signal_quality: lastLoRaStatus.signalQuality
+    receptor_last_seen: new Date(receptorStatus.lastHttpRequest).toISOString(),
+    time_since_receptor_last_seen: Date.now() - receptorStatus.lastHttpRequest,
+    lora_connected: lastLoRaStatus.connected,
+    lora_waiting: lastLoRaStatus.waitingData,
+    lora_signal_quality: lastLoRaStatus.signalQuality,
+    system_mode: !receptorStatus.connected ? "receptor_disconnected" : 
+                (lastLoRaStatus.waitingData ? "waiting_lora" : "normal")
   });
 });
 
@@ -589,17 +693,22 @@ app.get("/", (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
+  console.log(`\n🚀 SERVIDOR INICIADO - SISTEMA DE STATUS CORRIGIDO`);
+  console.log(`==================================================`);
   console.log(`✅ Servidor rodando na porta ${PORT}`);
-  console.log(`📊 Endpoints disponíveis:`);
-  console.log(`   POST /api/lora          - Receber dados do ESP32 (com auth)`);
-  console.log(`   GET  /api/lora          - Obter dados para dashboard`);
-  console.log(`   GET  /api/test          - Dados de teste`);
-  console.log(`   GET  /api/debug/tokens  - Ver tokens permitidos`);
-  console.log(`   GET  /api/lora/status   - Status da conexão LoRa`);
-  console.log(`   GET  /api/system/status - Status completo do sistema`);
-  console.log(`   GET  /health            - Health check para Render`);
-  console.log(`   GET  /                  - Dashboard HTML`);
-  console.log(`🔐 Tokens permitidos: ${process.env.ALLOWED_TOKENS}`);
-  console.log(`⏰ Servidor iniciado em: ${new Date().toISOString()}`);
-  console.log(`📡 Monitoramento receptor: ATIVADO (timeout: ${receptorStatus.connectionTimeout/1000}s)`);
+  console.log(`📡 Sistema de status aprimorado:`);
+  console.log(`   • Receptor desconectado = Sem HTTP há 2 minutos`);
+  console.log(`   • Aguardando LoRa = Receptor conectado, sem dados LoRa há 30s`);
+  console.log(`   • Normal = Receptor conectado + dados LoRa`);
+  console.log(`\n📊 Endpoints:`);
+  console.log(`   POST /api/lora            - Receber dados ESP32`);
+  console.log(`   GET  /api/lora            - Dashboard`);
+  console.log(`   GET  /api/test            - Dados de teste`);
+  console.log(`   GET  /api/system/status   - Status completo`);
+  console.log(`   GET  /api/lora/status     - Status LoRa`);
+  console.log(`   GET  /health              - Health check`);
+  console.log(`   GET  /                    - Dashboard HTML`);
+  console.log(`\n🔐 Tokens permitidos: ${process.env.ALLOWED_TOKENS}`);
+  console.log(`⏰ Início: ${new Date().toLocaleString()}`);
+  console.log(`📡 Aguardando conexões...\n`);
 });
