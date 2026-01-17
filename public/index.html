@@ -758,7 +758,7 @@
       </div>
       <div class="status-item">
         <span class="status-label">Dispositivo Ativo:</span>
-        <span class="status-value" id="currentDevice">ESP32</span>
+        <span class="status-value" id="currentDevice">RECEPTOR_01</span>
       </div>
       <div class="status-item">
         <span class="status-label">Pacotes:</span>
@@ -925,7 +925,7 @@
       distance: 0,
       level: 0,
       sensor_ok: true,
-      device: "ESP32",
+      device: "RECEPTOR_01",
       timestamp: null,
       lora_connected: true,
       no_data_mode: false,
@@ -933,7 +933,7 @@
       status: "normal"
     };
     
-    let connectionStatus = 'disconnected';
+    let connectionStatus = 'connected';
     let loraConnectionStatus = 'connected';
     let isWaitingDataMode = false;
     let updateInterval = null;
@@ -943,7 +943,7 @@
 
     // Inicialização
     document.addEventListener('DOMContentLoaded', function() {
-      console.log('🚀 Dashboard inicializado com modo "Aguardando Dados"');
+      console.log('🚀 Dashboard inicializado');
       
       // Configurar botões de tempo
       document.querySelectorAll('.time-btn').forEach(btn => {
@@ -968,9 +968,6 @@
       // Atualizar a cada 10 segundos
       updateInterval = setInterval(carregarDados, 10000);
       
-      // Verificar status LoRa a cada 5 segundos
-      loraStatusCheckInterval = setInterval(verificarStatusLoRa, 5000);
-      
       // Testar conexão inicial
       testarConexaoAPI();
     });
@@ -979,7 +976,6 @@
     function showAlert(message, type = 'info', duration = 5000) {
       const alertContainer = document.getElementById('alertContainer');
       
-      // Remover alertas antigos se houver muitos
       const alerts = alertContainer.querySelectorAll('.alert');
       if (alerts.length > 3) {
         alerts[0].remove();
@@ -994,7 +990,6 @@
       
       alertContainer.appendChild(alert);
       
-      // Remover após o tempo especificado
       setTimeout(() => {
         if (alert.parentNode) {
           alert.remove();
@@ -1005,65 +1000,19 @@
     // Função para testar conexão com API
     async function testarConexaoAPI() {
       try {
-        const response = await fetch('/api/lora', { method: 'HEAD' });
-        connectionStatus = 'connected';
-        document.getElementById('apiStatus').textContent = 'Conectado';
-        document.getElementById('apiStatus').className = 'status-value api-status connected';
+        const response = await fetch('/api/lora', { method: 'GET' });
+        if (response.ok) {
+          connectionStatus = 'connected';
+          document.getElementById('apiStatus').textContent = 'Conectado';
+          document.getElementById('apiStatus').className = 'status-value api-status connected';
+        } else {
+          throw new Error(`Status: ${response.status}`);
+        }
       } catch (error) {
         connectionStatus = 'disconnected';
         document.getElementById('apiStatus').textContent = 'Desconectado';
         document.getElementById('apiStatus').className = 'status-value api-status disconnected';
         showAlert('❌ Não foi possível conectar à API. Verifique o servidor.', 'error');
-      }
-    }
-
-    // Função para verificar status LoRa do servidor
-    async function verificarStatusLoRa() {
-      try {
-        const response = await fetch('/api/lora/status');
-        if (response.ok) {
-          const statusData = await response.json();
-          
-          // Verificar se há status de conexão LoRa
-          if (statusData.lora_connection) {
-            const loraConnected = statusData.lora_connection.connected;
-            const waitingData = statusData.lora_connection.waiting_data;
-            const noDataMode = statusData.lora_connection.no_data_mode;
-            
-            // Atualizar status LoRa no painel
-            const loraStatusElement = document.getElementById('loraStatus');
-            if (loraStatusElement) {
-              loraStatusElement.textContent = loraConnected ? 'Conectado' : 'Desconectado';
-              loraStatusElement.className = `status-value lora-status ${loraConnected ? 'connected' : 'disconnected'}`;
-              
-              // Atualizar variável global
-              loraConnectionStatus = loraConnected ? 'connected' : 'disconnected';
-              isWaitingDataMode = waitingData || noDataMode;
-              
-              // Mostrar alerta apenas UMA VEZ quando LoRa desconectar
-              const timeSinceLastPacket = statusData.lora_connection.time_since_last_packet;
-              if (!loraConnected && timeSinceLastPacket > 10000 && !loraWaitingAlertShown) {
-                loraWaitingAlertShown = true;
-                showAlert('📡 Conexão LoRa perdida. Aguardando dados do transmissor...', 'warning', 5000);
-              } else if (loraConnected && loraWaitingAlertShown) {
-                // Se reconectou, resetar flag para permitir novo alerta no futuro
-                loraWaitingAlertShown = false;
-              }
-              
-              // Atualizar último tempo de pacote
-              if (statusData.last_normal_reading && statusData.last_normal_reading.timestamp) {
-                try {
-                  const lastPacketDate = new Date(statusData.last_normal_reading.timestamp);
-                  lastLoRaPacketTime = lastPacketDate.getTime();
-                } catch (e) {
-                  console.warn('Erro ao parsear timestamp:', e);
-                }
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.warn('⚠️ Não foi possível verificar status LoRa:', error);
       }
     }
 
@@ -1086,38 +1035,13 @@
         const data = await response.json();
         console.log('📊 Dados recebidos da API:', data);
         
-        // Verificar se há dados
-        if (!data || Object.keys(data).length === 0) {
-          throw new Error('API retornou dados vazios');
-        }
-        
-        // CORREÇÃO: Processar timestamp corretamente
-        let timestamp;
-        if (data.timestamp) {
-          try {
-            // Tentar parsear o timestamp
-            if (typeof data.timestamp === 'string') {
-              timestamp = new Date(data.timestamp).toISOString();
-            } else if (typeof data.timestamp === 'number') {
-              timestamp = new Date(data.timestamp).toISOString();
-            } else {
-              timestamp = new Date().toISOString();
-            }
-          } catch (e) {
-            console.warn('Erro ao processar timestamp, usando horário atual:', e);
-            timestamp = new Date().toISOString();
-          }
-        } else {
-          timestamp = new Date().toISOString();
-        }
-        
-        // Verificar se estamos no modo "Aguardando Dados"
+        // CORREÇÃO: Processar dados mais robustamente
         const isWaiting = data.no_data_mode === true || 
                          data.display_mode === "waiting" || 
                          data.status === "waiting_data" ||
-                         (data.lora_connection_status && 
-                          (data.lora_connection_status.waiting_data === true || 
-                           data.lora_connection_status.no_data_mode === true));
+                         (data.distance === -1 && data.level === -1);
+        
+        console.log('📭 Modo Aguardando Dados:', isWaiting ? 'ATIVADO' : 'desativado');
         
         // Atualizar dados atuais
         currentData = {
@@ -1126,9 +1050,9 @@
           distance: isWaiting ? -1 : (parseFloat(data.distance) || 0),
           level: isWaiting ? -1 : (parseInt(data.level) || 0),
           sensor_ok: isWaiting ? false : (data.sensor_ok !== false),
-          device: data.device || "ESP32",
-          timestamp: timestamp,
-          lora_connected: data.lora_connection_status ? data.lora_connection_status.connected : true,
+          device: data.device || "RECEPTOR_01",
+          timestamp: data.timestamp || new Date().toISOString(),
+          lora_connected: data.lora_connected !== false,
           no_data_mode: isWaiting,
           display_mode: isWaiting ? "waiting" : "normal",
           status: data.status || "normal",
@@ -1136,8 +1060,6 @@
         };
         
         console.log('🎯 Dados processados:', currentData);
-        console.log('⏰ Timestamp usado:', timestamp);
-        console.log('📭 Modo Aguardando Dados:', isWaiting ? 'ATIVADO' : 'desativado');
         
         // Atualizar interface
         atualizarInterface(isWaiting);
@@ -1147,6 +1069,19 @@
         document.getElementById('apiStatus').textContent = 'Conectado';
         document.getElementById('apiStatus').className = 'status-value api-status connected';
         
+        // Atualizar status LoRa
+        if (data.lora_connection_status) {
+          const loraConnected = data.lora_connection_status.connected;
+          document.getElementById('loraStatus').textContent = loraConnected ? 'Conectado' : 'Desconectado';
+          document.getElementById('loraStatus').className = `status-value lora-status ${loraConnected ? 'connected' : 'disconnected'}`;
+          loraConnectionStatus = loraConnected ? 'connected' : 'disconnected';
+        } else {
+          // Se não tiver status específico, usar baseado nos dados
+          const loraConnected = !isWaiting && data.lora_connected !== false;
+          document.getElementById('loraStatus').textContent = loraConnected ? 'Conectado' : 'Desconectado';
+          document.getElementById('loraStatus').className = `status-value lora-status ${loraConnected ? 'connected' : 'disconnected'}`;
+        }
+        
         // Atualizar contador de pacotes
         if (data.historico) {
           const normalPackets = data.historico.filter(item => item.status === "normal").length;
@@ -1155,46 +1090,13 @@
             `${normalPackets}/${waitingPackets}`;
         }
         
-        // Atualizar status LoRa se disponível
-        if (data.lora_connection_status) {
-          const loraConnected = data.lora_connection_status.connected;
-          const waitingData = data.lora_connection_status.waiting_data;
-          document.getElementById('loraStatus').textContent = loraConnected ? 'Conectado' : 'Desconectado';
-          document.getElementById('loraStatus').className = `status-value lora-status ${loraConnected ? 'connected' : 'disconnected'}`;
-          loraConnectionStatus = loraConnected ? 'connected' : 'disconnected';
-          isWaitingDataMode = waitingData;
-        }
-        
         // Carregar histórico se disponível
         if (data.historico && data.historico.length > 0) {
-          // CORREÇÃO: Garantir timestamps corretos no histórico
-          const historicoCorrigido = data.historico.map(item => {
-            let itemTimestamp;
-            if (item.timestamp) {
-              try {
-                itemTimestamp = new Date(item.timestamp).toISOString();
-              } catch (e) {
-                itemTimestamp = new Date().toISOString();
-              }
-            } else if (item.received_at) {
-              itemTimestamp = new Date(item.received_at).toISOString();
-            } else if (item.server_timestamp) {
-              itemTimestamp = new Date(item.server_timestamp).toISOString();
-            } else {
-              itemTimestamp = new Date().toISOString();
-            }
-            
-            return {
-              ...item,
-              timestamp: itemTimestamp
-            };
-          });
-          
-          atualizarHistorico(historicoCorrigido);
+          atualizarHistorico(data.historico);
           
           // Atualizar gráfico apenas se não estiver no modo de espera
           if (!isWaiting) {
-            const normalHistory = historicoCorrigido.filter(item => item.status === "normal");
+            const normalHistory = data.historico.filter(item => item.status === "normal");
             if (normalHistory.length > 0) {
               atualizarGrafico(normalHistory);
             }
@@ -1208,49 +1110,11 @@
       } catch (error) {
         console.error('❌ Erro ao carregar dados:', error);
         
-        // Atualizar status para desconectado
         connectionStatus = 'disconnected';
         document.getElementById('apiStatus').textContent = 'Desconectado';
         document.getElementById('apiStatus').className = 'status-value api-status disconnected';
         
-        // Tentar carregar dados de teste
-        await carregarDadosTeste();
-        
         showAlert(`⚠️ Erro ao carregar dados: ${error.message}`, 'warning');
-      }
-    }
-
-    // Função para carregar dados de teste
-    async function carregarDadosTeste() {
-      try {
-        console.log('🔄 Tentando dados de teste...');
-        const response = await fetch('/api/test');
-        if (response.ok) {
-          const testData = await response.json();
-          currentData = {
-            percentage: testData.percentage,
-            liters: testData.liters,
-            distance: testData.distance,
-            level: testData.level,
-            sensor_ok: testData.sensor_ok,
-            device: testData.device,
-            timestamp: testData.timestamp || new Date().toISOString(),
-            lora_connected: true,
-            no_data_mode: false,
-            display_mode: "normal",
-            status: "normal"
-          };
-          atualizarInterface(false);
-          console.log('✅ Dados de teste carregados');
-          showAlert('📡 Usando dados de teste', 'warning', 3000);
-        }
-      } catch (testError) {
-        console.error('❌ Erro no teste:', testError);
-        
-        // Simular dados se tudo falhar
-        currentData = simularDados();
-        atualizarInterface(false);
-        showAlert('🎛️ Modo simulação ativado', 'warning', 3000);
       }
     }
 
@@ -1264,11 +1128,13 @@
       const waterLevel = document.getElementById('waterLevel');
       const tankInfo = document.getElementById('tankInfo');
       const waitingMessage = document.getElementById('waitingMessage');
-      const waterPercentage = isWaiting ? 10 : Math.max(0, Math.min(100, percentage));
+      
+      // CORREÇÃO: Usar valor real, não fixo
+      const waterPercentage = isWaiting ? 0 : Math.max(0, Math.min(100, percentage));
       
       waterLevel.style.height = `${waterPercentage}%`;
       
-      if (isWaiting) {
+      if (isWaiting || percentage === -1) {
         // MODO AGUARDANDO DADOS
         waterLevel.classList.add('waiting');
         tankInfo.classList.add('waiting');
@@ -1279,7 +1145,6 @@
         document.getElementById('volumeText').classList.add('waiting');
         waitingMessage.style.display = 'block';
         
-        // Atualizar cards de estatísticas para modo de espera
         document.getElementById('distanceText').textContent = "---";
         document.getElementById('distanceText').classList.add('waiting');
         document.getElementById('levelText').textContent = "---";
@@ -1289,7 +1154,6 @@
         document.getElementById('sensorStatusText').textContent = "AGUARDANDO";
         document.getElementById('sensorStatusText').classList.add('waiting');
         
-        // Atualizar ícones dos cards
         document.querySelectorAll('.stat-icon').forEach(icon => {
           icon.classList.add('waiting');
         });
@@ -1298,13 +1162,11 @@
           card.classList.add('waiting');
         });
         
-        // Mostrar mensagem no gráfico
         document.getElementById('chartWaiting').style.display = 'flex';
         if (chart) {
           chart.canvas.style.display = 'none';
         }
         
-        // Cor da água no modo de espera (cinza)
         waterLevel.style.background = 'linear-gradient(to top, var(--waiting), #adb5bd)';
         
       } else {
@@ -1312,14 +1174,13 @@
         waterLevel.classList.remove('waiting');
         tankInfo.classList.remove('waiting');
         
-        // Textos informativos
+        // CORREÇÃO: Usar dados reais
         document.getElementById('percentageText').textContent = `${waterPercentage}%`;
         document.getElementById('percentageText').classList.remove('waiting');
         document.getElementById('volumeText').textContent = `${liters} / 5000 L`;
         document.getElementById('volumeText').classList.remove('waiting');
         waitingMessage.style.display = 'none';
         
-        // Cards de estatísticas
         document.getElementById('distanceText').textContent = `${distance.toFixed(1)} cm`;
         document.getElementById('distanceText').classList.remove('waiting');
         document.getElementById('levelText').textContent = `${level} cm`;
@@ -1327,7 +1188,6 @@
         document.getElementById('litersText').textContent = `${liters} L`;
         document.getElementById('litersText').classList.remove('waiting');
         
-        // Status do sensor
         const statusElement = document.getElementById('sensorStatusText');
         if (sensor_ok) {
           statusElement.textContent = "Online ✅";
@@ -1339,7 +1199,6 @@
           statusElement.classList.remove('waiting');
         }
         
-        // Remover classes de espera dos cards
         document.querySelectorAll('.stat-icon').forEach(icon => {
           icon.classList.remove('waiting');
         });
@@ -1348,7 +1207,6 @@
           card.classList.remove('waiting');
         });
         
-        // Mostrar gráfico
         document.getElementById('chartWaiting').style.display = 'none';
         if (chart) {
           chart.canvas.style.display = 'block';
@@ -1362,14 +1220,16 @@
       document.getElementById('currentDevice').textContent = device;
       
       // Status LoRa
-      const loraStatusText = isWaiting ? 'Desconectado' : (lora_connected ? 'Conectado' : 'Desconectado');
+      const loraStatusText = isWaiting ? 'Desconectado' : 'Conectado';
       document.getElementById('loraStatus').textContent = loraStatusText;
-      document.getElementById('loraStatus').className = `status-value lora-status ${isWaiting ? 'disconnected' : (lora_connected ? 'connected' : 'disconnected')}`;
+      document.getElementById('loraStatus').className = `status-value lora-status ${isWaiting ? 'disconnected' : 'connected'}`;
     }
 
     // Atualizar cor da água baseada no nível
     function updateWaterColor(percentage) {
-      const water = document.querySelector('.water');
+      const water = document.getElementById('waterLevel');
+      if (!water) return;
+      
       if (percentage < 10) {
         water.style.background = 'linear-gradient(to top, #e63946, #d00000)';
       } else if (percentage < 20) {
@@ -1389,24 +1249,24 @@
       const loading = document.getElementById('historyLoading');
       const container = document.getElementById('historyTableContainer');
       
-      // Esconder loading e mostrar tabela
       if (loading) loading.style.display = 'none';
       if (container) container.style.display = 'block';
       
-      // Limpar tabela
       historyBody.innerHTML = '';
       
       // Ordenar por timestamp (mais recente primeiro)
-      historico.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      historico.sort((a, b) => {
+        const dateA = new Date(a.timestamp || a.received_at || a.server_timestamp);
+        const dateB = new Date(b.timestamp || b.received_at || b.server_timestamp);
+        return dateB - dateA;
+      });
       
-      // Adicionar linhas (máximo 15)
       historico.slice(0, 15).forEach(item => {
         const row = document.createElement('tr');
         
-        // CORREÇÃO: Formatar data corretamente
         let formattedDate = '--/--/-- --:--';
         try {
-          const date = new Date(item.timestamp);
+          const date = new Date(item.timestamp || item.received_at || item.server_timestamp);
           if (!isNaN(date.getTime())) {
             formattedDate = date.toLocaleString('pt-BR');
           }
@@ -1414,12 +1274,10 @@
           console.warn('Erro ao formatar data:', e);
         }
         
-        // Determinar status
         const isWaiting = item.status === "waiting_data" || item.no_data_mode === true;
         const statusText = isWaiting ? "Aguardando" : (item.sensor_ok !== false ? "Normal" : "Erro");
         const statusClass = isWaiting ? "waiting" : (item.sensor_ok !== false ? "ok" : "error");
         
-        // Dados para exibir
         const displayPercentage = isWaiting ? "---" : `${item.percentage || 0}%`;
         const displayLiters = isWaiting ? "---" : `${item.liters || 0} L`;
         const displayDistance = isWaiting ? "---" : `${item.distance ? parseFloat(item.distance).toFixed(1) : '--'} cm`;
@@ -1430,7 +1288,7 @@
         
         row.innerHTML = `
           <td>${formattedDate}</td>
-          <td>${item.device || 'ESP32'}</td>
+          <td>${item.device || 'RECEPTOR_01'}</td>
           <td><span class="status-badge ${statusClass}">${statusText}</span></td>
           <td>${displayPercentage}</td>
           <td>${displayLiters}</td>
@@ -1447,7 +1305,6 @@
     function atualizarGrafico(historico) {
       const ctx = document.getElementById('nivelChart').getContext('2d');
       
-      // Filtrar apenas dados normais
       const normalHistory = historico.filter(item => item.status === "normal" && item.percentage !== -1);
       
       if (normalHistory.length === 0) {
@@ -1459,13 +1316,15 @@
         return;
       }
       
-      // Ordenar por timestamp (mais antigo primeiro para gráfico)
-      normalHistory.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      normalHistory.sort((a, b) => {
+        const dateA = new Date(a.timestamp || a.received_at || a.server_timestamp);
+        const dateB = new Date(b.timestamp || b.received_at || b.server_timestamp);
+        return dateA - dateB;
+      });
       
-      // Preparar dados - CORREÇÃO: usar timestamps corretos
       const labels = normalHistory.map(item => {
         try {
-          const date = new Date(item.timestamp);
+          const date = new Date(item.timestamp || item.received_at || item.server_timestamp);
           if (!isNaN(date.getTime())) {
             return date;
           } else {
@@ -1478,7 +1337,6 @@
       
       const data = normalHistory.map(item => item.percentage || 0);
       
-      // Criar ou atualizar gráfico
       if (!chart) {
         chart = new Chart(ctx, {
           type: 'line',
@@ -1563,31 +1421,8 @@
         chart.update('none');
       }
       
-      // Garantir que o gráfico esteja visível
       document.getElementById('chartWaiting').style.display = 'none';
       chart.canvas.style.display = 'block';
-    }
-
-    // Função para simular dados
-    function simularDados() {
-      const porcentagem = Math.floor(Math.random() * 100);
-      const litros = Math.floor(porcentagem * 5000 / 100);
-      const distancia = 15 + (100 - porcentagem) * 0.95;
-      const nivel = 110 - (distancia - 15);
-      
-      return {
-        percentage: porcentagem,
-        liters: litros,
-        distance: parseFloat(distancia.toFixed(1)),
-        level: Math.floor(nivel),
-        sensor_ok: Math.random() > 0.1,
-        device: "TX_CAIXA_01",
-        timestamp: new Date().toISOString(),
-        lora_connected: Math.random() > 0.2,
-        no_data_mode: false,
-        display_mode: "normal",
-        status: "normal"
-      };
     }
 
     // Função de debug
@@ -1597,16 +1432,13 @@
       console.log('Status conexão:', connectionStatus);
       console.log('Status LoRa:', loraConnectionStatus);
       console.log('Modo Aguardando Dados:', isWaitingDataMode);
-      console.log('Último pacote LoRa:', new Date(lastLoRaPacketTime).toLocaleString());
       console.log('Elementos DOM:');
       console.log('- Distância:', document.getElementById('distanceText').textContent);
       console.log('- Nível:', document.getElementById('levelText').textContent);
       console.log('- Porcentagem:', document.getElementById('percentageText').textContent);
       console.log('- Volume:', document.getElementById('litersText').textContent);
       console.log('- Status LoRa:', document.getElementById('loraStatus').textContent);
-      console.log('- Mensagem de espera visível:', document.getElementById('waitingMessage').style.display !== 'none');
       
-      // Testar conexão com API
       fetch('/api/lora')
         .then(res => {
           console.log('Status API:', res.status, res.statusText);
@@ -1614,14 +1446,6 @@
         })
         .then(data => {
           console.log('Resposta API completa:', data);
-          console.log('Timestamp correção:', data.timestamp_correction);
-          console.log('Status LoRa:', data.lora_connection_status);
-          
-          if (!data.distance && data.distance !== 0) {
-            console.warn('⚠️ Campo "distance" não encontrado na resposta');
-          }
-          
-          console.log('Campos disponíveis:', Object.keys(data));
         })
         .catch(err => console.error('❌ Erro na requisição:', err));
       
@@ -1649,9 +1473,7 @@
 
     // Exportar funções para debug no console
     window.debugData = debugData;
-    window.simularDados = simularDados;
     window.carregarDados = carregarDados;
-    window.verificarStatusLoRa = verificarStatusLoRa;
   </script>
 </body>
 </html>
