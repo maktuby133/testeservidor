@@ -133,6 +133,7 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     // Atualizar qualidade do sinal LoRa se disponível
     if (lora_rssi !== undefined) {
       lastLoRaStatus.rssi = lora_rssi;
+      lastLoRaStatus.snr = lora_snr;
       lastLoRaStatus.signalQuality = calculateSignalQuality(lora_rssi, lora_snr);
     }
     
@@ -306,31 +307,31 @@ app.post("/api/lora", authMiddleware, (req, res) => {
 
 // Função para calcular qualidade do sinal (0-100%)
 function calculateSignalQuality(rssi, snr) {
-  if (rssi === null || rssi === undefined) return null;
+  if (rssi === null || rssi === undefined) return 50;
   
   // RSSI típico LoRa: -30 dBm (excelente) a -120 dBm (muito ruim)
   // Ajustamos para 0-100%
   let quality = 0;
   
-  if (rssi >= -50) quality = 100;
-  else if (rssi >= -60) quality = 90;
-  else if (rssi >= -70) quality = 80;
-  else if (rssi >= -80) quality = 70;
-  else if (rssi >= -90) quality = 60;
-  else if (rssi >= -100) quality = 40;
-  else if (rssi >= -110) quality = 20;
-  else if (rssi >= -120) quality = 10;
+  if (rssi >= -40) quality = 100;
+  else if (rssi >= -50) quality = 95;
+  else if (rssi >= -60) quality = 85;
+  else if (rssi >= -70) quality = 75;
+  else if (rssi >= -80) quality = 65;
+  else if (rssi >= -90) quality = 50;
+  else if (rssi >= -100) quality = 30;
+  else if (rssi >= -110) quality = 15;
   else quality = 5;
   
   // Ajustar baseado no SNR se disponível
   if (snr !== null && snr !== undefined) {
-    if (snr > 10) quality = Math.min(100, quality + 10);
-    else if (snr > 5) quality = Math.min(100, quality + 5);
-    else if (snr < -5) quality = Math.max(0, quality - 10);
-    else if (snr < 0) quality = Math.max(0, quality - 5);
+    if (snr > 10) quality = Math.min(100, quality + 15);
+    else if (snr > 5) quality = Math.min(100, quality + 10);
+    else if (snr < -5) quality = Math.max(0, quality - 20);
+    else if (snr < 0) quality = Math.max(0, quality - 10);
   }
   
-  return Math.round(quality);
+  return Math.round(Math.max(0, Math.min(100, quality)));
 }
 
 // Fornece dados para o dashboard
