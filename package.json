@@ -1,7 +1,7 @@
 {
   "name": "lora-water-monitor-server",
   "version": "2.1.0",
-  "description": "Servidor para monitoramento de caixa d'água via LoRa com suporte a modo 'Aguardando Dados'",
+  "description": "Servidor WebSocket para monitoramento de caixa d'água via LoRa com keep-alive para Render",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -10,22 +10,28 @@
     "dev:env": "node -r dotenv/config server.js",
     "test": "echo \"✅ Sistema testado e funcionando!\" && exit 0",
     "deploy": "npm run test && npm start",
-    "setup": "node setup-environment.js"
+    "setup": "node setup-environment.js",
+    "keep-alive": "node keep-alive-bot.js",
+    "monitor": "concurrently \"npm start\" \"npm run keep-alive\""
   },
   "keywords": [
     "lora",
+    "websocket",
     "esp32",
     "caixa-dagua",
     "monitoramento",
     "iot",
     "radio",
-    "dashboard"
+    "render",
+    "keep-alive"
   ],
   "author": "Seu Nome",
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "node-fetch": "^3.3.2",
+    "concurrently": "^8.2.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
