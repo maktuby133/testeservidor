@@ -22,6 +22,8 @@
       --water-blue: #48cae4;
       --water-deep: #0096c7;
       --waiting: #6c757d;
+      --error-red: #e63946;
+      --error-dark: #d00000;
     }
 
     * {
@@ -198,6 +200,11 @@
       animation: waitingPulse 2s infinite;
     }
 
+    .water.error {
+      background: linear-gradient(to top, var(--error-red), var(--error-dark));
+      animation: errorPulse 1.5s infinite;
+    }
+
     .water-wave {
       position: absolute;
       top: -20px;
@@ -230,6 +237,11 @@
       50% { opacity: 0.4; }
     }
 
+    @keyframes errorPulse {
+      0%, 100% { opacity: 0.8; }
+      50% { opacity: 0.5; }
+    }
+
     .tank-info {
       position: absolute;
       top: 50%;
@@ -249,6 +261,12 @@
       border: 2px dashed var(--waiting);
     }
 
+    .tank-info.error {
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px solid var(--error-red);
+      box-shadow: 0 5px 15px rgba(230, 57, 70, 0.2);
+    }
+
     .percentage {
       font-size: 3.5rem;
       font-weight: 700;
@@ -263,6 +281,12 @@
       font-size: 2.5rem;
     }
 
+    .percentage.error {
+      color: var(--error-red);
+      font-size: 2.2rem;
+      animation: textPulse 1.5s infinite;
+    }
+
     .volume {
       font-size: 1.3rem;
       color: var(--dark);
@@ -274,12 +298,26 @@
       font-weight: 600;
     }
 
+    .volume.error {
+      color: var(--error-red);
+      font-weight: 700;
+      font-size: 1.4rem;
+    }
+
     .waiting-message {
       font-size: 1.2rem;
       color: var(--waiting);
       font-weight: 600;
       margin-top: 10px;
       animation: textPulse 2s infinite;
+    }
+
+    .error-message {
+      font-size: 1.4rem;
+      color: var(--error-red);
+      font-weight: 700;
+      margin-top: 10px;
+      animation: textPulse 1.5s infinite;
     }
 
     @keyframes textPulse {
@@ -342,6 +380,17 @@
       border: 2px dashed var(--waiting);
     }
 
+    .stat-card.error {
+      background: #fff5f5;
+      border: 2px solid var(--error-red);
+      animation: cardPulse 1.5s infinite;
+    }
+
+    @keyframes cardPulse {
+      0%, 100% { box-shadow: 0 5px 15px rgba(230, 57, 70, 0.1); }
+      50% { box-shadow: 0 5px 20px rgba(230, 57, 70, 0.2); }
+    }
+
     .stat-card:hover {
       transform: translateY(-5px);
       box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
@@ -366,6 +415,10 @@
       background: linear-gradient(135deg, var(--waiting), #adb5bd); 
       animation: iconPulse 2s infinite;
     }
+    .stat-icon.error { 
+      background: linear-gradient(135deg, var(--error-red), var(--error-dark)); 
+      animation: iconPulse 1.5s infinite;
+    }
 
     @keyframes iconPulse {
       0%, 100% { transform: scale(1); }
@@ -389,6 +442,12 @@
       color: var(--waiting);
       font-size: 1.2rem;
       font-style: italic;
+    }
+
+    .stat-info p.error {
+      color: var(--error-red);
+      font-size: 1.4rem;
+      font-weight: 700;
     }
 
     /* CHART SECTION */
@@ -710,7 +769,7 @@
         font-size: 2.8rem;
       }
       
-      .percentage.waiting {
+      .percentage.waiting, .percentage.error {
         font-size: 2rem;
       }
     }
@@ -799,6 +858,9 @@
               <div class="volume" id="volumeText">0 / 5000 L</div>
               <div class="waiting-message" id="waitingMessage" style="display: none;">
                 <i class="fas fa-sync-alt"></i> Aguardando dados...
+              </div>
+              <div class="error-message" id="errorMessage" style="display: none;">
+                <i class="fas fa-exclamation-triangle"></i> ERRO NO SENSOR
               </div>
             </div>
           </div>
@@ -1041,7 +1103,11 @@
                          data.status === "waiting_data" ||
                          (data.distance === -1 && data.level === -1);
         
+        // Verificar se há erro no sensor
+        const isSensorError = data.sensor_ok === false;
+        
         console.log('📭 Modo Aguardando Dados:', isWaiting ? 'ATIVADO' : 'desativado');
+        console.log('⚠️  Erro no Sensor:', isSensorError ? 'SIM' : 'NÃO');
         
         // Atualizar dados atuais
         currentData = {
@@ -1049,12 +1115,12 @@
           liters: isWaiting ? -1 : (parseInt(data.liters) || 0),
           distance: isWaiting ? -1 : (parseFloat(data.distance) || 0),
           level: isWaiting ? -1 : (parseInt(data.level) || 0),
-          sensor_ok: isWaiting ? false : (data.sensor_ok !== false),
+          sensor_ok: isSensorError ? false : (data.sensor_ok !== false),
           device: data.device || "RECEPTOR_01",
           timestamp: data.timestamp || new Date().toISOString(),
           lora_connected: data.lora_connected !== false,
           no_data_mode: isWaiting,
-          display_mode: isWaiting ? "waiting" : "normal",
+          display_mode: isWaiting ? "waiting" : (isSensorError ? "error" : "normal"),
           status: data.status || "normal",
           message: data.message || null
         };
@@ -1062,7 +1128,7 @@
         console.log('🎯 Dados processados:', currentData);
         
         // Atualizar interface
-        atualizarInterface(isWaiting);
+        atualizarInterface(isWaiting, isSensorError);
         
         // Atualizar status da conexão
         connectionStatus = 'connected';
@@ -1094,8 +1160,8 @@
         if (data.historico && data.historico.length > 0) {
           atualizarHistorico(data.historico);
           
-          // Atualizar gráfico apenas se não estiver no modo de espera
-          if (!isWaiting) {
+          // Atualizar gráfico apenas se não estiver no modo de espera ou erro
+          if (!isWaiting && !isSensorError) {
             const normalHistory = data.historico.filter(item => item.status === "normal");
             if (normalHistory.length > 0) {
               atualizarGrafico(normalHistory);
@@ -1106,6 +1172,11 @@
         // Atualizar último update
         document.getElementById('lastUpdate').textContent = 
           new Date().toLocaleTimeString('pt-BR');
+        
+        // Mostrar alerta se houver erro no sensor
+        if (isSensorError && !isWaiting) {
+          showAlert('⚠️ ERRO NO SENSOR! Verifique o sensor ultrassônico.', 'error', 5000);
+        }
         
       } catch (error) {
         console.error('❌ Erro ao carregar dados:', error);
@@ -1119,31 +1190,87 @@
     }
 
     // Atualizar elementos da interface
-    function atualizarInterface(isWaiting = false) {
+    function atualizarInterface(isWaiting = false, isSensorError = false) {
       const { percentage, liters, distance, level, sensor_ok, device } = currentData;
       
-      console.log(`📊 Atualizando interface (modo espera: ${isWaiting}):`, currentData);
+      console.log(`📊 Atualizando interface (modo espera: ${isWaiting}, erro sensor: ${isSensorError}):`, currentData);
       
-      // Tanque de água
+      // Elementos DOM
       const waterLevel = document.getElementById('waterLevel');
       const tankInfo = document.getElementById('tankInfo');
       const waitingMessage = document.getElementById('waitingMessage');
+      const errorMessage = document.getElementById('errorMessage');
       
-      // CORREÇÃO: Usar valor real, não fixo
-      const waterPercentage = isWaiting ? 0 : Math.max(0, Math.min(100, percentage));
-      
-      waterLevel.style.height = `${waterPercentage}%`;
-      
-      if (isWaiting || percentage === -1) {
-        // MODO AGUARDANDO DADOS
+      // Se houver erro no sensor (E NÃO estiver no modo de espera)
+      if (isSensorError && !isWaiting) {
+        // MODO ERRO NO SENSOR
+        waterLevel.classList.remove('waiting');
+        waterLevel.classList.add('error');
+        tankInfo.classList.remove('waiting');
+        tankInfo.classList.add('error');
+        
+        // ZERAR a barra de nível
+        waterLevel.style.height = '0%';
+        
+        // Mostrar mensagem de erro
+        document.getElementById('percentageText').textContent = "ERRO";
+        document.getElementById('percentageText').classList.add('error');
+        document.getElementById('volumeText').textContent = "SENSOR COM FALHA";
+        document.getElementById('volumeText').classList.add('error');
+        waitingMessage.style.display = 'none';
+        errorMessage.style.display = 'block';
+        
+        // Cards de estatísticas em modo de erro
+        document.getElementById('distanceText').textContent = "---";
+        document.getElementById('distanceText').classList.add('error');
+        document.getElementById('levelText').textContent = "---";
+        document.getElementById('levelText').classList.add('error');
+        document.getElementById('litersText').textContent = "---";
+        document.getElementById('litersText').classList.add('error');
+        document.getElementById('sensorStatusText').textContent = "ERRO ❌";
+        document.getElementById('sensorStatusText').classList.add('error');
+        
+        // Aplicar classes de erro aos ícones e cards
+        document.querySelectorAll('.stat-icon').forEach(icon => {
+          icon.classList.remove('waiting');
+          icon.classList.add('error');
+        });
+        
+        document.querySelectorAll('.stat-card').forEach(card => {
+          card.classList.remove('waiting');
+          card.classList.add('error');
+        });
+        
+        // Ocultar gráfico
+        document.getElementById('chartWaiting').style.display = 'flex';
+        document.getElementById('chartWaiting').innerHTML = `
+          <i class="fas fa-exclamation-triangle fa-spin"></i>
+          <h3>Erro no sensor detectado</h3>
+          <p>O gráfico será exibido quando o sensor voltar ao normal</p>
+        `;
+        if (chart) {
+          chart.canvas.style.display = 'none';
+        }
+        
+        // Cor da água em vermelho (mesmo zerada, para borda)
+        waterLevel.style.background = 'linear-gradient(to top, var(--error-red), var(--error-dark))';
+        
+      } else if (isWaiting) {
+        // MODO AGUARDANDO DADOS (LoRa desconectado)
+        waterLevel.classList.remove('error');
         waterLevel.classList.add('waiting');
+        tankInfo.classList.remove('error');
         tankInfo.classList.add('waiting');
+        
+        // Mostrar pequena quantidade de água (10%) para indicar que está ativo
+        waterLevel.style.height = '10%';
         
         document.getElementById('percentageText').textContent = "---";
         document.getElementById('percentageText').classList.add('waiting');
         document.getElementById('volumeText').textContent = "AGUARDANDO DADOS";
         document.getElementById('volumeText').classList.add('waiting');
         waitingMessage.style.display = 'block';
+        errorMessage.style.display = 'none';
         
         document.getElementById('distanceText').textContent = "---";
         document.getElementById('distanceText').classList.add('waiting');
@@ -1155,14 +1282,21 @@
         document.getElementById('sensorStatusText').classList.add('waiting');
         
         document.querySelectorAll('.stat-icon').forEach(icon => {
+          icon.classList.remove('error');
           icon.classList.add('waiting');
         });
         
         document.querySelectorAll('.stat-card').forEach(card => {
+          card.classList.remove('error');
           card.classList.add('waiting');
         });
         
         document.getElementById('chartWaiting').style.display = 'flex';
+        document.getElementById('chartWaiting').innerHTML = `
+          <i class="fas fa-sync-alt fa-spin"></i>
+          <h3>Aguardando dados do transmissor</h3>
+          <p>O gráfico será exibido quando os dados LoRa estiverem disponíveis</p>
+        `;
         if (chart) {
           chart.canvas.style.display = 'none';
         }
@@ -1170,41 +1304,46 @@
         waterLevel.style.background = 'linear-gradient(to top, var(--waiting), #adb5bd)';
         
       } else {
-        // MODO NORMAL - Dados recebidos
-        waterLevel.classList.remove('waiting');
-        tankInfo.classList.remove('waiting');
+        // MODO NORMAL - Dados recebidos e sensor OK
+        waterLevel.classList.remove('waiting', 'error');
+        tankInfo.classList.remove('waiting', 'error');
         
-        // CORREÇÃO: Usar dados reais
+        // Usar valor real do sensor
+        const waterPercentage = Math.max(0, Math.min(100, percentage));
+        waterLevel.style.height = `${waterPercentage}%`;
+        
         document.getElementById('percentageText').textContent = `${waterPercentage}%`;
-        document.getElementById('percentageText').classList.remove('waiting');
+        document.getElementById('percentageText').classList.remove('waiting', 'error');
         document.getElementById('volumeText').textContent = `${liters} / 5000 L`;
-        document.getElementById('volumeText').classList.remove('waiting');
+        document.getElementById('volumeText').classList.remove('waiting', 'error');
         waitingMessage.style.display = 'none';
+        errorMessage.style.display = 'none';
         
         document.getElementById('distanceText').textContent = `${distance.toFixed(1)} cm`;
-        document.getElementById('distanceText').classList.remove('waiting');
+        document.getElementById('distanceText').classList.remove('waiting', 'error');
         document.getElementById('levelText').textContent = `${level} cm`;
-        document.getElementById('levelText').classList.remove('waiting');
+        document.getElementById('levelText').classList.remove('waiting', 'error');
         document.getElementById('litersText').textContent = `${liters} L`;
-        document.getElementById('litersText').classList.remove('waiting');
+        document.getElementById('litersText').classList.remove('waiting', 'error');
         
         const statusElement = document.getElementById('sensorStatusText');
         if (sensor_ok) {
           statusElement.textContent = "Online ✅";
           statusElement.style.color = "#38b000";
-          statusElement.classList.remove('waiting');
+          statusElement.classList.remove('waiting', 'error');
         } else {
           statusElement.textContent = "Erro ❌";
           statusElement.style.color = "#e63946";
           statusElement.classList.remove('waiting');
+          statusElement.classList.add('error');
         }
         
         document.querySelectorAll('.stat-icon').forEach(icon => {
-          icon.classList.remove('waiting');
+          icon.classList.remove('waiting', 'error');
         });
         
         document.querySelectorAll('.stat-card').forEach(card => {
-          card.classList.remove('waiting');
+          card.classList.remove('waiting', 'error');
         });
         
         document.getElementById('chartWaiting').style.display = 'none';
@@ -1220,9 +1359,10 @@
       document.getElementById('currentDevice').textContent = device;
       
       // Status LoRa
-      const loraStatusText = isWaiting ? 'Desconectado' : 'Conectado';
+      const loraStatusText = (isWaiting || isSensorError) ? 'Desconectado' : 'Conectado';
+      const loraStatusClass = (isWaiting || isSensorError) ? 'disconnected' : 'connected';
       document.getElementById('loraStatus').textContent = loraStatusText;
-      document.getElementById('loraStatus').className = `status-value lora-status ${isWaiting ? 'disconnected' : 'connected'}`;
+      document.getElementById('loraStatus').className = `status-value lora-status ${loraStatusClass}`;
     }
 
     // Atualizar cor da água baseada no nível
@@ -1275,16 +1415,17 @@
         }
         
         const isWaiting = item.status === "waiting_data" || item.no_data_mode === true;
-        const statusText = isWaiting ? "Aguardando" : (item.sensor_ok !== false ? "Normal" : "Erro");
-        const statusClass = isWaiting ? "waiting" : (item.sensor_ok !== false ? "ok" : "error");
+        const isSensorError = item.sensor_ok === false;
+        const statusText = isWaiting ? "Aguardando" : (isSensorError ? "Erro Sensor" : "Normal");
+        const statusClass = isWaiting ? "waiting" : (isSensorError ? "error" : "ok");
         
-        const displayPercentage = isWaiting ? "---" : `${item.percentage || 0}%`;
-        const displayLiters = isWaiting ? "---" : `${item.liters || 0} L`;
-        const displayDistance = isWaiting ? "---" : `${item.distance ? parseFloat(item.distance).toFixed(1) : '--'} cm`;
-        const displayLevel = isWaiting ? "---" : `${item.level || '--'} cm`;
-        const loraStatus = item.lora_connected !== false && !isWaiting;
-        const loraStatusClass = isWaiting ? "waiting" : (loraStatus ? "ok" : "error");
-        const loraStatusText = isWaiting ? "Aguardando" : (loraStatus ? "OK" : "Erro");
+        const displayPercentage = isWaiting || isSensorError ? "---" : `${item.percentage || 0}%`;
+        const displayLiters = isWaiting || isSensorError ? "---" : `${item.liters || 0} L`;
+        const displayDistance = isWaiting || isSensorError ? "---" : `${item.distance ? parseFloat(item.distance).toFixed(1) : '--'} cm`;
+        const displayLevel = isWaiting || isSensorError ? "---" : `${item.level || '--'} cm`;
+        const loraStatus = item.lora_connected !== false && !isWaiting && !isSensorError;
+        const loraStatusClass = isWaiting || isSensorError ? "waiting" : (loraStatus ? "ok" : "error");
+        const loraStatusText = isWaiting || isSensorError ? "Aguardando" : (loraStatus ? "OK" : "Erro");
         
         row.innerHTML = `
           <td>${formattedDate}</td>
@@ -1305,7 +1446,7 @@
     function atualizarGrafico(historico) {
       const ctx = document.getElementById('nivelChart').getContext('2d');
       
-      const normalHistory = historico.filter(item => item.status === "normal" && item.percentage !== -1);
+      const normalHistory = historico.filter(item => item.status === "normal" && item.percentage !== -1 && item.sensor_ok !== false);
       
       if (normalHistory.length === 0) {
         console.log('📭 Nenhum dado normal para exibir no gráfico');
@@ -1438,6 +1579,7 @@
       console.log('- Porcentagem:', document.getElementById('percentageText').textContent);
       console.log('- Volume:', document.getElementById('litersText').textContent);
       console.log('- Status LoRa:', document.getElementById('loraStatus').textContent);
+      console.log('- Mensagem de erro visível:', document.getElementById('errorMessage').style.display !== 'none');
       
       fetch('/api/lora')
         .then(res => {
@@ -1455,6 +1597,12 @@
     // Função para mostrar detalhes
     function showDetails(type) {
       const isWaiting = currentData.no_data_mode || currentData.display_mode === "waiting";
+      const isSensorError = currentData.sensor_ok === false;
+      
+      if (isSensorError && !isWaiting) {
+        alert('⚠️ ERRO NO SENSOR!\n\nO sensor ultrassônico está reportando falha. Verifique:\n\n1. Se o sensor está conectado corretamente\n2. Se os cabos TRIG e ECHO estão intactos\n3. Se há obstáculos na frente do sensor\n4. Se a alimentação do sensor está estável\n\nO sistema mostrará "ERRO NO SENSOR" até que o problema seja resolvido.');
+        return;
+      }
       
       if (isWaiting) {
         alert('⏳ AGUARDANDO DADOS DO TRANSMISSOR LoRa\n\nO sistema está esperando receber dados do transmissor. Verifique:\n\n1. Se o transmissor está ligado\n2. Se a bateria está carregada\n3. Se a distância entre os dispositivos é adequada\n4. Se as antenas estão conectadas corretamente');
