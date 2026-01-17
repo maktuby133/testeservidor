@@ -939,6 +939,7 @@
     let updateInterval = null;
     let loraStatusCheckInterval = null;
     let lastLoRaPacketTime = Date.now();
+    let loraWaitingAlertShown = false;
 
     // Inicialização
     document.addEventListener('DOMContentLoaded', function() {
@@ -958,7 +959,7 @@
         carregarDados();
         this.classList.add('rotating');
         setTimeout(() => this.classList.remove('rotating'), 1000);
-        showAlert('🔄 Atualizando dados...', 'info');
+        showAlert('🔄 Atualizando dados...', 'info', 2000);
       });
       
       // Carregar dados inicialmente
@@ -975,7 +976,7 @@
     });
 
     // Função para mostrar alertas
-    function showAlert(message, type = 'info') {
+    function showAlert(message, type = 'info', duration = 5000) {
       const alertContainer = document.getElementById('alertContainer');
       
       // Remover alertas antigos se houver muitos
@@ -993,14 +994,12 @@
       
       alertContainer.appendChild(alert);
       
-      // Remover após 5 segundos (exceto alertas de espera)
-      if (type !== 'info') {
-        setTimeout(() => {
-          if (alert.parentNode) {
-            alert.remove();
-          }
-        }, 5000);
-      }
+      // Remover após o tempo especificado
+      setTimeout(() => {
+        if (alert.parentNode) {
+          alert.remove();
+        }
+      }, duration);
     }
 
     // Função para testar conexão com API
@@ -1041,29 +1040,14 @@
               loraConnectionStatus = loraConnected ? 'connected' : 'disconnected';
               isWaitingDataMode = waitingData || noDataMode;
               
-              // Mostrar alerta se LoRa desconectado por mais de 10 segundos
+              // Mostrar alerta apenas UMA VEZ quando LoRa desconectar
               const timeSinceLastPacket = statusData.lora_connection.time_since_last_packet;
-              if (!loraConnected && timeSinceLastPacket > 10000) {
-                const minutes = Math.floor(timeSinceLastPacket / 60000);
-                const seconds = Math.floor((timeSinceLastPacket % 60000) / 1000);
-                
-                // Mostrar alerta apenas uma vez
-                if (!document.querySelector('.alert[data-type="lora-waiting"]')) {
-                  const alert = document.createElement('div');
-                  alert.className = 'alert info';
-                  alert.setAttribute('data-type', 'lora-waiting');
-                  alert.innerHTML = `
-                    <i class="fas fa-sync-alt fa-spin"></i>
-                    <span>📡 Aguardando dados do transmissor LoRa... (${minutes > 0 ? minutes + 'min ' : ''}${seconds}s)</span>
-                  `;
-                  document.getElementById('alertContainer').appendChild(alert);
-                }
-              } else {
-                // Remover alerta de espera se reconectado
-                const waitingAlert = document.querySelector('.alert[data-type="lora-waiting"]');
-                if (waitingAlert) {
-                  waitingAlert.remove();
-                }
+              if (!loraConnected && timeSinceLastPacket > 10000 && !loraWaitingAlertShown) {
+                loraWaitingAlertShown = true;
+                showAlert('📡 Conexão LoRa perdida. Aguardando dados do transmissor...', 'warning', 5000);
+              } else if (loraConnected && loraWaitingAlertShown) {
+                // Se reconectou, resetar flag para permitir novo alerta no futuro
+                loraWaitingAlertShown = false;
               }
               
               // Atualizar último tempo de pacote
@@ -1258,7 +1242,7 @@
           };
           atualizarInterface(false);
           console.log('✅ Dados de teste carregados');
-          showAlert('📡 Usando dados de teste', 'warning');
+          showAlert('📡 Usando dados de teste', 'warning', 3000);
         }
       } catch (testError) {
         console.error('❌ Erro no teste:', testError);
@@ -1266,13 +1250,13 @@
         // Simular dados se tudo falhar
         currentData = simularDados();
         atualizarInterface(false);
-        showAlert('🎛️ Modo simulação ativado', 'warning');
+        showAlert('🎛️ Modo simulação ativado', 'warning', 3000);
       }
     }
 
     // Atualizar elementos da interface
     function atualizarInterface(isWaiting = false) {
-      const { percentage, liters, distance, level, sensor_ok, device, lora_connected, message } = currentData;
+      const { percentage, liters, distance, level, sensor_ok, device } = currentData;
       
       console.log(`📊 Atualizando interface (modo espera: ${isWaiting}):`, currentData);
       
@@ -1381,11 +1365,6 @@
       const loraStatusText = isWaiting ? 'Desconectado' : (lora_connected ? 'Conectado' : 'Desconectado');
       document.getElementById('loraStatus').textContent = loraStatusText;
       document.getElementById('loraStatus').className = `status-value lora-status ${isWaiting ? 'disconnected' : (lora_connected ? 'connected' : 'disconnected')}`;
-      
-      // Mostrar mensagem personalizada se houver
-      if (message && isWaiting) {
-        showAlert(`📡 ${message}`, 'info');
-      }
     }
 
     // Atualizar cor da água baseada no nível
@@ -1646,7 +1625,7 @@
         })
         .catch(err => console.error('❌ Erro na requisição:', err));
       
-      showAlert('🐛 Modo debug ativado. Verifique o console.', 'info');
+      showAlert('🐛 Modo debug ativado. Verifique o console.', 'info', 3000);
     }
 
     // Função para mostrar detalhes
