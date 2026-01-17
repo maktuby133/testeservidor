@@ -61,12 +61,44 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     message
   } = req.body;
 
-  // Verificar se é um pacote de status de conexão
+  // CORREÇÃO: Converter timestamp do ESP32 corretamente
+  let dataTimestamp;
+  if (timestamp) {
+    // Se timestamp for um número (milisegundos do ESP32)
+    if (typeof timestamp === 'number') {
+      // O ESP32 envia millis() que começa do boot, não da época Unix
+      // Adicionamos um offset para converter para tempo Unix
+      const now = Date.now();
+      const espOffset = now - timestamp;
+      dataTimestamp = new Date(timestamp + espOffset).toISOString();
+    } else if (typeof timestamp === 'string' && !isNaN(timestamp)) {
+      // Se for string numérica
+      const numTimestamp = parseInt(timestamp);
+      const now = Date.now();
+      const espOffset = now - numTimestamp;
+      dataTimestamp = new Date(numTimestamp + espOffset).toISOString();
+    } else {
+      // Tentar parsear como string ISO
+      try {
+        dataTimestamp = new Date(timestamp).toISOString();
+      } catch (e) {
+        dataTimestamp = new Date().toISOString();
+      }
+    }
+  } else if (receptor_time) {
+    // Usar receptor_time se disponível
+    dataTimestamp = new Date().toISOString();
+  } else {
+    dataTimestamp = new Date().toISOString();
+  }
+
+  console.log("🕒 Timestamp processado:", dataTimestamp);
+  console.log("🕒 Timestamp original:", timestamp);
+
+  // Verificar se é um pacote de status
   const isStatusPacket = req.headers['x-packet-type'] === 'status' || receptor_status !== undefined;
-  
-  // Verificar se é um pacote de "sem dados" (aguardando dados)
   const isNoDataPacket = req.headers['x-no-data'] === 'true' || no_data === true || no_data_mode === true;
-  
+
   if (isNoDataPacket) {
     console.log("📭 PACOTE SEM DADOS - Modo 'Aguardando Dados' ativado");
     
@@ -77,7 +109,7 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     
     // Criar registro especial para "Aguardando Dados"
     const noDataRecord = {
-      device: device || "RECEPTOR_CASA",
+      device: device || "RECEPTOR_01",
       distance: -1,
       level: -1,
       percentage: -1,
@@ -91,7 +123,8 @@ app.post("/api/lora", authMiddleware, (req, res) => {
       status: "waiting_data",
       message: message || "Aguardando dados do transmissor LoRa",
       lora_connected: false,
-      no_data_mode: true
+      no_data_mode: true,
+      display_mode: "waiting"
     };
     
     historico.push(noDataRecord);
@@ -136,34 +169,25 @@ app.post("/api/lora", authMiddleware, (req, res) => {
   }
 
   // Se for pacote de dados normal
-  // CORREÇÃO: Usar timestamp do receptor se disponível, senão usar timestamp do servidor
-  const dataTimestamp = receptor_time ? new Date().toISOString() : new Date().toISOString();
-  const deviceTimestamp = timestamp ? new Date(parseInt(timestamp)).toISOString() : dataTimestamp;
-  
-  // Usar o timestamp mais preciso disponível
-  const finalTimestamp = deviceTimestamp || dataTimestamp;
-
   const registro = {
-    device: device || "ESP32",
+    device: device || "RECEPTOR_01",  // CORREÇÃO: Aceitar RECEPTOR_01
     distance: parseFloat(distance) || 0,
     level: parseInt(level) || 0,
     percentage: parseInt(percentage) || 0,
     liters: parseInt(liters) || 0,
     sensor_ok: sensor_ok !== false,
-    timestamp: finalTimestamp, // TIMESTAMP CORRIGIDO
+    timestamp: dataTimestamp,
     crc: crc || "N/A",
     received_at: new Date().toISOString(),
     source_timestamp: timestamp || null,
     server_timestamp: new Date().toISOString(),
     status: "normal",
     lora_connected: true,
-    no_data_mode: false
+    no_data_mode: false,
+    display_mode: "normal"
   };
 
   console.log("📊 Registro salvo:", registro);
-  console.log("⏰ Timestamp usado:", finalTimestamp);
-  console.log("⏰ Timestamp original:", timestamp);
-  console.log("⏰ Timestamp servidor:", registro.server_timestamp);
   
   historico.push(registro);
   
@@ -182,7 +206,7 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     recebido: registro,
     historico_count: historico.length,
     timestamp_correction: {
-      used: finalTimestamp,
+      used: dataTimestamp,
       original: timestamp,
       server: registro.server_timestamp
     }
@@ -205,7 +229,7 @@ app.get("/api/lora", (req, res) => {
   } else if (lastLoRaStatus.waitingData || lastLoRaStatus.noDataMode) {
     // Criar dados de "Aguardando Dados"
     ultimo = {
-      device: "RECEPTOR_CASA",
+      device: "RECEPTOR_01",
       distance: -1,
       level: -1,
       percentage: -1,
@@ -224,7 +248,7 @@ app.get("/api/lora", (req, res) => {
   } else {
     // Dados padrão
     ultimo = {
-      device: "ESP32",
+      device: "RECEPTOR_01",
       distance: 0,
       level: 0,
       percentage: 0,
@@ -252,7 +276,6 @@ app.get("/api/lora", (req, res) => {
     },
     historico: historico.slice(-20).map(item => ({
       ...item,
-      // Garantir que todos os timestamps estejam no formato correto
       timestamp: item.timestamp || item.server_timestamp || item.received_at
     })),
     system_info: {
@@ -271,18 +294,17 @@ app.get("/api/lora", (req, res) => {
 
 // Endpoint para dados de teste (sem autenticação)
 app.get("/api/test", (req, res) => {
-  // CORREÇÃO: Usar timestamp atual do servidor
   const now = new Date();
   
   const testData = {
-    device: "TX_CAIXA_01",
-    distance: 45.5,
-    level: 65,
-    percentage: 59,
-    liters: 2950,
+    device: "RECEPTOR_01",
+    distance: 89.49,
+    level: 35,
+    percentage: 32,
+    liters: 1614,
     sensor_ok: true,
-    timestamp: now.toISOString(), // TIMESTAMP CORRIGIDO
-    crc: "0x1234",
+    timestamp: now.toISOString(),
+    crc: "0xABFA",
     message: "Dados de teste - API funcionando!",
     server_time: now.toISOString(),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
