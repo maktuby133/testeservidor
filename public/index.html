@@ -23,11 +23,6 @@
       --water-deep: #0096c7;
       --waiting: #6c757d;
       --sensor-error: #d00000;
-      --signal-excellent: #0077b6;
-      --signal-good: #00b4d8;
-      --signal-fair: #48cae4;
-      --signal-poor: #90e0ef;
-      --signal-bad: #caf0f8;
     }
 
     * {
@@ -57,18 +52,6 @@
       background: white;
       border-radius: 15px;
       box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .header::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 4px;
-      background: linear-gradient(90deg, var(--primary), var(--secondary));
     }
 
     .header h1 {
@@ -79,16 +62,6 @@
       align-items: center;
       justify-content: center;
       gap: 10px;
-    }
-
-    .header h1 i {
-      color: var(--secondary);
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.1); }
     }
 
     .subtitle {
@@ -116,12 +89,6 @@
       box-shadow: 0 4px 15px rgba(0,0,0,0.08);
       min-width: 200px;
       transition: all 0.3s ease;
-      min-height: 60px;
-    }
-
-    .status-item:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
     }
 
     .status-label {
@@ -137,7 +104,6 @@
       font-size: 0.95rem;
       flex: 1;
       text-align: right;
-      font-family: 'Poppins', sans-serif;
     }
 
     /* STATUS COLORS */
@@ -169,7 +135,7 @@
       50% { opacity: 0.5; }
     }
 
-    /* SIGNAL BARS - AZUL */
+    /* SIGNAL BARS */
     .signal-bar {
       display: flex;
       align-items: flex-end;
@@ -186,7 +152,7 @@
     }
     
     .signal-bar-item.active {
-      background: var(--primary) !important;
+      background: var(--primary);
     }
     
     .signal-bar-item:nth-child(1) { height: 5px; }
@@ -205,9 +171,7 @@
     .signal-quality {
       font-weight: 600;
       margin-top: 3px;
-      font-size: 0.9rem !important;
-      color: var(--primary-dark) !important;
-      font-family: 'Poppins', sans-serif !important;
+      color: var(--primary-dark);
     }
 
     /* ALERT CONTAINER */
@@ -409,7 +373,6 @@
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
       line-height: 1;
       margin-bottom: 5px;
-      font-family: 'Poppins', sans-serif;
     }
 
     .percentage.receptor-disconnected {
@@ -431,7 +394,6 @@
       font-size: 1.2rem;
       color: var(--dark);
       font-weight: 500;
-      font-family: 'Poppins', sans-serif;
     }
 
     .status-message {
@@ -439,7 +401,6 @@
       font-weight: 600;
       margin-top: 8px;
       min-height: 24px;
-      font-family: 'Poppins', sans-serif;
     }
 
     .status-message.receptor-disconnected {
@@ -467,7 +428,6 @@
       font-size: 0.85rem;
       color: var(--gray);
       margin-top: 5px;
-      font-family: 'Poppins', sans-serif;
     }
 
     /* TANK SCALE */
@@ -557,7 +517,7 @@
     }
 
     .stat-icon.distance { background: linear-gradient(135deg, #667eea, #764ba2); }
-    .stat-icon.level { background: linear-gradient(135deg, #f093fb, #f5576c); }
+    .stat-icon.percentage { background: linear-gradient(135deg, #f093fb, #f5576c); }
     .stat-icon.volume { background: linear-gradient(135deg, #4facfe, #00f2fe); }
     .stat-icon.status { background: linear-gradient(135deg, #43e97b, #38f9d7); }
     
@@ -1051,7 +1011,6 @@
       border: 2px solid #e9ecef;
       border-radius: 8px;
       font-size: 1rem;
-      font-family: 'Poppins', sans-serif;
       transition: all 0.3s ease;
     }
 
@@ -1106,7 +1065,7 @@
       color: white;
       border: none;
       padding: 12px 25px;
-      border-radius: 8px;
+      border-radius: 8x;
       font-weight: 600;
       cursor: pointer;
       flex: 1;
@@ -1313,13 +1272,13 @@
               </div>
             </div>
             
-            <div class="stat-card" id="levelCard" onclick="showDetails('level')">
-              <div class="stat-icon level">
+            <div class="stat-card" id="percentageCard" onclick="showDetails('percentage')">
+              <div class="stat-icon percentage">
                 <i class="fas fa-chart-line"></i>
               </div>
               <div class="stat-info">
-                <h3>Nível de Água</h3>
-                <p id="levelText">-- cm</p>
+                <h3>Nível da Água</h3>
+                <p id="percentageDisplay">--%</p>
               </div>
             </div>
             
@@ -1383,8 +1342,6 @@
                 <th>Nível (%)</th>
                 <th>Volume (L)</th>
                 <th>Distância (cm)</th>
-                <th>Nível (cm)</th>
-                <th>Receptor</th>
                 <th>Sinal LoRa</th>
               </tr>
             </thead>
@@ -1409,9 +1366,6 @@
           <i class="fas fa-sync-alt"></i>
         </button>
         <span>Última atualização: <span class="last-update" id="lastUpdate">--:--:--</span></span>
-        <span style="margin-left: 15px; font-size: 0.8rem;">
-          <i class="fas fa-heartbeat"></i> Sistema: <span id="systemStatus">ativo</span>
-        </span>
       </div>
     </footer>
   </div>
@@ -1424,12 +1378,6 @@
         <button class="modal-close" onclick="fecharModalConfig()">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="form-group">
-          <label>Altura da Caixa (cm):</label>
-          <input type="number" id="configAltura" class="form-input" step="0.1" min="1" max="1000" value="110">
-          <span class="form-hint">Altura total da caixa em centímetros</span>
-        </div>
-        
         <div class="form-group">
           <label>Volume Total (litros):</label>
           <input type="number" id="configVolume" class="form-input" step="0.1" min="1" max="100000" value="5000">
@@ -1446,18 +1394,6 @@
           <label>Distância quando VAZIA (cm):</label>
           <input type="number" id="configVazia" class="form-input" step="0.1" min="1" max="500" value="60">
           <span class="form-hint">Distância do sensor até o fundo quando caixa está 0% (vazia)</span>
-        </div>
-        
-        <div class="form-group">
-          <label>Fator de Correção do Sensor:</label>
-          <input type="number" id="configFator" class="form-input" step="0.001" min="0.1" max="10" value="1.0">
-          <span class="form-hint">Multiplicador para corrigir medições (ex: se mede 12cm e real é 60cm, fator = 5.0)</span>
-        </div>
-        
-        <div class="form-group">
-          <label>Offset do Sensor (cm):</label>
-          <input type="number" id="configOffset" class="form-input" step="0.1" min="-100" max="100" value="0">
-          <span class="form-hint">Ajuste fino (+/-) para calibrar o sensor</span>
         </div>
         
         <div class="config-result" id="configResult"></div>
@@ -1490,7 +1426,6 @@
       percentage: 0,
       liters: 0,
       distance: 0,
-      level: 0,
       sensor_ok: true,
       device: "ESP32",
       timestamp: null,
@@ -1503,12 +1438,9 @@
     let currentMode = "normal";
     let updateInterval = null;
     let caixaConfig = {
-      altura: 110.0,
       volumeTotal: 5000.0,
       distanciaCheia: 20.0,
-      distanciaVazia: 60.0,
-      fatorCorrecao: 1.0,
-      offsetSensor: 0.0
+      distanciaVazia: 60.0
     };
 
     // Inicialização
@@ -1546,11 +1478,6 @@
     function showAlert(message, type = 'info', duration = 5000) {
       const alertContainer = document.getElementById('alertContainer');
       
-      const alerts = alertContainer.querySelectorAll('.alert');
-      if (alerts.length > 3) {
-        alerts[0].remove();
-      }
-      
       const alert = document.createElement('div');
       alert.className = `alert ${type}`;
       alert.innerHTML = `
@@ -1567,48 +1494,39 @@
       }, duration);
     }
 
-    // Função para atualizar barra de sinal (AGORA EM AZUL)
-    function updateSignalBar(signalQuality, elementId) {
-      const signalBar = document.getElementById(elementId);
+    // Função para atualizar barra de sinal
+    function updateSignalBar(signalQuality) {
+      const signalBar = document.getElementById('signalBar');
       if (!signalBar) return;
       
       signalBar.querySelectorAll('.signal-bar-item').forEach(item => {
         item.classList.remove('active');
-        item.style.background = '';
       });
       
-      let colorClass = '';
       if (signalQuality >= 80) {
-        colorClass = 'signal-excellent';
         signalBar.querySelectorAll('.signal-bar-item').forEach(item => item.classList.add('active'));
       } else if (signalQuality >= 60) {
-        colorClass = 'signal-good';
         signalBar.querySelectorAll('.signal-bar-item').forEach((item, index) => {
           if (index < 4) item.classList.add('active');
         });
       } else if (signalQuality >= 40) {
-        colorClass = 'signal-fair';
         signalBar.querySelectorAll('.signal-bar-item').forEach((item, index) => {
           if (index < 3) item.classList.add('active');
         });
       } else if (signalQuality >= 20) {
-        colorClass = 'signal-poor';
         signalBar.querySelectorAll('.signal-bar-item').forEach((item, index) => {
           if (index < 2) item.classList.add('active');
         });
       } else {
-        colorClass = 'signal-bad';
         signalBar.querySelectorAll('.signal-bar-item').forEach((item, index) => {
           if (index < 1) item.classList.add('active');
         });
       }
       
-      // Aplicar cores azuis
-      signalBar.querySelectorAll('.signal-bar-item.active').forEach(item => {
-        item.style.background = `var(--${colorClass})`;
-      });
-      
-      return colorClass;
+      const signalQualityElement = document.getElementById('signalQuality');
+      if (signalQualityElement) {
+        signalQualityElement.textContent = `${signalQuality}%`;
+      }
     }
 
     // Carregar configuração da caixa
@@ -1619,12 +1537,9 @@
         console.log('📋 Configuração carregada:', caixaConfig);
         
         // Atualizar valores no modal
-        document.getElementById('configAltura').value = caixaConfig.altura;
         document.getElementById('configVolume').value = caixaConfig.volumeTotal;
         document.getElementById('configCheia').value = caixaConfig.distanciaCheia;
         document.getElementById('configVazia').value = caixaConfig.distanciaVazia;
-        document.getElementById('configFator').value = caixaConfig.fatorCorrecao;
-        document.getElementById('configOffset').value = caixaConfig.offsetSensor;
         
         // Atualizar display
         document.getElementById('volumeTotalValue').textContent = caixaConfig.volumeTotal.toFixed(0);
@@ -1634,14 +1549,11 @@
 
     // Salvar configuração da caixa
     function salvarConfiguracao() {
-      const altura = parseFloat(document.getElementById('configAltura').value);
       const volume = parseFloat(document.getElementById('configVolume').value);
       const cheia = parseFloat(document.getElementById('configCheia').value);
       const vazia = parseFloat(document.getElementById('configVazia').value);
-      const fator = parseFloat(document.getElementById('configFator').value);
-      const offset = parseFloat(document.getElementById('configOffset').value);
       
-      if (!altura || !volume || !cheia || !vazia || !fator) {
+      if (!volume || !cheia || !vazia) {
         showConfigResult('⚠️ Preencha todos os campos obrigatórios', 'error');
         return;
       }
@@ -1652,12 +1564,9 @@
       }
       
       caixaConfig = {
-        altura: altura,
         volumeTotal: volume,
         distanciaCheia: cheia,
-        distanciaVazia: vazia,
-        fatorCorrecao: fator,
-        offsetSensor: offset
+        distanciaVazia: vazia
       };
       
       // Salvar no localStorage
@@ -1736,7 +1645,6 @@
           percentage: parseInt(data.percentage) || 0,
           liters: parseInt(data.liters) || 0,
           distance: parseFloat(data.distance) || 0,
-          level: parseInt(data.level) || 0,
           sensor_ok: data.sensor_ok !== false,
           device: data.device || "ESP32",
           timestamp: data.timestamp,
@@ -1792,22 +1700,15 @@
         const sensorStatusElement = document.getElementById('sensorStatus');
         if (sensorStatusElement) {
           const hasSensorError = data.sensor_error || !data.sensor_ok || 
-                                (data.distance === -1 && data.level === -1 && 
-                                 data.percentage === -1 && data.liters === -1);
+                                (data.distance === -1 && data.percentage === -1 && data.liters === -1);
           
           sensorStatusElement.textContent = hasSensorError ? 'ERRO' : 'OK';
           sensorStatusElement.className = `status-value sensor-status ${hasSensorError ? 'error' : 'ok'}`;
         }
         
-        // Atualizar barra de sinal LoRa (EM AZUL)
+        // Atualizar barra de sinal LoRa
         if (data.lora_signal && data.lora_signal.quality !== null) {
-          const quality = data.lora_signal.quality;
-          updateSignalBar(quality, 'signalBar');
-          const signalQualityElement = document.getElementById('signalQuality');
-          if (signalQualityElement) {
-            signalQualityElement.textContent = `${quality}%`;
-            signalQualityElement.style.color = 'var(--primary-dark)';
-          }
+          updateSignalBar(data.lora_signal.quality);
         }
         
         // Atualizar histórico se disponível
@@ -1843,13 +1744,6 @@
           lastUpdateElement.textContent = new Date().toLocaleTimeString('pt-BR');
         }
         
-        // Atualizar status do sistema
-        const systemStatusElement = document.getElementById('systemStatus');
-        if (systemStatusElement) {
-          systemStatusElement.textContent = 'ativo';
-          systemStatusElement.style.color = '#38b000';
-        }
-        
       } catch (error) {
         console.error('❌ Erro ao carregar dados:', error);
         
@@ -1863,7 +1757,7 @@
 
     // Atualizar elementos da interface
     function atualizarInterface() {
-      const { percentage, liters, distance, level, sensor_ok, message, sensor_error } = currentData;
+      const { percentage, liters, distance, sensor_ok, message, sensor_error } = currentData;
       
       console.log(`📊 Atualizando interface - Modo: ${currentMode}`);
       
@@ -1875,7 +1769,7 @@
       const statusMessage = document.getElementById('statusMessage');
       const tankSection = document.getElementById('tankSection');
       const distanceText = document.getElementById('distanceText');
-      const levelText = document.getElementById('levelText');
+      const percentageDisplay = document.getElementById('percentageDisplay');
       const litersText = document.getElementById('litersText');
       const sensorStatusText = document.getElementById('sensorStatusText');
       const volumeTotalValue = document.getElementById('volumeTotalValue');
@@ -1894,7 +1788,7 @@
       tankSection.className = 'tank-section';
       
       // Cards
-      [distanceText, levelText, litersText, sensorStatusText].forEach(el => {
+      [distanceText, percentageDisplay, litersText, sensorStatusText].forEach(el => {
         if (el) {
           el.className = '';
           el.style.color = '';
@@ -1912,7 +1806,7 @@
       
       // Verificar se é erro específico do sensor
       const isSensorError = sensor_error || !sensor_ok || 
-                          (distance === -1 && level === -1 && percentage === -1 && liters === -1);
+                          (distance === -1 && percentage === -1 && liters === -1);
       
       if (isSensorError && currentMode === "normal") {
         currentMode = "sensor_error";
@@ -1938,9 +1832,9 @@
             distanceText.textContent = "---";
             distanceText.classList.add('receptor-disconnected');
           }
-          if (levelText) {
-            levelText.textContent = "---";
-            levelText.classList.add('receptor-disconnected');
+          if (percentageDisplay) {
+            percentageDisplay.textContent = "---";
+            percentageDisplay.classList.add('receptor-disconnected');
           }
           if (litersText) {
             litersText.textContent = "---";
@@ -1980,9 +1874,9 @@
             distanceText.textContent = "---";
             distanceText.classList.add('waiting-lora');
           }
-          if (levelText) {
-            levelText.textContent = "---";
-            levelText.classList.add('waiting-lora');
+          if (percentageDisplay) {
+            percentageDisplay.textContent = "---";
+            percentageDisplay.classList.add('waiting-lora');
           }
           if (litersText) {
             litersText.textContent = "---";
@@ -2024,9 +1918,9 @@
             distanceText.textContent = "ERRO";
             distanceText.classList.add('sensor-error');
           }
-          if (levelText) {
-            levelText.textContent = "ERRO";
-            levelText.classList.add('sensor-error');
+          if (percentageDisplay) {
+            percentageDisplay.textContent = "ERRO";
+            percentageDisplay.classList.add('sensor-error');
           }
           if (litersText) {
             litersText.textContent = "ERRO";
@@ -2057,15 +1951,13 @@
           waterLevel.style.height = `${waterPercentage}%`;
           
           percentageText.textContent = `${waterPercentage}%`;
+          percentageDisplay.textContent = `${waterPercentage}%`;
           volumeText.innerHTML = `${liters} / <span style="color: var(--primary-dark);">${caixaConfig.volumeTotal.toFixed(0)}</span> L`;
           statusMessage.textContent = message || "Sistema funcionando normalmente";
           
           // Cards normais
           if (distanceText) {
             distanceText.textContent = distance >= 0 ? `${distance.toFixed(1)} cm` : "---";
-          }
-          if (levelText) {
-            levelText.textContent = level >= 0 ? `${level} cm` : "---";
           }
           if (litersText) {
             litersText.textContent = liters >= 0 ? `${liters} L` : "---";
@@ -2132,9 +2024,6 @@
                   <i class="fas fa-exclamation-triangle"></i>
                   <h3>RECEPTOR ESP32 DESCONECTADO</h3>
                   <p>O dispositivo receptor está offline. O gráfico será restaurado quando o receptor reconectar.</p>
-                  <p style="margin-top: 10px; font-size: 0.9rem;">
-                    <i class="fas fa-info-circle"></i> Verifique alimentação e WiFi do ESP32 receptor.
-                  </p>
                 `;
                 break;
               case "waiting_lora":
@@ -2143,9 +2032,6 @@
                   <i class="fas fa-satellite-dish"></i>
                   <h3>AGUARDANDO TRANSMISSÃO LoRa</h3>
                   <p>Receptor conectado, mas sem dados do transmissor LoRa.</p>
-                  <p style="margin-top: 10px; font-size: 0.9rem;">
-                    <i class="fas fa-info-circle"></i> Verifique o transmissor e a distância entre os dispositivos.
-                  </p>
                 `;
                 break;
               case "sensor_error":
@@ -2154,9 +2040,6 @@
                   <i class="fas fa-exclamation-triangle"></i>
                   <h3>ERRO NO SENSOR ULTRASSÔNICO</h3>
                   <p>O sensor está com falha. O gráfico será restaurado quando o sensor voltar ao normal.</p>
-                  <p style="margin-top: 10px; font-size: 0.9rem;">
-                    <i class="fas fa-info-circle"></i> Verifique as conexões do sensor (VCC, GND, TRIG, ECHO).
-                  </p>
                 `;
                 break;
             }
@@ -2180,7 +2063,7 @@
               historyMessage.innerHTML = `
                 <i class="fas fa-exclamation-triangle"></i>
                 <h3>RECEPTOR ESP32 DESCONECTADO</h3>
-                <p>O dispositivo receptor está offline. O histórico foi limpo e será restaurado quando o receptor reconectar.</p>
+                <p>O dispositivo receptor está offline. O histórico foi limpo.</p>
               `;
               break;
             case "waiting_lora":
@@ -2196,7 +2079,7 @@
               historyMessage.innerHTML = `
                 <i class="fas fa-exclamation-triangle"></i>
                 <h3>ERRO NO SENSOR ULTRASSÔNICO</h3>
-                <p>O sensor está com falha. Verifique as conexões do sensor (VCC, GND, TRIG, ECHO).</p>
+                <p>O sensor está com falha. Verifique as conexões do sensor.</p>
               `;
               break;
           }
@@ -2268,7 +2151,6 @@
         const displayPercentage = item.percentage >= 0 ? `${item.percentage}%` : "---";
         const displayLiters = item.liters >= 0 ? `${item.liters} L` : "---";
         const displayDistance = item.distance >= 0 ? `${item.distance.toFixed(1)} cm` : "---";
-        const displayLevel = item.level >= 0 ? `${item.level} cm` : "---";
         
         // Qualidade do sinal LoRa
         let signalQualityText = "--";
@@ -2283,8 +2165,6 @@
           <td>${displayPercentage}</td>
           <td>${displayLiters}</td>
           <td>${displayDistance}</td>
-          <td>${displayLevel}</td>
-          <td>${item.receptor_connected ? 'OK' : 'Erro'}</td>
           <td>${signalQualityText}</td>
         `;
         
@@ -2409,9 +2289,6 @@
         })
         .then(data => {
           console.log('Resposta API completa:', data);
-          console.log('Status Receptor:', data.receptor_status);
-          console.log('Status LoRa:', data.lora_connection_status);
-          console.log('Status Sensor:', data.sensor_status);
         })
         .catch(err => console.error('❌ Erro na requisição:', err));
       
@@ -2421,23 +2298,23 @@
     // Função para mostrar detalhes
     function showDetails(type) {
       if (currentMode === "receptor_disconnected") {
-        alert('❌ RECEPTOR ESP32 DESCONECTADO!\n\nO dispositivo receptor está offline. Verifique:\n\n1. Alimentação do ESP32 receptor\n2. Conexão WiFi do receptor\n3. Se o ESP32 está ligado\n4. Conexão física do dispositivo');
+        alert('❌ RECEPTOR ESP32 DESCONECTADO!\n\nO dispositivo receptor está offline. Verifique:\n\n1. Alimentação do ESP32 receptor\n2. Conexão WiFi do receptor\n3. Se o ESP32 está ligado');
         return;
       }
       
       if (currentMode === "waiting_lora") {
-        alert('📡 AGUARDANDO DADOS DO TRANSMISSOR LoRa\n\nO receptor está conectado ao WiFi e servidor, mas não está recebendo dados do transmissor LoRa. Verifique:\n\n1. Transmissor está ligado e com bateria\n2. Distância entre os dispositivos\n3. Antenas conectadas corretamente\n4. Configurações LoRa idênticas em ambos');
+        alert('📡 AGUARDANDO DADOS DO TRANSMISSOR LoRa\n\nO receptor está conectado ao WiFi e servidor, mas não está recebendo dados do transmissor LoRa. Verifique:\n\n1. Transmissor está ligado e com bateria\n2. Distância entre os dispositivos\n3. Antenas conectadas corretamente');
         return;
       }
       
       if (currentMode === "sensor_error") {
-        alert('❌ ERRO NO SENSOR ULTRASSÔNICO!\n\nO sensor está com falha. Verifique:\n\n1. Conexões do sensor (VCC=5V, GND, TRIG=GPIO12, ECHO=GPIO13)\n2. Alimentação do sensor (5V, não 3.3V)\n3. Sensor não está obstruído\n4. Distância entre 2cm e 400cm\n5. Cabos do sensor em bom estado');
+        alert('❌ ERRO NO SENSOR ULTRASSÔNICO!\n\nO sensor está com falha. Verifique:\n\n1. Conexões do sensor (VCC=5V, GND, TRIG=GPIO12, ECHO=GPIO13)\n2. Alimentação do sensor (5V, não 3.3V)\n3. Sensor não está obstruído');
         return;
       }
       
       const messages = {
         distance: `Distância atual: ${currentData.distance} cm\nDistância do sensor ultrassônico até a superfície da água.`,
-        level: `Nível atual: ${currentData.level} cm\nAltura da coluna de água na caixa.`,
+        percentage: `Nível atual: ${currentData.percentage}%\nPorcentagem de água na caixa.\nCheia: ${caixaConfig.distanciaCheia}cm | Vazia: ${caixaConfig.distanciaVazia}cm`,
         volume: `Volume disponível: ${currentData.liters} L\nQuantidade de água disponível para uso.\nCapacidade total: ${caixaConfig.volumeTotal} L`,
         status: `Status: ${currentData.sensor_ok ? 'OK ✅' : 'ERRO ❌'}\n${currentData.sensor_ok ? 'Sensor funcionando normalmente.' : 'Problema detectado no sensor.'}`
       };
