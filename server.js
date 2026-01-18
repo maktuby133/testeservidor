@@ -32,6 +32,11 @@ let systemStatus = {
     snr: null,
     quality: 50,
     description: "Transmissão LoRa ativa"
+  },
+  sensor: {
+    hasError: false,
+    lastErrorTime: null,
+    errorDescription: ""
   }
 };
 
@@ -163,6 +168,29 @@ app.post("/api/lora", authMiddleware, (req, res) => {
   const isHeartbeat = req.headers['x-heartbeat'] === 'true';
   const isNoDataPacket = req.headers['x-no-data'] === 'true' || no_data === true;
   
+  // ====== DETECTAR ERRO NO SENSOR ======
+  const isSensorError = sensor_ok === false || 
+                       (distance === -1 && level === -1 && percentage === -1 && liters === -1);
+  
+  if (isSensorError) {
+    console.log("❌❌❌ ERRO NO SENSOR ULTRASSÔNICO DETECTADO! ❌❌❌");
+    console.log(`   Dispositivo: ${device}`);
+    console.log(`   Distância: ${distance} cm`);
+    console.log(`   Nível: ${level} cm`);
+    console.log(`   Porcentagem: ${percentage}%`);
+    console.log(`   Litros: ${liters} L`);
+    console.log("   🔧 Causa: Sensor desconectado ou com falha\n");
+    
+    systemStatus.sensor.hasError = true;
+    systemStatus.sensor.lastErrorTime = new Date().toISOString();
+    systemStatus.sensor.errorDescription = "Sensor ultrassônico com falha";
+  } else if (systemStatus.sensor.hasError) {
+    // Se estava com erro e agora recebeu dados bons, limpar erro
+    systemStatus.sensor.hasError = false;
+    systemStatus.sensor.errorDescription = "";
+    console.log("✅ Sensor voltou ao normal");
+  }
+  
   if (isHeartbeat || isNoDataPacket) {
     console.log("📭 Receptor online, aguardando LoRa");
     
@@ -222,7 +250,7 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     liters: parseInt(liters) || 0,
     sensor_ok: sensor_ok !== false,
     timestamp: new Date().toISOString(),
-    status: "normal",
+    status: isSensorError ? "sensor_error" : "normal",
     lora_connected: true,
     receptor_connected: true,
     wifi_signal: wifi_rssi || null,
@@ -230,8 +258,20 @@ app.post("/api/lora", authMiddleware, (req, res) => {
       rssi: lora_rssi || null,
       snr: lora_snr || null,
       quality: systemStatus.lora.quality
-    }
+    },
+    sensor_error: isSensorError,
+    sensor_error_message: isSensorError ? "Erro no sensor ultrassônico" : null
   };
+
+  // Se for erro no sensor, forçar valores negativos
+  if (isSensorError) {
+    registro.distance = -1;
+    registro.level = -1;
+    registro.percentage = -1;
+    registro.liters = -1;
+    registro.sensor_ok = false;
+    registro.message = "ERRO NO SENSOR ULTRASSÔNICO";
+  }
 
   historico.push(registro);
   if (historico.length > 100) historico.shift();
@@ -242,9 +282,10 @@ app.post("/api/lora", authMiddleware, (req, res) => {
 
   res.json({ 
     status: "ok", 
-    message: "Dados recebidos com sucesso!",
+    message: isSensorError ? "Erro no sensor detectado" : "Dados recebidos com sucesso!",
     receptor_connected: true,
-    lora_connected: true
+    lora_connected: true,
+    sensor_error: isSensorError
   });
 });
 
@@ -256,9 +297,12 @@ app.get("/api/lora", (req, res) => {
   console.log(`   Receptor: ${systemStatus.receptor.connected ? 'CONECTADO' : 'DESCONECTADO'}`);
   console.log(`   LoRa: ${systemStatus.lora.connected ? 'ATIVO' : 'INATIVO'}`);
   console.log(`   Aguardando LoRa: ${systemStatus.lora.waitingData ? 'SIM' : 'NÃO'}`);
+  console.log(`   Erro Sensor: ${systemStatus.sensor.hasError ? 'SIM' : 'NÃO'}`);
   
   let ultimo;
   let displayMode = "normal";
+  
+  // ====== DECISÃO DE STATUS ======
   
   // 1. RECEPTOR DESCONECTADO
   if (!systemStatus.receptor.connected) {
@@ -314,7 +358,36 @@ app.get("/api/lora", (req, res) => {
     };
     
   }
-  // 3. TUDO NORMAL
+  // 3. ERRO NO SENSOR (RECEPTOR CONECTADO + LoRa ATIVO mas sensor com erro)
+  else if (systemStatus.receptor.connected && systemStatus.lora.connected && systemStatus.sensor.hasError) {
+    console.log("   → MODO: ERRO NO SENSOR");
+    displayMode = "sensor_error";
+    
+    ultimo = {
+      device: "ESP32_TX",
+      distance: -1,
+      level: -1,
+      percentage: -1,
+      liters: -1,
+      sensor_ok: false,
+      timestamp: new Date().toISOString(),
+      status: "sensor_error",
+      message: "ERRO NO SENSOR ULTRASSÔNICO - Verifique conexões",
+      lora_connected: true,
+      display_mode: displayMode,
+      receptor_connected: true,
+      wifi_signal: systemStatus.receptor.wifiSignal,
+      lora_signal: {
+        rssi: systemStatus.lora.rssi,
+        snr: systemStatus.lora.snr,
+        quality: systemStatus.lora.quality
+      },
+      sensor_error: true,
+      sensor_error_message: "Sensor ultrassônico com falha"
+    };
+    
+  }
+  // 4. TUDO NORMAL
   else if (systemStatus.receptor.connected && systemStatus.lora.connected) {
     console.log("   → MODO: NORMAL");
     displayMode = "normal";
@@ -348,7 +421,7 @@ app.get("/api/lora", (req, res) => {
       };
     }
   }
-  // 4. FALLBACK
+  // 5. FALLBACK
   else {
     console.log("   → MODO: INDETERMINADO");
     displayMode = "unknown";
@@ -375,6 +448,7 @@ app.get("/api/lora", (req, res) => {
     };
   }
 
+  // Preparar histórico
   let historicoParaDashboard = systemStatus.receptor.connected ? 
     historico.slice(-20).map(item => ({
       ...item,
@@ -401,6 +475,11 @@ app.get("/api/lora", (req, res) => {
       rssi: systemStatus.lora.rssi,
       snr: systemStatus.lora.snr,
       description: systemStatus.lora.description
+    },
+    sensor_status: {
+      has_error: systemStatus.sensor.hasError,
+      last_error_time: systemStatus.sensor.lastErrorTime,
+      error_description: systemStatus.sensor.errorDescription
     },
     historico: historicoParaDashboard,
     system_info: {
@@ -473,6 +552,9 @@ app.get("/health", (req, res) => {
       waiting: systemStatus.lora.waitingData,
       last_packet: systemStatus.lora.lastPacket ? 
         new Date(systemStatus.lora.lastPacket).toISOString() : null
+    },
+    sensor: {
+      has_error: systemStatus.sensor.hasError
     }
   });
 });
@@ -486,13 +568,14 @@ app.get("/", (req, res) => {
 // ====== INICIAR SERVIDOR ======
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`\n🚀 SERVIDOR INICIADO - SISTEMA CORRIGIDO`);
-  console.log(`========================================`);
+  console.log(`\n🚀 SERVIDOR INICIADO - SISTEMA COMPLETO`);
+  console.log(`=======================================`);
   console.log(`✅ Porta: ${PORT}`);
-  console.log(`📡 LÓGICA CORRETA:`);
+  console.log(`📡 STATUS DETECTADOS:`);
   console.log(`   • Receptor desconectado = Sem HTTP há 60s`);
   console.log(`   • Aguardando LoRa = Receptor online + sem LoRa há 30s`);
-  console.log(`   • Heartbeat a cada 20s do receptor`);
+  console.log(`   • Erro no sensor = Valores -1 + sensor_ok=false`);
+  console.log(`   • Normal = Tudo funcionando`);
   console.log(`\n⏰ Início: ${new Date().toLocaleString()}`);
   
   setInterval(() => {
