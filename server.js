@@ -1,11 +1,28 @@
 import express from "express";
 import path from "path";
+import { fileURLToPath } from 'url';
 import dotenv from "dotenv";
+import fs from "fs";
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
+
+// Para usar __dirname em ES6 modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ====== CONFIGURAÇÃO DA CAIXA ======
+let caixaConfig = {
+  altura: 110.0,
+  volumeTotal: 5000.0,
+  distanciaCheia: 20.0,
+  distanciaVazia: 60.0,
+  fatorCorrecao: 1.0,
+  offsetSensor: 0.0,
+  updatedAt: new Date().toISOString()
+};
 
 // ====== VARIÁVEIS GLOBAIS ======
 let historico = [];
@@ -37,8 +54,46 @@ let systemStatus = {
     hasError: false,
     lastErrorTime: null,
     errorDescription: ""
+  },
+  caixa: {
+    config: caixaConfig,
+    needsRecalibration: false
   }
 };
+
+// ====== CARREGAR CONFIGURAÇÃO SALVA ======
+function carregarConfiguracao() {
+  try {
+    if (fs.existsSync('config-caixa.json')) {
+      const data = fs.readFileSync('config-caixa.json', 'utf8');
+      const savedConfig = JSON.parse(data);
+      
+      // Atualizar apenas se a configuração for válida
+      if (savedConfig.volumeTotal && savedConfig.altura) {
+        caixaConfig = {
+          ...caixaConfig,
+          ...savedConfig,
+          updatedAt: new Date().toISOString()
+        };
+        
+        systemStatus.caixa.config = caixaConfig;
+        console.log("📋 Configuração da caixa carregada do arquivo");
+      }
+    }
+  } catch (error) {
+    console.log("⚠️ Não foi possível carregar configuração salva:", error.message);
+  }
+}
+
+// ====== SALVAR CONFIGURAÇÃO ======
+function salvarConfiguracao() {
+  try {
+    fs.writeFileSync('config-caixa.json', JSON.stringify(caixaConfig, null, 2));
+    console.log("💾 Configuração da caixa salva no arquivo");
+  } catch (error) {
+    console.error("❌ Erro ao salvar configuração:", error.message);
+  }
+}
 
 // ====== FUNÇÃO PRINCIPAL DE VERIFICAÇÃO ======
 function checkSystemStatus() {
@@ -242,12 +297,40 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     systemStatus.lora.quality = calculateSignalQuality(lora_rssi, lora_snr);
   }
 
+  // Aplicar configuração da caixa aos dados recebidos
+  let distanciaCorrigida = distance;
+  let nivelCorrigido = level;
+  let porcentagemCorrigida = percentage;
+  let litrosCorrigidos = liters;
+  
+  // Se há fator de correção, aplicar
+  if (caixaConfig.fatorCorrecao !== 1.0) {
+    distanciaCorrigida = distance * caixaConfig.fatorCorrecao;
+    console.log(`⚙️  Correção aplicada: ${distance}cm → ${distanciaCorrigida.toFixed(1)}cm (fator: ${caixaConfig.fatorCorrecao})`);
+  }
+  
+  // Aplicar offset
+  if (caixaConfig.offsetSensor !== 0.0) {
+    distanciaCorrigida += caixaConfig.offsetSensor;
+    console.log(`⚙️  Offset aplicado: ${distanciaCorrigida.toFixed(1)}cm → ${(distanciaCorrigida + caixaConfig.offsetSensor).toFixed(1)}cm`);
+  }
+  
+  // Recalcular nível baseado nas configurações da caixa
+  if (distanciaCorrigida >= 0 && percentage >= 0) {
+    // Usar configuração atual para recalcular
+    porcentagemCorrigida = Math.min(100, Math.max(0, percentage));
+    litrosCorrigidos = Math.round((porcentagemCorrigida / 100) * caixaConfig.volumeTotal);
+    
+    // Recalcular nível em cm baseado na altura da caixa
+    nivelCorrigido = Math.round((porcentagemCorrigida / 100) * caixaConfig.altura);
+  }
+
   const registro = {
     device: device || "ESP32_TX",
-    distance: parseFloat(distance) || 0,
-    level: parseInt(level) || 0,
-    percentage: parseInt(percentage) || 0,
-    liters: parseInt(liters) || 0,
+    distance: parseFloat(distanciaCorrigida) || 0,
+    level: parseInt(nivelCorrigido) || 0,
+    percentage: parseInt(porcentagemCorrigida) || 0,
+    liters: parseInt(litrosCorrigidos) || 0,
     sensor_ok: sensor_ok !== false,
     timestamp: new Date().toISOString(),
     status: isSensorError ? "sensor_error" : "normal",
@@ -260,7 +343,13 @@ app.post("/api/lora", authMiddleware, (req, res) => {
       quality: systemStatus.lora.quality
     },
     sensor_error: isSensorError,
-    sensor_error_message: isSensorError ? "Erro no sensor ultrassônico" : null
+    sensor_error_message: isSensorError ? "Erro no sensor ultrassônico" : null,
+    config_applied: {
+      fator_correcao: caixaConfig.fatorCorrecao,
+      offset: caixaConfig.offsetSensor,
+      volume_total: caixaConfig.volumeTotal,
+      altura_caixa: caixaConfig.altura
+    }
   };
 
   // Se for erro no sensor, forçar valores negativos
@@ -285,7 +374,107 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     message: isSensorError ? "Erro no sensor detectado" : "Dados recebidos com sucesso!",
     receptor_connected: true,
     lora_connected: true,
-    sensor_error: isSensorError
+    sensor_error: isSensorError,
+    config_applied: registro.config_applied
+  });
+});
+
+// ====== ROTA POST: CONFIGURAÇÃO DA CAIXA ======
+app.post("/api/config", authMiddleware, (req, res) => {
+  console.log("⚙️ Configuração da caixa recebida");
+  
+  const { 
+    altura,
+    volumeTotal,
+    distanciaCheia,
+    distanciaVazia,
+    fatorCorrecao,
+    offsetSensor
+  } = req.body;
+  
+  // Validar dados
+  if (!altura || !volumeTotal || !distanciaCheia || !distanciaVazia) {
+    return res.status(400).json({
+      error: "Dados incompletos",
+      message: "Altura, volume, distância cheia e vazia são obrigatórios"
+    });
+  }
+  
+  if (distanciaVazia <= distanciaCheia) {
+    return res.status(400).json({
+      error: "Configuração inválida",
+      message: "Distância vazia deve ser MAIOR que distância cheia"
+    });
+  }
+  
+  // Atualizar configuração
+  caixaConfig = {
+    altura: parseFloat(altura),
+    volumeTotal: parseFloat(volumeTotal),
+    distanciaCheia: parseFloat(distanciaCheia),
+    distanciaVazia: parseFloat(distanciaVazia),
+    fatorCorrecao: fatorCorrecao ? parseFloat(fatorCorrecao) : 1.0,
+    offsetSensor: offsetSensor ? parseFloat(offsetSensor) : 0.0,
+    updatedAt: new Date().toISOString()
+  };
+  
+  systemStatus.caixa.config = caixaConfig;
+  
+  // Salvar no arquivo
+  salvarConfiguracao();
+  
+  // Recalcular histórico com nova configuração
+  historico = historico.map(item => {
+    if (item.percentage >= 0 && item.liters >= 0) {
+      // Recalcular litros baseado no novo volume total
+      const novaLitros = Math.round((item.percentage / 100) * caixaConfig.volumeTotal);
+      
+      // Recalcular nível em cm
+      const novoNivel = Math.round((item.percentage / 100) * caixaConfig.altura);
+      
+      return {
+        ...item,
+        liters: novaLitros,
+        level: novoNivel,
+        config_applied: {
+          fator_correcao: caixaConfig.fatorCorrecao,
+          offset: caixaConfig.offsetSensor,
+          volume_total: caixaConfig.volumeTotal,
+          altura_caixa: caixaConfig.altura
+        }
+      };
+    }
+    return item;
+  });
+  
+  console.log("✅ Configuração da caixa atualizada:");
+  console.log(`   📏 Altura: ${caixaConfig.altura} cm`);
+  console.log(`   💧 Volume: ${caixaConfig.volumeTotal} L`);
+  console.log(`   🎯 Cheio: ${caixaConfig.distanciaCheia} cm | Vazio: ${caixaConfig.distanciaVazia} cm`);
+  console.log(`   ⚙️  Fator correção: ${caixaConfig.fatorCorrecao}`);
+  console.log(`   🔧 Offset: ${caixaConfig.offsetSensor} cm`);
+  
+  res.json({
+    status: "ok",
+    message: "Configuração da caixa atualizada com sucesso",
+    config: caixaConfig,
+    historico_recalculado: historico.filter(item => item.status === "normal").length
+  });
+});
+
+// ====== ROTA GET: CONFIGURAÇÃO ATUAL ======
+app.get("/api/config", (req, res) => {
+  res.json({
+    status: "ok",
+    config: caixaConfig,
+    systemStatus: {
+      receptor: systemStatus.receptor,
+      lora: systemStatus.lora,
+      sensor: systemStatus.sensor,
+      caixa: systemStatus.caixa
+    },
+    historico_count: historico.length,
+    server_time: new Date().toISOString()
   });
 });
 
@@ -298,6 +487,7 @@ app.get("/api/lora", (req, res) => {
   console.log(`   LoRa: ${systemStatus.lora.connected ? 'ATIVO' : 'INATIVO'}`);
   console.log(`   Aguardando LoRa: ${systemStatus.lora.waitingData ? 'SIM' : 'NÃO'}`);
   console.log(`   Erro Sensor: ${systemStatus.sensor.hasError ? 'SIM' : 'NÃO'}`);
+  console.log(`   Config Caixa: ${caixaConfig.volumeTotal}L (${caixaConfig.altura}cm)`);
   
   let ultimo;
   let displayMode = "normal";
@@ -327,6 +517,10 @@ app.get("/api/lora", (req, res) => {
         rssi: systemStatus.lora.rssi,
         snr: systemStatus.lora.snr,
         quality: systemStatus.lora.quality
+      },
+      config_applied: {
+        volume_total: caixaConfig.volumeTotal,
+        altura_caixa: caixaConfig.altura
       }
     };
     
@@ -354,6 +548,10 @@ app.get("/api/lora", (req, res) => {
         rssi: systemStatus.lora.rssi,
         snr: systemStatus.lora.snr,
         quality: systemStatus.lora.quality
+      },
+      config_applied: {
+        volume_total: caixaConfig.volumeTotal,
+        altura_caixa: caixaConfig.altura
       }
     };
     
@@ -383,7 +581,11 @@ app.get("/api/lora", (req, res) => {
         quality: systemStatus.lora.quality
       },
       sensor_error: true,
-      sensor_error_message: "Sensor ultrassônico com falha"
+      sensor_error_message: "Sensor ultrassônico com falha",
+      config_applied: {
+        volume_total: caixaConfig.volumeTotal,
+        altura_caixa: caixaConfig.altura
+      }
     };
     
   }
@@ -398,6 +600,16 @@ app.get("/api/lora", (req, res) => {
       ultimo = recentNormalData[recentNormalData.length - 1];
       ultimo.display_mode = displayMode;
       ultimo.receptor_connected = true;
+      
+      // Garantir que tem a configuração aplicada
+      if (!ultimo.config_applied) {
+        ultimo.config_applied = {
+          volume_total: caixaConfig.volumeTotal,
+          altura_caixa: caixaConfig.altura,
+          fator_correcao: caixaConfig.fatorCorrecao,
+          offset: caixaConfig.offsetSensor
+        };
+      }
     } else {
       ultimo = {
         device: "ESP32_TX",
@@ -417,6 +629,12 @@ app.get("/api/lora", (req, res) => {
           rssi: systemStatus.lora.rssi,
           snr: systemStatus.lora.snr,
           quality: systemStatus.lora.quality
+        },
+        config_applied: {
+          volume_total: caixaConfig.volumeTotal,
+          altura_caixa: caixaConfig.altura,
+          fator_correcao: caixaConfig.fatorCorrecao,
+          offset: caixaConfig.offsetSensor
         }
       };
     }
@@ -444,15 +662,24 @@ app.get("/api/lora", (req, res) => {
         rssi: systemStatus.lora.rssi,
         snr: systemStatus.lora.snr,
         quality: systemStatus.lora.quality
+      },
+      config_applied: {
+        volume_total: caixaConfig.volumeTotal,
+        altura_caixa: caixaConfig.altura
       }
     };
   }
 
-  // Preparar histórico
+  // Preparar histórico (aplicar configuração atual se necessário)
   let historicoParaDashboard = systemStatus.receptor.connected ? 
     historico.slice(-20).map(item => ({
       ...item,
-      timestamp: item.timestamp || new Date().toISOString()
+      timestamp: item.timestamp || new Date().toISOString(),
+      // Garantir que cada item tem a configuração aplicada
+      config_applied: item.config_applied || {
+        volume_total: caixaConfig.volumeTotal,
+        altura_caixa: caixaConfig.altura
+      }
     })) : [];
 
   const responseData = {
@@ -480,6 +707,10 @@ app.get("/api/lora", (req, res) => {
       has_error: systemStatus.sensor.hasError,
       last_error_time: systemStatus.sensor.lastErrorTime,
       error_description: systemStatus.sensor.errorDescription
+    },
+    caixa_config: {
+      ...caixaConfig,
+      needs_recalibration: systemStatus.caixa.needsRecalibration
     },
     historico: historicoParaDashboard,
     system_info: {
@@ -519,19 +750,68 @@ function calculateSignalQuality(rssi, snr) {
   return Math.round(Math.max(0, Math.min(100, quality)));
 }
 
+// ====== ROTA PARA CALIBRAÇÃO AUTOMÁTICA ======
+app.post("/api/calibrate", authMiddleware, (req, res) => {
+  const { medicao_atual, distancia_real } = req.body;
+  
+  if (!medicao_atual || !distancia_real) {
+    return res.status(400).json({
+      error: "Dados incompletos",
+      message: "Forneça medição atual e distância real"
+    });
+  }
+  
+  // Calcular fator de correção
+  // Exemplo: sensor mede 12cm, real é 60cm → fator = 60/12 = 5.0
+  const fatorCorrecao = distancia_real / medicao_atual;
+  
+  // Calcular offset
+  const distanciaCorrigida = medicao_atual * fatorCorrecao;
+  const offset = distancia_real - distanciaCorrigida;
+  
+  // Atualizar configuração
+  caixaConfig.fatorCorrecao = fatorCorrecao;
+  caixaConfig.offsetSensor = offset;
+  caixaConfig.updatedAt = new Date().toISOString();
+  
+  salvarConfiguracao();
+  
+  console.log(`🎯 Calibração realizada:`);
+  console.log(`   📏 Medição: ${medicao_atual}cm → Real: ${distancia_real}cm`);
+  console.log(`   ⚙️  Fator correção: ${fatorCorrecao.toFixed(3)}`);
+  console.log(`   🔧 Offset: ${offset.toFixed(1)}cm`);
+  
+  res.json({
+    status: "ok",
+    message: "Calibração realizada com sucesso",
+    fator_correcao: fatorCorrecao,
+    offset: offset,
+    descricao: `Sensor corrigido: 1cm medido = ${fatorCorrecao.toFixed(3)}cm real`
+  });
+});
+
 // ====== ROTAS ADICIONAIS ======
 app.get("/api/test", (req, res) => {
+  // Dados de teste com configuração aplicada
+  const percentage = 59;
+  const liters = Math.round((percentage / 100) * caixaConfig.volumeTotal);
+  const level = Math.round((percentage / 100) * caixaConfig.altura);
+  
   res.json({
     device: "TX_CAIXA_01",
     distance: 45.5,
-    level: 65,
-    percentage: 59,
-    liters: 2950,
+    level: level,
+    percentage: percentage,
+    liters: liters,
     sensor_ok: true,
     timestamp: new Date().toISOString(),
     message: "API funcionando!",
     receptor_connected: true,
-    lora_connected: true
+    lora_connected: true,
+    config_applied: {
+      volume_total: caixaConfig.volumeTotal,
+      altura_caixa: caixaConfig.altura
+    }
   });
 });
 
@@ -555,18 +835,89 @@ app.get("/health", (req, res) => {
     },
     sensor: {
       has_error: systemStatus.sensor.hasError
+    },
+    caixa: {
+      config_loaded: true,
+      volume_total: caixaConfig.volumeTotal,
+      last_updated: caixaConfig.updatedAt
     }
+  });
+});
+
+// ====== ROTA PARA RESETAR CONFIGURAÇÃO ======
+app.post("/api/reset-config", authMiddleware, (req, res) => {
+  // Voltar para valores padrão
+  caixaConfig = {
+    altura: 110.0,
+    volumeTotal: 5000.0,
+    distanciaCheia: 20.0,
+    distanciaVazia: 60.0,
+    fatorCorrecao: 1.0,
+    offsetSensor: 0.0,
+    updatedAt: new Date().toISOString()
+  };
+  
+  salvarConfiguracao();
+  
+  console.log("🔄 Configuração da caixa resetada para valores padrão");
+  
+  res.json({
+    status: "ok",
+    message: "Configuração resetada para valores padrão",
+    config: caixaConfig
   });
 });
 
 // ====== SERVER STATIC FILES ======
 app.use(express.static("public"));
 app.get("/", (req, res) => {
-  res.sendFile(path.join(process.cwd(), "public", "index.html"));
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// ====== ROTA PARA ESTATÍSTICAS ======
+app.get("/api/stats", (req, res) => {
+  const normalReadings = historico.filter(item => item.status === "normal").length;
+  const errorReadings = historico.filter(item => item.status === "sensor_error").length;
+  const waitingReadings = historico.filter(item => item.status === "waiting_lora").length;
+  
+  res.json({
+    total_readings: historico.length,
+    by_status: {
+      normal: normalReadings,
+      sensor_error: errorReadings,
+      waiting_lora: waitingReadings
+    },
+    time_range: historico.length > 0 ? {
+      first: historico[0]?.timestamp,
+      last: historico[historico.length - 1]?.timestamp
+    } : null,
+    caixa_config: caixaConfig
+  });
+});
+
+// ====== MIDDLEWARE DE ERRO 404 ======
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Rota não encontrada",
+    available_routes: [
+      "GET /api/lora - Dados do dashboard",
+      "POST /api/lora - Enviar dados do receptor",
+      "GET /api/config - Obter configuração",
+      "POST /api/config - Atualizar configuração",
+      "POST /api/calibrate - Calibrar sensor",
+      "GET /api/stats - Estatísticas",
+      "GET /health - Status do servidor",
+      "GET /api/test - Dados de teste"
+    ]
+  });
 });
 
 // ====== INICIAR SERVIDOR ======
 const PORT = process.env.PORT || 3000;
+
+// Carregar configuração ao iniciar
+carregarConfiguracao();
+
 app.listen(PORT, () => {
   console.log(`\n🚀 SERVIDOR INICIADO - SISTEMA COMPLETO`);
   console.log(`=======================================`);
@@ -576,9 +927,33 @@ app.listen(PORT, () => {
   console.log(`   • Aguardando LoRa = Receptor online + sem LoRa há 30s`);
   console.log(`   • Erro no sensor = Valores -1 + sensor_ok=false`);
   console.log(`   • Normal = Tudo funcionando`);
+  console.log(`\n📋 CONFIGURAÇÃO DA CAIXA:`);
+  console.log(`   • Altura: ${caixaConfig.altura} cm`);
+  console.log(`   • Volume: ${caixaConfig.volumeTotal} L`);
+  console.log(`   • Cheio: ${caixaConfig.distanciaCheia} cm | Vazio: ${caixaConfig.distanciaVazia} cm`);
+  console.log(`   • Fator correção: ${caixaConfig.fatorCorrecao}`);
+  console.log(`   • Offset: ${caixaConfig.offsetSensor} cm`);
   console.log(`\n⏰ Início: ${new Date().toLocaleString()}`);
   
+  // Verificar status periodicamente
   setInterval(() => {
     checkSystemStatus();
   }, 10000);
+  
+  // Salvar backup automático a cada hora
+  setInterval(() => {
+    const backup = {
+      timestamp: new Date().toISOString(),
+      historico_count: historico.length,
+      config: caixaConfig,
+      systemStatus: systemStatus
+    };
+    
+    try {
+      fs.writeFileSync(`backup-${Date.now()}.json`, JSON.stringify(backup, null, 2));
+      console.log(`💾 Backup automático salvo (${historico.length} registros)`);
+    } catch (error) {
+      console.error("❌ Erro ao salvar backup:", error.message);
+    }
+  }, 60 * 60 * 1000); // A cada hora
 });
