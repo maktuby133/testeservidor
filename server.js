@@ -15,12 +15,9 @@ const __dirname = path.dirname(__filename);
 
 // ====== CONFIGURAÇÃO DA CAIXA ======
 let caixaConfig = {
-  altura: 110.0,
-  volumeTotal: 5000.0,
   distanciaCheia: 20.0,
   distanciaVazia: 60.0,
-  fatorCorrecao: 1.0,
-  offsetSensor: 0.0,
+  volumeTotal: 5000.0,
   updatedAt: new Date().toISOString()
 };
 
@@ -69,7 +66,7 @@ function carregarConfiguracao() {
       const savedConfig = JSON.parse(data);
       
       // Atualizar apenas se a configuração for válida
-      if (savedConfig.volumeTotal && savedConfig.altura) {
+      if (savedConfig.volumeTotal && savedConfig.distanciaCheia) {
         caixaConfig = {
           ...caixaConfig,
           ...savedConfig,
@@ -209,7 +206,6 @@ app.post("/api/lora", authMiddleware, (req, res) => {
   const { 
     device, 
     distance, 
-    level, 
     percentage, 
     liters, 
     sensor_ok,
@@ -225,13 +221,12 @@ app.post("/api/lora", authMiddleware, (req, res) => {
   
   // ====== DETECTAR ERRO NO SENSOR ======
   const isSensorError = sensor_ok === false || 
-                       (distance === -1 && level === -1 && percentage === -1 && liters === -1);
+                       (distance === -1 && percentage === -1 && liters === -1);
   
   if (isSensorError) {
     console.log("❌❌❌ ERRO NO SENSOR ULTRASSÔNICO DETECTADO! ❌❌❌");
     console.log(`   Dispositivo: ${device}`);
     console.log(`   Distância: ${distance} cm`);
-    console.log(`   Nível: ${level} cm`);
     console.log(`   Porcentagem: ${percentage}%`);
     console.log(`   Litros: ${liters} L`);
     console.log("   🔧 Causa: Sensor desconectado ou com falha\n");
@@ -258,7 +253,6 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     const waitingRecord = {
       device: device || "RECEPTOR_CASA",
       distance: -1,
-      level: -1,
       percentage: -1,
       liters: -1,
       sensor_ok: false,
@@ -297,40 +291,11 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     systemStatus.lora.quality = calculateSignalQuality(lora_rssi, lora_snr);
   }
 
-  // Aplicar configuração da caixa aos dados recebidos
-  let distanciaCorrigida = distance;
-  let nivelCorrigido = level;
-  let porcentagemCorrigida = percentage;
-  let litrosCorrigidos = liters;
-  
-  // Se há fator de correção, aplicar
-  if (caixaConfig.fatorCorrecao !== 1.0) {
-    distanciaCorrigida = distance * caixaConfig.fatorCorrecao;
-    console.log(`⚙️  Correção aplicada: ${distance}cm → ${distanciaCorrigida.toFixed(1)}cm (fator: ${caixaConfig.fatorCorrecao})`);
-  }
-  
-  // Aplicar offset
-  if (caixaConfig.offsetSensor !== 0.0) {
-    distanciaCorrigida += caixaConfig.offsetSensor;
-    console.log(`⚙️  Offset aplicado: ${distanciaCorrigida.toFixed(1)}cm → ${(distanciaCorrigida + caixaConfig.offsetSensor).toFixed(1)}cm`);
-  }
-  
-  // Recalcular nível baseado nas configurações da caixa
-  if (distanciaCorrigida >= 0 && percentage >= 0) {
-    // Usar configuração atual para recalcular
-    porcentagemCorrigida = Math.min(100, Math.max(0, percentage));
-    litrosCorrigidos = Math.round((porcentagemCorrigida / 100) * caixaConfig.volumeTotal);
-    
-    // Recalcular nível em cm baseado na altura da caixa
-    nivelCorrigido = Math.round((porcentagemCorrigida / 100) * caixaConfig.altura);
-  }
-
   const registro = {
     device: device || "ESP32_TX",
-    distance: parseFloat(distanciaCorrigida) || 0,
-    level: parseInt(nivelCorrigido) || 0,
-    percentage: parseInt(porcentagemCorrigida) || 0,
-    liters: parseInt(litrosCorrigidos) || 0,
+    distance: parseFloat(distance) || 0,
+    percentage: parseInt(percentage) || 0,
+    liters: parseInt(liters) || 0,
     sensor_ok: sensor_ok !== false,
     timestamp: new Date().toISOString(),
     status: isSensorError ? "sensor_error" : "normal",
@@ -345,17 +310,15 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     sensor_error: isSensorError,
     sensor_error_message: isSensorError ? "Erro no sensor ultrassônico" : null,
     config_applied: {
-      fator_correcao: caixaConfig.fatorCorrecao,
-      offset: caixaConfig.offsetSensor,
       volume_total: caixaConfig.volumeTotal,
-      altura_caixa: caixaConfig.altura
+      distancia_cheia: caixaConfig.distanciaCheia,
+      distancia_vazia: caixaConfig.distanciaVazia
     }
   };
 
   // Se for erro no sensor, forçar valores negativos
   if (isSensorError) {
     registro.distance = -1;
-    registro.level = -1;
     registro.percentage = -1;
     registro.liters = -1;
     registro.sensor_ok = false;
@@ -384,19 +347,16 @@ app.post("/api/config", authMiddleware, (req, res) => {
   console.log("⚙️ Configuração da caixa recebida");
   
   const { 
-    altura,
-    volumeTotal,
     distanciaCheia,
     distanciaVazia,
-    fatorCorrecao,
-    offsetSensor
+    volumeTotal
   } = req.body;
   
   // Validar dados
-  if (!altura || !volumeTotal || !distanciaCheia || !distanciaVazia) {
+  if (!distanciaCheia || !distanciaVazia || !volumeTotal) {
     return res.status(400).json({
       error: "Dados incompletos",
-      message: "Altura, volume, distância cheia e vazia são obrigatórios"
+      message: "Distância cheia, vazia e volume total são obrigatórios"
     });
   }
   
@@ -409,12 +369,9 @@ app.post("/api/config", authMiddleware, (req, res) => {
   
   // Atualizar configuração
   caixaConfig = {
-    altura: parseFloat(altura),
-    volumeTotal: parseFloat(volumeTotal),
     distanciaCheia: parseFloat(distanciaCheia),
     distanciaVazia: parseFloat(distanciaVazia),
-    fatorCorrecao: fatorCorrecao ? parseFloat(fatorCorrecao) : 1.0,
-    offsetSensor: offsetSensor ? parseFloat(offsetSensor) : 0.0,
+    volumeTotal: parseFloat(volumeTotal),
     updatedAt: new Date().toISOString()
   };
   
@@ -429,18 +386,13 @@ app.post("/api/config", authMiddleware, (req, res) => {
       // Recalcular litros baseado no novo volume total
       const novaLitros = Math.round((item.percentage / 100) * caixaConfig.volumeTotal);
       
-      // Recalcular nível em cm
-      const novoNivel = Math.round((item.percentage / 100) * caixaConfig.altura);
-      
       return {
         ...item,
         liters: novaLitros,
-        level: novoNivel,
         config_applied: {
-          fator_correcao: caixaConfig.fatorCorrecao,
-          offset: caixaConfig.offsetSensor,
           volume_total: caixaConfig.volumeTotal,
-          altura_caixa: caixaConfig.altura
+          distancia_cheia: caixaConfig.distanciaCheia,
+          distancia_vazia: caixaConfig.distanciaVazia
         }
       };
     }
@@ -448,11 +400,8 @@ app.post("/api/config", authMiddleware, (req, res) => {
   });
   
   console.log("✅ Configuração da caixa atualizada:");
-  console.log(`   📏 Altura: ${caixaConfig.altura} cm`);
-  console.log(`   💧 Volume: ${caixaConfig.volumeTotal} L`);
+  console.log(`   💧 Volume total: ${caixaConfig.volumeTotal} L`);
   console.log(`   🎯 Cheio: ${caixaConfig.distanciaCheia} cm | Vazio: ${caixaConfig.distanciaVazia} cm`);
-  console.log(`   ⚙️  Fator correção: ${caixaConfig.fatorCorrecao}`);
-  console.log(`   🔧 Offset: ${caixaConfig.offsetSensor} cm`);
   
   res.json({
     status: "ok",
@@ -487,7 +436,7 @@ app.get("/api/lora", (req, res) => {
   console.log(`   LoRa: ${systemStatus.lora.connected ? 'ATIVO' : 'INATIVO'}`);
   console.log(`   Aguardando LoRa: ${systemStatus.lora.waitingData ? 'SIM' : 'NÃO'}`);
   console.log(`   Erro Sensor: ${systemStatus.sensor.hasError ? 'SIM' : 'NÃO'}`);
-  console.log(`   Config Caixa: ${caixaConfig.volumeTotal}L (${caixaConfig.altura}cm)`);
+  console.log(`   Config Caixa: ${caixaConfig.volumeTotal}L (Cheia:${caixaConfig.distanciaCheia}cm, Vazia:${caixaConfig.distanciaVazia}cm)`);
   
   let ultimo;
   let displayMode = "normal";
@@ -502,7 +451,6 @@ app.get("/api/lora", (req, res) => {
     ultimo = {
       device: "RECEPTOR_CASA",
       distance: -1,
-      level: -1,
       percentage: -1,
       liters: -1,
       sensor_ok: false,
@@ -520,7 +468,8 @@ app.get("/api/lora", (req, res) => {
       },
       config_applied: {
         volume_total: caixaConfig.volumeTotal,
-        altura_caixa: caixaConfig.altura
+        distancia_cheia: caixaConfig.distanciaCheia,
+        distancia_vazia: caixaConfig.distanciaVazia
       }
     };
     
@@ -533,7 +482,6 @@ app.get("/api/lora", (req, res) => {
     ultimo = {
       device: "RECEPTOR_CASA",
       distance: -1,
-      level: -1,
       percentage: -1,
       liters: -1,
       sensor_ok: false,
@@ -551,7 +499,8 @@ app.get("/api/lora", (req, res) => {
       },
       config_applied: {
         volume_total: caixaConfig.volumeTotal,
-        altura_caixa: caixaConfig.altura
+        distancia_cheia: caixaConfig.distanciaCheia,
+        distancia_vazia: caixaConfig.distanciaVazia
       }
     };
     
@@ -564,7 +513,6 @@ app.get("/api/lora", (req, res) => {
     ultimo = {
       device: "ESP32_TX",
       distance: -1,
-      level: -1,
       percentage: -1,
       liters: -1,
       sensor_ok: false,
@@ -584,7 +532,8 @@ app.get("/api/lora", (req, res) => {
       sensor_error_message: "Sensor ultrassônico com falha",
       config_applied: {
         volume_total: caixaConfig.volumeTotal,
-        altura_caixa: caixaConfig.altura
+        distancia_cheia: caixaConfig.distanciaCheia,
+        distancia_vazia: caixaConfig.distanciaVazia
       }
     };
     
@@ -605,16 +554,14 @@ app.get("/api/lora", (req, res) => {
       if (!ultimo.config_applied) {
         ultimo.config_applied = {
           volume_total: caixaConfig.volumeTotal,
-          altura_caixa: caixaConfig.altura,
-          fator_correcao: caixaConfig.fatorCorrecao,
-          offset: caixaConfig.offsetSensor
+          distancia_cheia: caixaConfig.distanciaCheia,
+          distancia_vazia: caixaConfig.distanciaVazia
         };
       }
     } else {
       ultimo = {
         device: "ESP32_TX",
         distance: 0,
-        level: 0,
         percentage: 0,
         liters: 0,
         sensor_ok: true,
@@ -632,9 +579,8 @@ app.get("/api/lora", (req, res) => {
         },
         config_applied: {
           volume_total: caixaConfig.volumeTotal,
-          altura_caixa: caixaConfig.altura,
-          fator_correcao: caixaConfig.fatorCorrecao,
-          offset: caixaConfig.offsetSensor
+          distancia_cheia: caixaConfig.distanciaCheia,
+          distancia_vazia: caixaConfig.distanciaVazia
         }
       };
     }
@@ -647,7 +593,6 @@ app.get("/api/lora", (req, res) => {
     ultimo = {
       device: "SISTEMA",
       distance: -1,
-      level: -1,
       percentage: -1,
       liters: -1,
       sensor_ok: false,
@@ -665,20 +610,21 @@ app.get("/api/lora", (req, res) => {
       },
       config_applied: {
         volume_total: caixaConfig.volumeTotal,
-        altura_caixa: caixaConfig.altura
+        distancia_cheia: caixaConfig.distanciaCheia,
+        distancia_vazia: caixaConfig.distanciaVazia
       }
     };
   }
 
-  // Preparar histórico (aplicar configuração atual se necessário)
+  // Preparar histórico
   let historicoParaDashboard = systemStatus.receptor.connected ? 
     historico.slice(-20).map(item => ({
       ...item,
       timestamp: item.timestamp || new Date().toISOString(),
-      // Garantir que cada item tem a configuração aplicada
       config_applied: item.config_applied || {
         volume_total: caixaConfig.volumeTotal,
-        altura_caixa: caixaConfig.altura
+        distancia_cheia: caixaConfig.distanciaCheia,
+        distancia_vazia: caixaConfig.distanciaVazia
       }
     })) : [];
 
@@ -708,10 +654,7 @@ app.get("/api/lora", (req, res) => {
       last_error_time: systemStatus.sensor.lastErrorTime,
       error_description: systemStatus.sensor.errorDescription
     },
-    caixa_config: {
-      ...caixaConfig,
-      needs_recalibration: systemStatus.caixa.needsRecalibration
-    },
+    caixa_config: caixaConfig,
     historico: historicoParaDashboard,
     system_info: {
       total_readings: historico.length,
@@ -750,57 +693,14 @@ function calculateSignalQuality(rssi, snr) {
   return Math.round(Math.max(0, Math.min(100, quality)));
 }
 
-// ====== ROTA PARA CALIBRAÇÃO AUTOMÁTICA ======
-app.post("/api/calibrate", authMiddleware, (req, res) => {
-  const { medicao_atual, distancia_real } = req.body;
-  
-  if (!medicao_atual || !distancia_real) {
-    return res.status(400).json({
-      error: "Dados incompletos",
-      message: "Forneça medição atual e distância real"
-    });
-  }
-  
-  // Calcular fator de correção
-  // Exemplo: sensor mede 12cm, real é 60cm → fator = 60/12 = 5.0
-  const fatorCorrecao = distancia_real / medicao_atual;
-  
-  // Calcular offset
-  const distanciaCorrigida = medicao_atual * fatorCorrecao;
-  const offset = distancia_real - distanciaCorrigida;
-  
-  // Atualizar configuração
-  caixaConfig.fatorCorrecao = fatorCorrecao;
-  caixaConfig.offsetSensor = offset;
-  caixaConfig.updatedAt = new Date().toISOString();
-  
-  salvarConfiguracao();
-  
-  console.log(`🎯 Calibração realizada:`);
-  console.log(`   📏 Medição: ${medicao_atual}cm → Real: ${distancia_real}cm`);
-  console.log(`   ⚙️  Fator correção: ${fatorCorrecao.toFixed(3)}`);
-  console.log(`   🔧 Offset: ${offset.toFixed(1)}cm`);
-  
-  res.json({
-    status: "ok",
-    message: "Calibração realizada com sucesso",
-    fator_correcao: fatorCorrecao,
-    offset: offset,
-    descricao: `Sensor corrigido: 1cm medido = ${fatorCorrecao.toFixed(3)}cm real`
-  });
-});
-
 // ====== ROTAS ADICIONAIS ======
 app.get("/api/test", (req, res) => {
-  // Dados de teste com configuração aplicada
   const percentage = 59;
   const liters = Math.round((percentage / 100) * caixaConfig.volumeTotal);
-  const level = Math.round((percentage / 100) * caixaConfig.altura);
   
   res.json({
     device: "TX_CAIXA_01",
     distance: 45.5,
-    level: level,
     percentage: percentage,
     liters: liters,
     sensor_ok: true,
@@ -810,7 +710,8 @@ app.get("/api/test", (req, res) => {
     lora_connected: true,
     config_applied: {
       volume_total: caixaConfig.volumeTotal,
-      altura_caixa: caixaConfig.altura
+      distancia_cheia: caixaConfig.distanciaCheia,
+      distancia_vazia: caixaConfig.distanciaVazia
     }
   });
 });
@@ -839,6 +740,8 @@ app.get("/health", (req, res) => {
     caixa: {
       config_loaded: true,
       volume_total: caixaConfig.volumeTotal,
+      distancia_cheia: caixaConfig.distanciaCheia,
+      distancia_vazia: caixaConfig.distanciaVazia,
       last_updated: caixaConfig.updatedAt
     }
   });
@@ -846,14 +749,10 @@ app.get("/health", (req, res) => {
 
 // ====== ROTA PARA RESETAR CONFIGURAÇÃO ======
 app.post("/api/reset-config", authMiddleware, (req, res) => {
-  // Voltar para valores padrão
   caixaConfig = {
-    altura: 110.0,
-    volumeTotal: 5000.0,
     distanciaCheia: 20.0,
     distanciaVazia: 60.0,
-    fatorCorrecao: 1.0,
-    offsetSensor: 0.0,
+    volumeTotal: 5000.0,
     updatedAt: new Date().toISOString()
   };
   
@@ -904,7 +803,6 @@ app.use((req, res) => {
       "POST /api/lora - Enviar dados do receptor",
       "GET /api/config - Obter configuração",
       "POST /api/config - Atualizar configuração",
-      "POST /api/calibrate - Calibrar sensor",
       "GET /api/stats - Estatísticas",
       "GET /health - Status do servidor",
       "GET /api/test - Dados de teste"
@@ -919,8 +817,8 @@ const PORT = process.env.PORT || 3000;
 carregarConfiguracao();
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 SERVIDOR INICIADO - SISTEMA COMPLETO`);
-  console.log(`=======================================`);
+  console.log(`\n🚀 SERVIDOR INICIADO - SISTEMA SIMPLIFICADO`);
+  console.log(`==========================================`);
   console.log(`✅ Porta: ${PORT}`);
   console.log(`📡 STATUS DETECTADOS:`);
   console.log(`   • Receptor desconectado = Sem HTTP há 60s`);
@@ -928,32 +826,13 @@ app.listen(PORT, () => {
   console.log(`   • Erro no sensor = Valores -1 + sensor_ok=false`);
   console.log(`   • Normal = Tudo funcionando`);
   console.log(`\n📋 CONFIGURAÇÃO DA CAIXA:`);
-  console.log(`   • Altura: ${caixaConfig.altura} cm`);
-  console.log(`   • Volume: ${caixaConfig.volumeTotal} L`);
-  console.log(`   • Cheio: ${caixaConfig.distanciaCheia} cm | Vazio: ${caixaConfig.distanciaVazia} cm`);
-  console.log(`   • Fator correção: ${caixaConfig.fatorCorrecao}`);
-  console.log(`   • Offset: ${caixaConfig.offsetSensor} cm`);
+  console.log(`   • Volume total: ${caixaConfig.volumeTotal} L`);
+  console.log(`   • Distância cheia: ${caixaConfig.distanciaCheia} cm (100%)`);
+  console.log(`   • Distância vazia: ${caixaConfig.distanciaVazia} cm (0%)`);
   console.log(`\n⏰ Início: ${new Date().toLocaleString()}`);
   
   // Verificar status periodicamente
   setInterval(() => {
     checkSystemStatus();
   }, 10000);
-  
-  // Salvar backup automático a cada hora
-  setInterval(() => {
-    const backup = {
-      timestamp: new Date().toISOString(),
-      historico_count: historico.length,
-      config: caixaConfig,
-      systemStatus: systemStatus
-    };
-    
-    try {
-      fs.writeFileSync(`backup-${Date.now()}.json`, JSON.stringify(backup, null, 2));
-      console.log(`💾 Backup automático salvo (${historico.length} registros)`);
-    } catch (error) {
-      console.error("❌ Erro ao salvar backup:", error.message);
-    }
-  }, 60 * 60 * 1000); // A cada hora
 });
