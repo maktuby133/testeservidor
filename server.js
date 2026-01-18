@@ -15,20 +15,19 @@ const __dirname = path.dirname(__filename);
 
 // ====== CONFIGURAÇÃO DA CAIXA ======
 let caixaConfig = {
-  distanciaCheia: 20.0,
-  distanciaVazia: 60.0,
-  volumeTotal: 4000.0,  // VALOR PADRÃO 4000L
-  deviceID: "CAIXA_PRINCIPAL",
-  updatedAt: new Date().toISOString(),
-  lastConfigUpdate: null,
-  configSource: "default" // default, dashboard, transmissor
+  // Configurações serão recebidas do transmissor
+  altura: 0,
+  volumeTotal: 0,
+  distanciaCheia: 0,
+  distanciaVazia: 0,
+  updatedAt: new Date().toISOString()
 };
 
 // ====== VARIÁVEIS GLOBAIS ======
 let historico = [];
 let lastReceptorRequest = Date.now();
 let lastLoRaPacket = null;
-let lastConfigFromTransmitter = null;
+let lastGoodLoRaSignal = { rssi: null, snr: null, quality: 0 };
 
 // ====== CONFIGURAÇÕES DE TIMEOUT ======
 const RECEPTOR_TIMEOUT_MS = 60000; // 60s sem HTTP = receptor offline
@@ -48,18 +47,13 @@ let systemStatus = {
     waitingData: false,
     rssi: null,
     snr: null,
-    quality: 50,
+    quality: 0, // ZERADO quando perder conexão
     description: "Transmissão LoRa ativa"
   },
   sensor: {
     hasError: false,
     lastErrorTime: null,
     errorDescription: ""
-  },
-  caixa: {
-    config: caixaConfig,
-    needsRecalibration: false,
-    lastSync: null
   }
 };
 
@@ -70,21 +64,13 @@ function carregarConfiguracao() {
       const data = fs.readFileSync('config-caixa.json', 'utf8');
       const savedConfig = JSON.parse(data);
       
-      // Atualizar apenas se a configuração for válida
-      if (savedConfig.volumeTotal && savedConfig.distanciaCheia) {
+      if (savedConfig.volumeTotal && savedConfig.altura) {
         caixaConfig = {
           ...caixaConfig,
           ...savedConfig,
           updatedAt: new Date().toISOString()
         };
-        
-        systemStatus.caixa.config = caixaConfig;
-        console.log("📋 Configuração da caixa carregada do arquivo:", {
-          volume: caixaConfig.volumeTotal,
-          cheia: caixaConfig.distanciaCheia,
-          vazia: caixaConfig.distanciaVazia,
-          source: caixaConfig.configSource
-        });
+        console.log("📋 Configuração da caixa carregada do arquivo");
       }
     }
   } catch (error) {
@@ -96,12 +82,7 @@ function carregarConfiguracao() {
 function salvarConfiguracao() {
   try {
     fs.writeFileSync('config-caixa.json', JSON.stringify(caixaConfig, null, 2));
-    console.log("💾 Configuração da caixa salva no arquivo:", {
-      volume: caixaConfig.volumeTotal,
-      cheia: caixaConfig.distanciaCheia,
-      vazia: caixaConfig.distanciaVazia,
-      source: caixaConfig.configSource
-    });
+    console.log("💾 Configuração da caixa salva no arquivo");
   } catch (error) {
     console.error("❌ Erro ao salvar configuração:", error.message);
   }
@@ -113,65 +94,46 @@ function checkSystemStatus() {
   const timeSinceReceptor = now - lastReceptorRequest;
   const timeSinceLoRa = lastLoRaPacket ? now - lastLoRaPacket : Infinity;
 
-  console.log(`\n🔍 VERIFICAÇÃO STATUS (${new Date().toLocaleTimeString()}):`);
-  console.log(`   Receptor: há ${Math.floor(timeSinceReceptor/1000)}s`);
-  console.log(`   LoRa: há ${lastLoRaPacket ? Math.floor(timeSinceLoRa/1000) : 'NUNCA'}s`);
-  console.log(`   Config: ${caixaConfig.volumeTotal}L | ${caixaConfig.deviceID}`);
-
   // ====== REGRA 1: RECEPTOR CONECTADO/DESCONECTADO ======
   if (timeSinceReceptor > RECEPTOR_TIMEOUT_MS) {
-    // RECEPTOR DESCONECTADO
     if (systemStatus.receptor.connected) {
       systemStatus.receptor.connected = false;
       systemStatus.receptor.description = `Receptor offline - Sem comunicação há ${Math.floor(timeSinceReceptor/1000)}s`;
-      
-      console.log(`\n⚠️ ⚠️ ⚠️  RECEPTOR ESP32 DESCONECTADO!`);
-      console.log(`   Sem requisições HTTP há ${Math.floor(timeSinceReceptor/1000)} segundos`);
-      console.log(`   Causa: ESP32 perdeu WiFi, desligou ou sem energia\n`);
-      
       historico = [];
-      console.log("   📭 Histórico limpo");
     }
   } else {
-    // RECEPTOR CONECTADO
     if (!systemStatus.receptor.connected) {
       systemStatus.receptor.connected = true;
       systemStatus.receptor.description = "Receptor conectado ao WiFi";
-      
-      console.log(`\n✅ RECEPTOR ESP32 RECONECTOU!`);
-      console.log(`   Recebendo requisições HTTP normalmente\n`);
     }
   }
 
   // ====== REGRA 2: STATUS LoRa ======
   if (systemStatus.receptor.connected) {
     if (timeSinceLoRa > LORA_TIMEOUT_MS) {
-      // AGUARDANDO LoRa
-      if (!systemStatus.lora.waitingData) {
-        systemStatus.lora.connected = false;
-        systemStatus.lora.waitingData = true;
-        systemStatus.lora.description = "Aguardando transmissão LoRa";
-        
-        console.log(`\n📡 STATUS LoRa: AGUARDANDO TRANSMISSÃO`);
-        console.log(`   Receptor online (envia HTTP)`);
-        console.log(`   Mas sem dados LoRa há ${Math.floor(timeSinceLoRa/1000)}s`);
-        console.log(`   Causa: Transmissor off, fora de alcance ou problema LoRa\n`);
-      }
+      // AGUARDANDO LoRa - ZERAR SINAL
+      systemStatus.lora.connected = false;
+      systemStatus.lora.waitingData = true;
+      systemStatus.lora.description = "Aguardando transmissão LoRa";
+      systemStatus.lora.quality = 0; // ZERAR QUALIDADE DO SINAL
+      systemStatus.lora.rssi = null;
+      systemStatus.lora.snr = null;
     } else {
-      // LoRa ATIVO
-      if (systemStatus.lora.waitingData || !systemStatus.lora.connected) {
-        systemStatus.lora.connected = true;
-        systemStatus.lora.waitingData = false;
-        systemStatus.lora.description = "Transmissão LoRa ativa";
-        
-        console.log(`\n✅ STATUS LoRa: TRANSMISSÃO RESTAURADA`);
-        console.log(`   Recebendo dados LoRa normalmente\n`);
-      }
+      // LoRa ATIVO - RESTAURAR ÚLTIMO SINAL BOM
+      systemStatus.lora.connected = true;
+      systemStatus.lora.waitingData = false;
+      systemStatus.lora.description = "Transmissão LoRa ativa";
+      // Restaurar último sinal bom
+      systemStatus.lora.quality = lastGoodLoRaSignal.quality;
+      systemStatus.lora.rssi = lastGoodLoRaSignal.rssi;
+      systemStatus.lora.snr = lastGoodLoRaSignal.snr;
     }
   } else {
-    // Se receptor offline, LoRa também está offline
     systemStatus.lora.connected = false;
     systemStatus.lora.waitingData = true;
+    systemStatus.lora.quality = 0;
+    systemStatus.lora.rssi = null;
+    systemStatus.lora.snr = null;
     systemStatus.lora.description = "Receptor offline";
   }
 }
@@ -189,7 +151,6 @@ app.use((req, res, next) => {
     if (!systemStatus.receptor.connected) {
       systemStatus.receptor.connected = true;
       systemStatus.receptor.description = "Receptor reconectado";
-      console.log(`🔌 Receptor reconectou via POST`);
     }
   }
   
@@ -222,6 +183,7 @@ app.post("/api/lora", authMiddleware, (req, res) => {
   const { 
     device, 
     distance, 
+    level, 
     percentage, 
     liters, 
     sensor_ok,
@@ -230,118 +192,60 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     lora_snr,
     no_data,
     message,
-    // CONFIGURAÇÃO DO TRANSMISSOR
-    volume_total,
-    distancia_cheia,
-    distancia_vazia,
-    config_sent,
-    config_source
+    // NOVOS CAMPOS DE CONFIGURAÇÃO DO TRANSMISSOR
+    config_altura,
+    config_volume_total,
+    config_distancia_cheia,
+    config_distancia_vazia
   } = req.body;
 
   const isHeartbeat = req.headers['x-heartbeat'] === 'true';
   const isNoDataPacket = req.headers['x-no-data'] === 'true' || no_data === true;
   
-  // ====== ATUALIZAR CONFIGURAÇÃO SE RECEBIDA DO TRANSMISSOR ======
-  if (config_sent && volume_total && distancia_cheia && distancia_vazia) {
-    console.log("⚙️ CONFIGURAÇÃO RECEBIDA DO TRANSMISSOR:");
-    console.log(`   📱 Dispositivo: ${device || 'Transmissor'}`);
-    console.log(`   💧 Volume total: ${volume_total} L`);
-    console.log(`   🎯 Cheia: ${distancia_cheia} cm`);
-    console.log(`   🎯 Vazia: ${distancia_vazia} cm`);
-    console.log(`   📡 Fonte: ${config_source || 'transmissor'}`);
-    
-    // Validar configuração
-    if (distancia_vazia <= distancia_cheia) {
-      console.log("❌ Configuração inválida: Distância vazia <= cheia");
-    } else if (volume_total <= 0) {
-      console.log("❌ Configuração inválida: Volume total <= 0");
-    } else {
-      // Atualizar configuração
-      const oldConfig = { ...caixaConfig };
-      
-      caixaConfig = {
-        distanciaCheia: parseFloat(distancia_cheia),
-        distanciaVazia: parseFloat(distancia_vazia),
-        volumeTotal: parseFloat(volume_total),
-        deviceID: device || caixaConfig.deviceID,
-        updatedAt: new Date().toISOString(),
-        lastConfigUpdate: new Date().toISOString(),
-        configSource: config_source || "transmissor"
-      };
-      
-      systemStatus.caixa.config = caixaConfig;
-      systemStatus.caixa.lastSync = new Date().toISOString();
-      lastConfigFromTransmitter = {
-        ...caixaConfig,
-        receivedAt: new Date().toISOString()
-      };
-      
-      salvarConfiguracao();
-      
-      console.log("✅ Configuração atualizada do transmissor");
-      console.log(`   Antes: ${oldConfig.volumeTotal}L | Depois: ${caixaConfig.volumeTotal}L`);
-      
-      // Recalcular histórico com nova configuração
-      const normalHistory = historico.filter(item => item.status === "normal");
-      if (normalHistory.length > 0) {
-        console.log(`   🔄 Recalculando ${normalHistory.length} registros históricos...`);
-        
-        historico = historico.map(item => {
-          if (item.percentage >= 0) {
-            const novaLitros = Math.round((item.percentage / 100) * caixaConfig.volumeTotal);
-            return {
-              ...item,
-              liters: novaLitros,
-              config_applied: {
-                volume_total: caixaConfig.volumeTotal,
-                distancia_cheia: caixaConfig.distanciaCheia,
-                distancia_vazia: caixaConfig.distanciaVazia,
-                config_source: caixaConfig.configSource
-              }
-            };
-          }
-          return item;
-        });
-        
-        console.log(`   ✅ Histórico atualizado com nova configuração`);
-      }
-    }
-  }
-  
   // ====== DETECTAR ERRO NO SENSOR ======
   const isSensorError = sensor_ok === false || 
-                       (distance === -1 && percentage === -1 && liters === -1);
+                       (distance === -1 && level === -1 && percentage === -1 && liters === -1);
   
   if (isSensorError) {
-    console.log("❌❌❌ ERRO NO SENSOR ULTRASSÔNICO DETECTADO! ❌❌❌");
-    console.log(`   Dispositivo: ${device}`);
-    console.log(`   Distância: ${distance} cm`);
-    console.log(`   Porcentagem: ${percentage}%`);
-    console.log(`   Litros: ${liters} L`);
-    console.log("   🔧 Causa: Sensor desconectado ou com falha\n");
-    
+    console.log("❌ ERRO NO SENSOR ULTRASSÔNICO DETECTADO!");
     systemStatus.sensor.hasError = true;
     systemStatus.sensor.lastErrorTime = new Date().toISOString();
     systemStatus.sensor.errorDescription = "Sensor ultrassônico com falha";
   } else if (systemStatus.sensor.hasError) {
-    // Se estava com erro e agora recebeu dados bons, limpar erro
     systemStatus.sensor.hasError = false;
     systemStatus.sensor.errorDescription = "";
-    console.log("✅ Sensor voltou ao normal");
+  }
+  
+  // ====== ATUALIZAR CONFIGURAÇÃO DA CAIXA SE ENVIADA PELO TRANSMISSOR ======
+  if (config_altura && config_volume_total && config_distancia_cheia && config_distancia_vazia) {
+    const novaConfig = {
+      altura: parseFloat(config_altura),
+      volumeTotal: parseFloat(config_volume_total),
+      distanciaCheia: parseFloat(config_distancia_cheia),
+      distanciaVazia: parseFloat(config_distancia_vazia),
+      updatedAt: new Date().toISOString()
+    };
+    
+    // Verificar se configuração mudou
+    if (JSON.stringify(caixaConfig) !== JSON.stringify(novaConfig)) {
+      caixaConfig = novaConfig;
+      salvarConfiguracao();
+      console.log("⚙️ Configuração da caixa atualizada pelo transmissor:");
+      console.log(`   📏 Altura: ${caixaConfig.altura} cm`);
+      console.log(`   💧 Volume: ${caixaConfig.volumeTotal} L`);
+      console.log(`   🎯 Cheio: ${caixaConfig.distanciaCheia} cm`);
+      console.log(`   🎯 Vazio: ${caixaConfig.distanciaVazia} cm`);
+    }
   }
   
   if (isHeartbeat || isNoDataPacket) {
     console.log("📭 Receptor online, aguardando LoRa");
     
-    if (lora_rssi !== undefined) {
-      systemStatus.lora.rssi = lora_rssi;
-      systemStatus.lora.snr = lora_snr;
-      systemStatus.lora.quality = calculateSignalQuality(lora_rssi, lora_snr);
-    }
-    
+    // Não atualizar sinal LoRa em heartbeats sem dados
     const waitingRecord = {
       device: device || "RECEPTOR_CASA",
       distance: -1,
+      level: -1,
       percentage: -1,
       liters: -1,
       sensor_ok: false,
@@ -352,15 +256,9 @@ app.post("/api/lora", authMiddleware, (req, res) => {
       receptor_connected: true,
       wifi_signal: wifi_rssi || null,
       lora_signal: {
-        rssi: lora_rssi || null,
-        snr: lora_snr || null,
-        quality: systemStatus.lora.quality
-      },
-      config_applied: {
-        volume_total: caixaConfig.volumeTotal,
-        distancia_cheia: caixaConfig.distanciaCheia,
-        distancia_vazia: caixaConfig.distanciaVazia,
-        config_source: caixaConfig.configSource
+        rssi: null,
+        snr: null,
+        quality: 0 // ZERADO
       }
     };
     
@@ -370,8 +268,7 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     return res.json({ 
       status: "ok", 
       message: "Status registrado",
-      receptor_connected: true,
-      config_sync: lastConfigFromTransmitter ? "pending" : "none"
+      receptor_connected: true
     });
   }
 
@@ -381,15 +278,25 @@ app.post("/api/lora", authMiddleware, (req, res) => {
   lastLoRaPacket = Date.now();
   systemStatus.lora.lastPacket = lastLoRaPacket;
   
+  // Atualizar e salvar qualidade do sinal (apenas quando tem dados LoRa)
   if (lora_rssi !== undefined) {
+    const quality = calculateSignalQuality(lora_rssi, lora_snr);
     systemStatus.lora.rssi = lora_rssi;
     systemStatus.lora.snr = lora_snr;
-    systemStatus.lora.quality = calculateSignalQuality(lora_rssi, lora_snr);
+    systemStatus.lora.quality = quality;
+    
+    // Salvar como último sinal bom
+    lastGoodLoRaSignal = {
+      rssi: lora_rssi,
+      snr: lora_snr,
+      quality: quality
+    };
   }
 
   const registro = {
-    device: device || caixaConfig.deviceID,
+    device: device || "ESP32_TX",
     distance: parseFloat(distance) || 0,
+    level: parseInt(level) || 0,
     percentage: parseInt(percentage) || 0,
     liters: parseInt(liters) || 0,
     sensor_ok: sensor_ok !== false,
@@ -399,24 +306,18 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     receptor_connected: true,
     wifi_signal: wifi_rssi || null,
     lora_signal: {
-      rssi: lora_rssi || null,
-      snr: lora_snr || null,
+      rssi: systemStatus.lora.rssi,
+      snr: systemStatus.lora.snr,
       quality: systemStatus.lora.quality
     },
     sensor_error: isSensorError,
-    sensor_error_message: isSensorError ? "Erro no sensor ultrassônico" : null,
-    config_applied: {
-      volume_total: caixaConfig.volumeTotal,
-      distancia_cheia: caixaConfig.distanciaCheia,
-      distancia_vazia: caixaConfig.distanciaVazia,
-      config_source: caixaConfig.configSource,
-      last_update: caixaConfig.updatedAt
-    }
+    sensor_error_message: isSensorError ? "Erro no sensor ultrassônico" : null
   };
 
   // Se for erro no sensor, forçar valores negativos
   if (isSensorError) {
     registro.distance = -1;
+    registro.level = -1;
     registro.percentage = -1;
     registro.liters = -1;
     registro.sensor_ok = false;
@@ -436,92 +337,7 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     receptor_connected: true,
     lora_connected: true,
     sensor_error: isSensorError,
-    config_applied: registro.config_applied
-  });
-});
-
-// ====== ROTA POST: CONFIGURAÇÃO DA CAIXA ======
-app.post("/api/config", authMiddleware, (req, res) => {
-  console.log("⚙️ Configuração da caixa recebida");
-  
-  const { 
-    distanciaCheia,
-    distanciaVazia,
-    volumeTotal
-  } = req.body;
-  
-  // Validar dados
-  if (!distanciaCheia || !distanciaVazia || !volumeTotal) {
-    return res.status(400).json({
-      error: "Dados incompletos",
-      message: "Distância cheia, vazia e volume total são obrigatórios"
-    });
-  }
-  
-  if (distanciaVazia <= distanciaCheia) {
-    return res.status(400).json({
-      error: "Configuração inválida",
-      message: "Distância vazia deve ser MAIOR que distância cheia"
-    });
-  }
-  
-  // Atualizar configuração
-  caixaConfig = {
-    distanciaCheia: parseFloat(distanciaCheia),
-    distanciaVazia: parseFloat(distanciaVazia),
-    volumeTotal: parseFloat(volumeTotal),
-    updatedAt: new Date().toISOString()
-  };
-  
-  systemStatus.caixa.config = caixaConfig;
-  
-  // Salvar no arquivo
-  salvarConfiguracao();
-  
-  // Recalcular histórico com nova configuração
-  historico = historico.map(item => {
-    if (item.percentage >= 0 && item.liters >= 0) {
-      // Recalcular litros baseado no novo volume total
-      const novaLitros = Math.round((item.percentage / 100) * caixaConfig.volumeTotal);
-      
-      return {
-        ...item,
-        liters: novaLitros,
-        config_applied: {
-          volume_total: caixaConfig.volumeTotal,
-          distancia_cheia: caixaConfig.distanciaCheia,
-          distancia_vazia: caixaConfig.distanciaVazia
-        }
-      };
-    }
-    return item;
-  });
-  
-  console.log("✅ Configuração da caixa atualizada:");
-  console.log(`   💧 Volume total: ${caixaConfig.volumeTotal} L`);
-  console.log(`   🎯 Cheio: ${caixaConfig.distanciaCheia} cm | Vazio: ${caixaConfig.distanciaVazia} cm`);
-  
-  res.json({
-    status: "ok",
-    message: "Configuração da caixa atualizada com sucesso",
-    config: caixaConfig,
-    historico_recalculado: historico.filter(item => item.status === "normal").length
-  });
-});
-
-// ====== ROTA GET: CONFIGURAÇÃO ATUAL ======
-app.get("/api/config", (req, res) => {
-  res.json({
-    status: "ok",
-    config: caixaConfig,
-    systemStatus: {
-      receptor: systemStatus.receptor,
-      lora: systemStatus.lora,
-      sensor: systemStatus.sensor,
-      caixa: systemStatus.caixa
-    },
-    historico_count: historico.length,
-    server_time: new Date().toISOString()
+    caixa_config: caixaConfig
   });
 });
 
@@ -529,201 +345,44 @@ app.get("/api/config", (req, res) => {
 app.get("/api/lora", (req, res) => {
   checkSystemStatus();
   
-  console.log(`\n📊 Dashboard solicitou dados`);
-  console.log(`   Receptor: ${systemStatus.receptor.connected ? 'CONECTADO' : 'DESCONECTADO'}`);
-  console.log(`   LoRa: ${systemStatus.lora.connected ? 'ATIVO' : 'INATIVO'}`);
-  console.log(`   Aguardando LoRa: ${systemStatus.lora.waitingData ? 'SIM' : 'NÃO'}`);
-  console.log(`   Erro Sensor: ${systemStatus.sensor.hasError ? 'SIM' : 'NÃO'}`);
-  console.log(`   Config Caixa: ${caixaConfig.volumeTotal}L (Cheia:${caixaConfig.distanciaCheia}cm, Vazia:${caixaConfig.distanciaVazia}cm)`);
-  
   let ultimo;
   let displayMode = "normal";
   
   // ====== DECISÃO DE STATUS ======
-  
-  // 1. RECEPTOR DESCONECTADO
   if (!systemStatus.receptor.connected) {
-    console.log("   → MODO: RECEPTOR DESCONECTADO");
     displayMode = "receptor_disconnected";
-    
-    ultimo = {
-      device: "RECEPTOR_CASA",
-      distance: -1,
-      percentage: -1,
-      liters: -1,
-      sensor_ok: false,
-      timestamp: new Date().toISOString(),
-      status: "receptor_disconnected",
-      message: `RECEPTOR ESP32 DESCONECTADO - Sem comunicação há ${Math.floor((Date.now() - lastReceptorRequest)/1000)}s`,
-      lora_connected: false,
-      display_mode: displayMode,
-      receptor_connected: false,
-      wifi_signal: systemStatus.receptor.wifiSignal,
-      lora_signal: {
-        rssi: systemStatus.lora.rssi,
-        snr: systemStatus.lora.snr,
-        quality: systemStatus.lora.quality
-      },
-      config_applied: {
-        volume_total: caixaConfig.volumeTotal,
-        distancia_cheia: caixaConfig.distanciaCheia,
-        distancia_vazia: caixaConfig.distanciaVazia
-      }
-    };
-    
+    ultimo = criarRespostaStatus("receptor_disconnected");
   } 
-  // 2. RECEPTOR CONECTADO mas AGUARDANDO LoRa
   else if (systemStatus.receptor.connected && systemStatus.lora.waitingData) {
-    console.log("   → MODO: AGUARDANDO LoRa");
     displayMode = "waiting_lora";
-    
-    ultimo = {
-      device: "RECEPTOR_CASA",
-      distance: -1,
-      percentage: -1,
-      liters: -1,
-      sensor_ok: false,
-      timestamp: new Date().toISOString(),
-      status: "waiting_lora",
-      message: "Receptor online, aguardando transmissão LoRa",
-      lora_connected: false,
-      display_mode: displayMode,
-      receptor_connected: true,
-      wifi_signal: systemStatus.receptor.wifiSignal,
-      lora_signal: {
-        rssi: systemStatus.lora.rssi,
-        snr: systemStatus.lora.snr,
-        quality: systemStatus.lora.quality
-      },
-      config_applied: {
-        volume_total: caixaConfig.volumeTotal,
-        distancia_cheia: caixaConfig.distanciaCheia,
-        distancia_vazia: caixaConfig.distanciaVazia
-      }
-    };
-    
+    ultimo = criarRespostaStatus("waiting_lora");
   }
-  // 3. ERRO NO SENSOR (RECEPTOR CONECTADO + LoRa ATIVO mas sensor com erro)
   else if (systemStatus.receptor.connected && systemStatus.lora.connected && systemStatus.sensor.hasError) {
-    console.log("   → MODO: ERRO NO SENSOR");
     displayMode = "sensor_error";
-    
-    ultimo = {
-      device: "ESP32_TX",
-      distance: -1,
-      percentage: -1,
-      liters: -1,
-      sensor_ok: false,
-      timestamp: new Date().toISOString(),
-      status: "sensor_error",
-      message: "ERRO NO SENSOR ULTRASSÔNICO - Verifique conexões",
-      lora_connected: true,
-      display_mode: displayMode,
-      receptor_connected: true,
-      wifi_signal: systemStatus.receptor.wifiSignal,
-      lora_signal: {
-        rssi: systemStatus.lora.rssi,
-        snr: systemStatus.lora.snr,
-        quality: systemStatus.lora.quality
-      },
-      sensor_error: true,
-      sensor_error_message: "Sensor ultrassônico com falha",
-      config_applied: {
-        volume_total: caixaConfig.volumeTotal,
-        distancia_cheia: caixaConfig.distanciaCheia,
-        distancia_vazia: caixaConfig.distanciaVazia
-      }
-    };
-    
+    ultimo = criarRespostaStatus("sensor_error");
   }
-  // 4. TUDO NORMAL
   else if (systemStatus.receptor.connected && systemStatus.lora.connected) {
-    console.log("   → MODO: NORMAL");
     displayMode = "normal";
-    
     const recentNormalData = historico.filter(item => item.status === "normal");
     
     if (recentNormalData.length > 0) {
       ultimo = recentNormalData[recentNormalData.length - 1];
       ultimo.display_mode = displayMode;
       ultimo.receptor_connected = true;
-      
-      // Garantir que tem a configuração aplicada
-      if (!ultimo.config_applied) {
-        ultimo.config_applied = {
-          volume_total: caixaConfig.volumeTotal,
-          distancia_cheia: caixaConfig.distanciaCheia,
-          distancia_vazia: caixaConfig.distanciaVazia
-        };
-      }
     } else {
-      ultimo = {
-        device: "ESP32_TX",
-        distance: 0,
-        percentage: 0,
-        liters: 0,
-        sensor_ok: true,
-        timestamp: new Date().toISOString(),
-        status: "normal",
-        message: "Sistema pronto - Aguardando primeira leitura",
-        lora_connected: true,
-        display_mode: displayMode,
-        receptor_connected: true,
-        wifi_signal: systemStatus.receptor.wifiSignal,
-        lora_signal: {
-          rssi: systemStatus.lora.rssi,
-          snr: systemStatus.lora.snr,
-          quality: systemStatus.lora.quality
-        },
-        config_applied: {
-          volume_total: caixaConfig.volumeTotal,
-          distancia_cheia: caixaConfig.distanciaCheia,
-          distancia_vazia: caixaConfig.distanciaVazia
-        }
-      };
+      ultimo = criarRespostaStatus("normal");
     }
   }
-  // 5. FALLBACK
   else {
-    console.log("   → MODO: INDETERMINADO");
     displayMode = "unknown";
-    
-    ultimo = {
-      device: "SISTEMA",
-      distance: -1,
-      percentage: -1,
-      liters: -1,
-      sensor_ok: false,
-      timestamp: new Date().toISOString(),
-      status: "unknown",
-      message: "Verificando status do sistema...",
-      lora_connected: systemStatus.lora.connected,
-      display_mode: displayMode,
-      receptor_connected: systemStatus.receptor.connected,
-      wifi_signal: systemStatus.receptor.wifiSignal,
-      lora_signal: {
-        rssi: systemStatus.lora.rssi,
-        snr: systemStatus.lora.snr,
-        quality: systemStatus.lora.quality
-      },
-      config_applied: {
-        volume_total: caixaConfig.volumeTotal,
-        distancia_cheia: caixaConfig.distanciaCheia,
-        distancia_vazia: caixaConfig.distanciaVazia
-      }
-    };
+    ultimo = criarRespostaStatus("unknown");
   }
 
   // Preparar histórico
   let historicoParaDashboard = systemStatus.receptor.connected ? 
     historico.slice(-20).map(item => ({
       ...item,
-      timestamp: item.timestamp || new Date().toISOString(),
-      config_applied: item.config_applied || {
-        volume_total: caixaConfig.volumeTotal,
-        distancia_cheia: caixaConfig.distanciaCheia,
-        distancia_vazia: caixaConfig.distanciaVazia
-      }
+      timestamp: item.timestamp || new Date().toISOString()
     })) : [];
 
   const responseData = {
@@ -742,7 +401,7 @@ app.get("/api/lora", (req, res) => {
         new Date(systemStatus.lora.lastPacket).toISOString() : null,
       seconds_since_last_packet: systemStatus.lora.lastPacket ? 
         Math.floor((Date.now() - systemStatus.lora.lastPacket) / 1000) : null,
-      signal_quality: systemStatus.lora.quality,
+      signal_quality: systemStatus.lora.quality, // VAI ZERAR QUANDO PERDER LORA
       rssi: systemStatus.lora.rssi,
       snr: systemStatus.lora.snr,
       description: systemStatus.lora.description
@@ -765,9 +424,63 @@ app.get("/api/lora", (req, res) => {
   res.json(responseData);
 });
 
-// ====== FUNÇÃO AUXILIAR ======
+// ====== FUNÇÃO AUXILIAR: CRIAR RESPOSTA DE STATUS ======
+function criarRespostaStatus(status) {
+  const baseResponse = {
+    device: status === "receptor_disconnected" ? "RECEPTOR_CASA" : 
+            status === "waiting_lora" ? "RECEPTOR_CASA" : "ESP32_TX",
+    distance: -1,
+    level: -1,
+    percentage: -1,
+    liters: -1,
+    sensor_ok: false,
+    timestamp: new Date().toISOString(),
+    status: status,
+    lora_connected: status === "normal" || status === "sensor_error",
+    display_mode: status,
+    receptor_connected: status !== "receptor_disconnected",
+    wifi_signal: systemStatus.receptor.wifiSignal,
+    lora_signal: {
+      rssi: systemStatus.lora.rssi,
+      snr: systemStatus.lora.snr,
+      quality: systemStatus.lora.quality // ZERADO quando waiting_lora
+    },
+    config_applied: {
+      volume_total: caixaConfig.volumeTotal,
+      altura_caixa: caixaConfig.altura
+    }
+  };
+
+  switch(status) {
+    case "receptor_disconnected":
+      baseResponse.message = `RECEPTOR ESP32 DESCONECTADO - Sem comunicação há ${Math.floor((Date.now() - lastReceptorRequest)/1000)}s`;
+      break;
+    case "waiting_lora":
+      baseResponse.message = "Receptor online, aguardando transmissão LoRa";
+      break;
+    case "sensor_error":
+      baseResponse.message = "ERRO NO SENSOR ULTRASSÔNICO - Verifique conexões";
+      baseResponse.sensor_error = true;
+      baseResponse.sensor_error_message = "Sensor ultrassônico com falha";
+      break;
+    case "normal":
+      baseResponse.distance = 0;
+      baseResponse.level = 0;
+      baseResponse.percentage = 0;
+      baseResponse.liters = 0;
+      baseResponse.sensor_ok = true;
+      baseResponse.message = "Sistema pronto - Aguardando primeira leitura";
+      break;
+    default:
+      baseResponse.message = "Verificando status do sistema...";
+  }
+
+  return baseResponse;
+}
+
+// ====== FUNÇÃO AUXILIAR: CALCULAR QUALIDADE DO SINAL ======
 function calculateSignalQuality(rssi, snr) {
-  if (rssi === null || rssi === undefined) return 50;
+  if (rssi === null || rssi === undefined) return 0;
   
   let quality = 0;
   
@@ -794,11 +507,15 @@ function calculateSignalQuality(rssi, snr) {
 // ====== ROTAS ADICIONAIS ======
 app.get("/api/test", (req, res) => {
   const percentage = 59;
-  const liters = Math.round((percentage / 100) * caixaConfig.volumeTotal);
+  const liters = caixaConfig.volumeTotal > 0 ? 
+    Math.round((percentage / 100) * caixaConfig.volumeTotal) : 2950;
+  const level = caixaConfig.altura > 0 ? 
+    Math.round((percentage / 100) * caixaConfig.altura) : 65;
   
   res.json({
     device: "TX_CAIXA_01",
     distance: 45.5,
+    level: level,
     percentage: percentage,
     liters: liters,
     sensor_ok: true,
@@ -806,11 +523,7 @@ app.get("/api/test", (req, res) => {
     message: "API funcionando!",
     receptor_connected: true,
     lora_connected: true,
-    config_applied: {
-      volume_total: caixaConfig.volumeTotal,
-      distancia_cheia: caixaConfig.distanciaCheia,
-      distancia_vazia: caixaConfig.distanciaVazia
-    }
+    caixa_config: caixaConfig
   });
 });
 
@@ -829,6 +542,7 @@ app.get("/health", (req, res) => {
     lora: {
       connected: systemStatus.lora.connected,
       waiting: systemStatus.lora.waitingData,
+      quality: systemStatus.lora.quality, // ZERADO quando desconectado
       last_packet: systemStatus.lora.lastPacket ? 
         new Date(systemStatus.lora.lastPacket).toISOString() : null
     },
@@ -836,39 +550,11 @@ app.get("/health", (req, res) => {
       has_error: systemStatus.sensor.hasError
     },
     caixa: {
-      config_loaded: true,
+      config_loaded: caixaConfig.volumeTotal > 0,
       volume_total: caixaConfig.volumeTotal,
-      distancia_cheia: caixaConfig.distanciaCheia,
-      distancia_vazia: caixaConfig.distanciaVazia,
       last_updated: caixaConfig.updatedAt
     }
   });
-});
-
-// ====== ROTA PARA RESETAR CONFIGURAÇÃO ======
-app.post("/api/reset-config", authMiddleware, (req, res) => {
-  caixaConfig = {
-    distanciaCheia: 20.0,
-    distanciaVazia: 60.0,
-    volumeTotal: 5000.0,
-    updatedAt: new Date().toISOString()
-  };
-  
-  salvarConfiguracao();
-  
-  console.log("🔄 Configuração da caixa resetada para valores padrão");
-  
-  res.json({
-    status: "ok",
-    message: "Configuração resetada para valores padrão",
-    config: caixaConfig
-  });
-});
-
-// ====== SERVER STATIC FILES ======
-app.use(express.static("public"));
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // ====== ROTA PARA ESTATÍSTICAS ======
@@ -888,8 +574,29 @@ app.get("/api/stats", (req, res) => {
       first: historico[0]?.timestamp,
       last: historico[historico.length - 1]?.timestamp
     } : null,
-    caixa_config: caixaConfig
+    caixa_config: caixaConfig,
+    lora_signal: {
+      current_quality: systemStatus.lora.quality,
+      last_good_quality: lastGoodLoRaSignal.quality
+    }
   });
+});
+
+// ====== ROTA PARA FORÇAR KEEP-ALIVE ======
+app.get("/keep-alive", (req, res) => {
+  console.log("💓 Keep-alive ping recebido");
+  res.json({
+    status: "alive",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    message: "Servidor ativo e respondendo"
+  });
+});
+
+// ====== SERVER STATIC FILES ======
+app.use(express.static("public"));
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // ====== MIDDLEWARE DE ERRO 404 ======
@@ -899,11 +606,10 @@ app.use((req, res) => {
     available_routes: [
       "GET /api/lora - Dados do dashboard",
       "POST /api/lora - Enviar dados do receptor",
-      "GET /api/config - Obter configuração",
-      "POST /api/config - Atualizar configuração",
-      "GET /api/stats - Estatísticas",
       "GET /health - Status do servidor",
-      "GET /api/test - Dados de teste"
+      "GET /keep-alive - Manter servidor ativo",
+      "GET /api/test - Dados de teste",
+      "GET /api/stats - Estatísticas"
     ]
   });
 });
@@ -914,23 +620,32 @@ const PORT = process.env.PORT || 3000;
 // Carregar configuração ao iniciar
 carregarConfiguracao();
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🚀 SERVIDOR INICIADO - SISTEMA SIMPLIFICADO`);
-  console.log(`==========================================`);
+  console.log(`============================================`);
   console.log(`✅ Porta: ${PORT}`);
   console.log(`📡 STATUS DETECTADOS:`);
   console.log(`   • Receptor desconectado = Sem HTTP há 60s`);
-  console.log(`   • Aguardando LoRa = Receptor online + sem LoRa há 30s`);
-  console.log(`   • Erro no sensor = Valores -1 + sensor_ok=false`);
+  console.log(`   • Aguardando LoRa = Receptor online + sem LoRa há 30s (SINAL ZERADO)`);
+  console.log(`   • Erro no sensor = Valores -1`);
   console.log(`   • Normal = Tudo funcionando`);
-  console.log(`\n📋 CONFIGURAÇÃO DA CAIXA:`);
-  console.log(`   • Volume total: ${caixaConfig.volumeTotal} L`);
-  console.log(`   • Distância cheia: ${caixaConfig.distanciaCheia} cm (100%)`);
-  console.log(`   • Distância vazia: ${caixaConfig.distanciaVazia} cm (0%)`);
+  
+  if (caixaConfig.volumeTotal > 0) {
+    console.log(`\n📋 CONFIGURAÇÃO DA CAIXA (do transmissor):`);
+    console.log(`   • Altura: ${caixaConfig.altura} cm`);
+    console.log(`   • Volume: ${caixaConfig.volumeTotal} L`);
+    console.log(`   • Cheio: ${caixaConfig.distanciaCheia} cm`);
+    console.log(`   • Vazio: ${caixaConfig.distanciaVazia} cm`);
+  } else {
+    console.log(`\n📋 AGUARDANDO CONFIGURAÇÃO DO TRANSMISSOR...`);
+  }
+  
   console.log(`\n⏰ Início: ${new Date().toLocaleString()}`);
   
   // Verificar status periodicamente
   setInterval(() => {
     checkSystemStatus();
   }, 10000);
+  
+  console.log(`\n💡 Dica: Use /keep-alive para manter servidor ativo no Render`);
 });
