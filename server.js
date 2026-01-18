@@ -17,14 +17,18 @@ const __dirname = path.dirname(__filename);
 let caixaConfig = {
   distanciaCheia: 20.0,
   distanciaVazia: 60.0,
-  volumeTotal: 5000.0,
-  updatedAt: new Date().toISOString()
+  volumeTotal: 4000.0,  // VALOR PADRÃO 4000L
+  deviceID: "CAIXA_PRINCIPAL",
+  updatedAt: new Date().toISOString(),
+  lastConfigUpdate: null,
+  configSource: "default" // default, dashboard, transmissor
 };
 
 // ====== VARIÁVEIS GLOBAIS ======
 let historico = [];
 let lastReceptorRequest = Date.now();
 let lastLoRaPacket = null;
+let lastConfigFromTransmitter = null;
 
 // ====== CONFIGURAÇÕES DE TIMEOUT ======
 const RECEPTOR_TIMEOUT_MS = 60000; // 60s sem HTTP = receptor offline
@@ -54,7 +58,8 @@ let systemStatus = {
   },
   caixa: {
     config: caixaConfig,
-    needsRecalibration: false
+    needsRecalibration: false,
+    lastSync: null
   }
 };
 
@@ -74,7 +79,12 @@ function carregarConfiguracao() {
         };
         
         systemStatus.caixa.config = caixaConfig;
-        console.log("📋 Configuração da caixa carregada do arquivo");
+        console.log("📋 Configuração da caixa carregada do arquivo:", {
+          volume: caixaConfig.volumeTotal,
+          cheia: caixaConfig.distanciaCheia,
+          vazia: caixaConfig.distanciaVazia,
+          source: caixaConfig.configSource
+        });
       }
     }
   } catch (error) {
@@ -86,7 +96,12 @@ function carregarConfiguracao() {
 function salvarConfiguracao() {
   try {
     fs.writeFileSync('config-caixa.json', JSON.stringify(caixaConfig, null, 2));
-    console.log("💾 Configuração da caixa salva no arquivo");
+    console.log("💾 Configuração da caixa salva no arquivo:", {
+      volume: caixaConfig.volumeTotal,
+      cheia: caixaConfig.distanciaCheia,
+      vazia: caixaConfig.distanciaVazia,
+      source: caixaConfig.configSource
+    });
   } catch (error) {
     console.error("❌ Erro ao salvar configuração:", error.message);
   }
@@ -101,6 +116,7 @@ function checkSystemStatus() {
   console.log(`\n🔍 VERIFICAÇÃO STATUS (${new Date().toLocaleTimeString()}):`);
   console.log(`   Receptor: há ${Math.floor(timeSinceReceptor/1000)}s`);
   console.log(`   LoRa: há ${lastLoRaPacket ? Math.floor(timeSinceLoRa/1000) : 'NUNCA'}s`);
+  console.log(`   Config: ${caixaConfig.volumeTotal}L | ${caixaConfig.deviceID}`);
 
   // ====== REGRA 1: RECEPTOR CONECTADO/DESCONECTADO ======
   if (timeSinceReceptor > RECEPTOR_TIMEOUT_MS) {
@@ -213,11 +229,84 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     lora_rssi,
     lora_snr,
     no_data,
-    message
+    message,
+    // CONFIGURAÇÃO DO TRANSMISSOR
+    volume_total,
+    distancia_cheia,
+    distancia_vazia,
+    config_sent,
+    config_source
   } = req.body;
 
   const isHeartbeat = req.headers['x-heartbeat'] === 'true';
   const isNoDataPacket = req.headers['x-no-data'] === 'true' || no_data === true;
+  
+  // ====== ATUALIZAR CONFIGURAÇÃO SE RECEBIDA DO TRANSMISSOR ======
+  if (config_sent && volume_total && distancia_cheia && distancia_vazia) {
+    console.log("⚙️ CONFIGURAÇÃO RECEBIDA DO TRANSMISSOR:");
+    console.log(`   📱 Dispositivo: ${device || 'Transmissor'}`);
+    console.log(`   💧 Volume total: ${volume_total} L`);
+    console.log(`   🎯 Cheia: ${distancia_cheia} cm`);
+    console.log(`   🎯 Vazia: ${distancia_vazia} cm`);
+    console.log(`   📡 Fonte: ${config_source || 'transmissor'}`);
+    
+    // Validar configuração
+    if (distancia_vazia <= distancia_cheia) {
+      console.log("❌ Configuração inválida: Distância vazia <= cheia");
+    } else if (volume_total <= 0) {
+      console.log("❌ Configuração inválida: Volume total <= 0");
+    } else {
+      // Atualizar configuração
+      const oldConfig = { ...caixaConfig };
+      
+      caixaConfig = {
+        distanciaCheia: parseFloat(distancia_cheia),
+        distanciaVazia: parseFloat(distancia_vazia),
+        volumeTotal: parseFloat(volume_total),
+        deviceID: device || caixaConfig.deviceID,
+        updatedAt: new Date().toISOString(),
+        lastConfigUpdate: new Date().toISOString(),
+        configSource: config_source || "transmissor"
+      };
+      
+      systemStatus.caixa.config = caixaConfig;
+      systemStatus.caixa.lastSync = new Date().toISOString();
+      lastConfigFromTransmitter = {
+        ...caixaConfig,
+        receivedAt: new Date().toISOString()
+      };
+      
+      salvarConfiguracao();
+      
+      console.log("✅ Configuração atualizada do transmissor");
+      console.log(`   Antes: ${oldConfig.volumeTotal}L | Depois: ${caixaConfig.volumeTotal}L`);
+      
+      // Recalcular histórico com nova configuração
+      const normalHistory = historico.filter(item => item.status === "normal");
+      if (normalHistory.length > 0) {
+        console.log(`   🔄 Recalculando ${normalHistory.length} registros históricos...`);
+        
+        historico = historico.map(item => {
+          if (item.percentage >= 0) {
+            const novaLitros = Math.round((item.percentage / 100) * caixaConfig.volumeTotal);
+            return {
+              ...item,
+              liters: novaLitros,
+              config_applied: {
+                volume_total: caixaConfig.volumeTotal,
+                distancia_cheia: caixaConfig.distanciaCheia,
+                distancia_vazia: caixaConfig.distanciaVazia,
+                config_source: caixaConfig.configSource
+              }
+            };
+          }
+          return item;
+        });
+        
+        console.log(`   ✅ Histórico atualizado com nova configuração`);
+      }
+    }
+  }
   
   // ====== DETECTAR ERRO NO SENSOR ======
   const isSensorError = sensor_ok === false || 
@@ -266,6 +355,12 @@ app.post("/api/lora", authMiddleware, (req, res) => {
         rssi: lora_rssi || null,
         snr: lora_snr || null,
         quality: systemStatus.lora.quality
+      },
+      config_applied: {
+        volume_total: caixaConfig.volumeTotal,
+        distancia_cheia: caixaConfig.distanciaCheia,
+        distancia_vazia: caixaConfig.distanciaVazia,
+        config_source: caixaConfig.configSource
       }
     };
     
@@ -275,7 +370,8 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     return res.json({ 
       status: "ok", 
       message: "Status registrado",
-      receptor_connected: true
+      receptor_connected: true,
+      config_sync: lastConfigFromTransmitter ? "pending" : "none"
     });
   }
 
@@ -292,7 +388,7 @@ app.post("/api/lora", authMiddleware, (req, res) => {
   }
 
   const registro = {
-    device: device || "ESP32_TX",
+    device: device || caixaConfig.deviceID,
     distance: parseFloat(distance) || 0,
     percentage: parseInt(percentage) || 0,
     liters: parseInt(liters) || 0,
@@ -312,7 +408,9 @@ app.post("/api/lora", authMiddleware, (req, res) => {
     config_applied: {
       volume_total: caixaConfig.volumeTotal,
       distancia_cheia: caixaConfig.distanciaCheia,
-      distancia_vazia: caixaConfig.distanciaVazia
+      distancia_vazia: caixaConfig.distanciaVazia,
+      config_source: caixaConfig.configSource,
+      last_update: caixaConfig.updatedAt
     }
   };
 
