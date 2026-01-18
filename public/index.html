@@ -23,11 +23,11 @@
       --water-deep: #0096c7;
       --waiting: #6c757d;
       --sensor-error: #d00000;
-      --signal-excellent: #38b000;
-      --signal-good: #80ed99;
-      --signal-fair: #ffd166;
-      --signal-poor: #ff9e00;
-      --signal-bad: #e63946;
+      --signal-excellent: #0077b6;
+      --signal-good: #00b4d8;
+      --signal-fair: #48cae4;
+      --signal-poor: #90e0ef;
+      --signal-bad: #caf0f8;
     }
 
     * {
@@ -116,6 +116,7 @@
       box-shadow: 0 4px 15px rgba(0,0,0,0.08);
       min-width: 200px;
       transition: all 0.3s ease;
+      min-height: 60px;
     }
 
     .status-item:hover {
@@ -136,6 +137,7 @@
       font-size: 0.95rem;
       flex: 1;
       text-align: right;
+      font-family: 'Poppins', sans-serif;
     }
 
     /* STATUS COLORS */
@@ -167,7 +169,7 @@
       50% { opacity: 0.5; }
     }
 
-    /* SIGNAL BARS */
+    /* SIGNAL BARS - AZUL */
     .signal-bar {
       display: flex;
       align-items: flex-end;
@@ -184,7 +186,7 @@
     }
     
     .signal-bar-item.active {
-      background: currentColor;
+      background: var(--primary) !important;
     }
     
     .signal-bar-item:nth-child(1) { height: 5px; }
@@ -203,6 +205,9 @@
     .signal-quality {
       font-weight: 600;
       margin-top: 3px;
+      font-size: 0.9rem !important;
+      color: var(--primary-dark) !important;
+      font-family: 'Poppins', sans-serif !important;
     }
 
     /* ALERT CONTAINER */
@@ -378,7 +383,7 @@
       padding: 20px 25px;
       border-radius: 15px;
       box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
-      min-width: 220px;
+      min-width: 240px;
       border: 2px solid rgba(0, 119, 182, 0.1);
     }
 
@@ -404,6 +409,7 @@
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
       line-height: 1;
       margin-bottom: 5px;
+      font-family: 'Poppins', sans-serif;
     }
 
     .percentage.receptor-disconnected {
@@ -425,6 +431,7 @@
       font-size: 1.2rem;
       color: var(--dark);
       font-weight: 500;
+      font-family: 'Poppins', sans-serif;
     }
 
     .status-message {
@@ -432,6 +439,7 @@
       font-weight: 600;
       margin-top: 8px;
       min-height: 24px;
+      font-family: 'Poppins', sans-serif;
     }
 
     .status-message.receptor-disconnected {
@@ -453,6 +461,13 @@
     @keyframes textPulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.7; }
+    }
+
+    .capacity-info {
+      font-size: 0.85rem;
+      color: var(--gray);
+      margin-top: 5px;
+      font-family: 'Poppins', sans-serif;
     }
 
     /* TANK SCALE */
@@ -856,6 +871,9 @@
       border-radius: 15px;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
       margin-top: 25px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
 
     .update-info {
@@ -913,10 +931,12 @@
       bottom: 15px;
       right: 15px;
       z-index: 1000;
+      display: flex;
+      gap: 10px;
     }
 
     .debug-btn {
-      background: var(--danger);
+      background: var(--primary);
       color: white;
       border: none;
       border-radius: 50%;
@@ -932,8 +952,193 @@
     }
 
     .debug-btn:hover {
-      background: #d00000;
+      background: var(--primary-dark);
       transform: scale(1.1);
+    }
+
+    .debug-btn.config {
+      background: var(--warning);
+    }
+
+    .debug-btn.config:hover {
+      background: #e68a00;
+    }
+
+    /* MODAL DE CONFIGURAÇÃO */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal {
+      background: white;
+      width: 90%;
+      max-width: 500px;
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      animation: modalSlide 0.3s ease;
+    }
+
+    @keyframes modalSlide {
+      from { transform: translateY(-20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-header {
+      background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+      color: white;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h2 {
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .modal-body {
+      padding: 25px;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--primary-dark);
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: 'Poppins', sans-serif;
+      transition: all 0.3s ease;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 119, 182, 0.1);
+    }
+
+    .form-input[type="number"] {
+      text-align: right;
+    }
+
+    .form-hint {
+      font-size: 0.85rem;
+      color: var(--gray);
+      margin-top: 5px;
+      display: block;
+    }
+
+    .modal-footer {
+      padding: 20px 25px;
+      background: #f8f9fa;
+      border-top: 1px solid #e9ecef;
+      display: flex;
+      gap: 15px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .btn-secondary:hover {
+      background: #5a6268;
+      transform: translateY(-2px);
+    }
+
+    .config-result {
+      margin-top: 15px;
+      padding: 12px 15px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .config-result.success {
+      background: #d4edda;
+      color: #155724;
+      display: block;
+    }
+
+    .config-result.error {
+      background: #f8d7da;
+      color: #721c24;
+      display: block;
     }
 
     /* RESPONSIVE */
@@ -980,6 +1185,16 @@
       .history-table-container {
         max-height: 250px;
       }
+      
+      .modal {
+        width: 95%;
+      }
+      
+      .debug-panel {
+        flex-direction: column;
+        bottom: 70px;
+        right: 10px;
+      }
     }
 
     @media (max-width: 480px) {
@@ -1001,6 +1216,10 @@
       
       .tank-container {
         height: 300px;
+      }
+      
+      .modal-footer {
+        flex-direction: column;
       }
     }
   </style>
@@ -1041,7 +1260,7 @@
             <div class="signal-bar-item"></div>
             <div class="signal-bar-item"></div>
           </div>
-          <div class="signal-quality signal-status" id="signalQuality">--%</div>
+          <div class="signal-quality" id="signalQuality">--%</div>
         </div>
       </div>
     </div>
@@ -1076,8 +1295,9 @@
             <!-- Tank Info -->
             <div class="tank-info" id="tankInfo">
               <div class="percentage" id="percentageText">0%</div>
-              <div class="volume" id="volumeText">0 / 5000 L</div>
+              <div class="volume" id="volumeText">0 / <span id="volumeTotalValue">5000</span> L</div>
               <div class="status-message" id="statusMessage"></div>
+              <div class="capacity-info">Capacidade: <span id="volumeTotalDisplay">5000</span> L</div>
             </div>
           </div>
           
@@ -1196,10 +1416,70 @@
     </footer>
   </div>
 
+  <!-- MODAL DE CONFIGURAÇÃO -->
+  <div class="modal-overlay" id="configModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2><i class="fas fa-cog"></i> Configuração da Caixa</h2>
+        <button class="modal-close" onclick="fecharModalConfig()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Altura da Caixa (cm):</label>
+          <input type="number" id="configAltura" class="form-input" step="0.1" min="1" max="1000" value="110">
+          <span class="form-hint">Altura total da caixa em centímetros</span>
+        </div>
+        
+        <div class="form-group">
+          <label>Volume Total (litros):</label>
+          <input type="number" id="configVolume" class="form-input" step="0.1" min="1" max="100000" value="5000">
+          <span class="form-hint">Capacidade máxima de água em litros</span>
+        </div>
+        
+        <div class="form-group">
+          <label>Distância quando CHEIA (cm):</label>
+          <input type="number" id="configCheia" class="form-input" step="0.1" min="1" max="500" value="20">
+          <span class="form-hint">Distância do sensor até a água quando caixa está 100% cheia</span>
+        </div>
+        
+        <div class="form-group">
+          <label>Distância quando VAZIA (cm):</label>
+          <input type="number" id="configVazia" class="form-input" step="0.1" min="1" max="500" value="60">
+          <span class="form-hint">Distância do sensor até o fundo quando caixa está 0% (vazia)</span>
+        </div>
+        
+        <div class="form-group">
+          <label>Fator de Correção do Sensor:</label>
+          <input type="number" id="configFator" class="form-input" step="0.001" min="0.1" max="10" value="1.0">
+          <span class="form-hint">Multiplicador para corrigir medições (ex: se mede 12cm e real é 60cm, fator = 5.0)</span>
+        </div>
+        
+        <div class="form-group">
+          <label>Offset do Sensor (cm):</label>
+          <input type="number" id="configOffset" class="form-input" step="0.1" min="-100" max="100" value="0">
+          <span class="form-hint">Ajuste fino (+/-) para calibrar o sensor</span>
+        </div>
+        
+        <div class="config-result" id="configResult"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary" onclick="salvarConfiguracao()">
+          <i class="fas fa-save"></i> Salvar Configuração
+        </button>
+        <button class="btn-secondary" onclick="fecharModalConfig()">
+          <i class="fas fa-times"></i> Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- DEBUG PANEL -->
   <div class="debug-panel">
+    <button class="debug-btn config" onclick="abrirModalConfig()" title="Configuração">
+      <i class="fas fa-cog"></i>
+    </button>
     <button class="debug-btn" onclick="debugData()" title="Modo Debug">
-      🐛
+      <i class="fas fa-bug"></i>
     </button>
   </div>
 
@@ -1220,12 +1500,23 @@
       sensor_error: false
     };
     
-    let currentMode = "normal"; // normal, receptor_disconnected, waiting_lora, sensor_error
+    let currentMode = "normal";
     let updateInterval = null;
+    let caixaConfig = {
+      altura: 110.0,
+      volumeTotal: 5000.0,
+      distanciaCheia: 20.0,
+      distanciaVazia: 60.0,
+      fatorCorrecao: 1.0,
+      offsetSensor: 0.0
+    };
 
     // Inicialização
     document.addEventListener('DOMContentLoaded', function() {
       console.log('🚀 Dashboard inicializado');
+      
+      // Carregar configuração salva
+      carregarConfiguracao();
       
       // Configurar botões de tempo
       document.querySelectorAll('.time-btn').forEach(btn => {
@@ -1276,7 +1567,7 @@
       }, duration);
     }
 
-    // Função para atualizar barra de sinal
+    // Função para atualizar barra de sinal (AGORA EM AZUL)
     function updateSignalBar(signalQuality, elementId) {
       const signalBar = document.getElementById(elementId);
       if (!signalBar) return;
@@ -1286,37 +1577,145 @@
         item.style.background = '';
       });
       
-      let colorClass = 'signal-status ';
+      let colorClass = '';
       if (signalQuality >= 80) {
-        colorClass += 'excellent';
+        colorClass = 'signal-excellent';
         signalBar.querySelectorAll('.signal-bar-item').forEach(item => item.classList.add('active'));
       } else if (signalQuality >= 60) {
-        colorClass += 'good';
+        colorClass = 'signal-good';
         signalBar.querySelectorAll('.signal-bar-item').forEach((item, index) => {
           if (index < 4) item.classList.add('active');
         });
       } else if (signalQuality >= 40) {
-        colorClass += 'fair';
+        colorClass = 'signal-fair';
         signalBar.querySelectorAll('.signal-bar-item').forEach((item, index) => {
           if (index < 3) item.classList.add('active');
         });
       } else if (signalQuality >= 20) {
-        colorClass += 'poor';
+        colorClass = 'signal-poor';
         signalBar.querySelectorAll('.signal-bar-item').forEach((item, index) => {
           if (index < 2) item.classList.add('active');
         });
       } else {
-        colorClass += 'bad';
+        colorClass = 'signal-bad';
         signalBar.querySelectorAll('.signal-bar-item').forEach((item, index) => {
           if (index < 1) item.classList.add('active');
         });
       }
       
+      // Aplicar cores azuis
       signalBar.querySelectorAll('.signal-bar-item.active').forEach(item => {
-        item.style.background = `var(--${colorClass.split(' ')[1]})`;
+        item.style.background = `var(--${colorClass})`;
       });
       
       return colorClass;
+    }
+
+    // Carregar configuração da caixa
+    function carregarConfiguracao() {
+      const savedConfig = localStorage.getItem('caixaConfig');
+      if (savedConfig) {
+        caixaConfig = JSON.parse(savedConfig);
+        console.log('📋 Configuração carregada:', caixaConfig);
+        
+        // Atualizar valores no modal
+        document.getElementById('configAltura').value = caixaConfig.altura;
+        document.getElementById('configVolume').value = caixaConfig.volumeTotal;
+        document.getElementById('configCheia').value = caixaConfig.distanciaCheia;
+        document.getElementById('configVazia').value = caixaConfig.distanciaVazia;
+        document.getElementById('configFator').value = caixaConfig.fatorCorrecao;
+        document.getElementById('configOffset').value = caixaConfig.offsetSensor;
+        
+        // Atualizar display
+        document.getElementById('volumeTotalValue').textContent = caixaConfig.volumeTotal.toFixed(0);
+        document.getElementById('volumeTotalDisplay').textContent = caixaConfig.volumeTotal.toFixed(0);
+      }
+    }
+
+    // Salvar configuração da caixa
+    function salvarConfiguracao() {
+      const altura = parseFloat(document.getElementById('configAltura').value);
+      const volume = parseFloat(document.getElementById('configVolume').value);
+      const cheia = parseFloat(document.getElementById('configCheia').value);
+      const vazia = parseFloat(document.getElementById('configVazia').value);
+      const fator = parseFloat(document.getElementById('configFator').value);
+      const offset = parseFloat(document.getElementById('configOffset').value);
+      
+      if (!altura || !volume || !cheia || !vazia || !fator) {
+        showConfigResult('⚠️ Preencha todos os campos obrigatórios', 'error');
+        return;
+      }
+      
+      if (vazia <= cheia) {
+        showConfigResult('⚠️ Distância vazia deve ser MAIOR que distância cheia', 'error');
+        return;
+      }
+      
+      caixaConfig = {
+        altura: altura,
+        volumeTotal: volume,
+        distanciaCheia: cheia,
+        distanciaVazia: vazia,
+        fatorCorrecao: fator,
+        offsetSensor: offset
+      };
+      
+      // Salvar no localStorage
+      localStorage.setItem('caixaConfig', JSON.stringify(caixaConfig));
+      
+      // Atualizar display
+      document.getElementById('volumeTotalValue').textContent = volume.toFixed(0);
+      document.getElementById('volumeTotalDisplay').textContent = volume.toFixed(0);
+      
+      // Enviar para o servidor
+      fetch('/api/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'esp32_token_secreto_2024'
+        },
+        body: JSON.stringify(caixaConfig)
+      })
+      .then(response => {
+        if (response.ok) {
+          showConfigResult('✅ Configuração salva com sucesso!', 'success');
+          showAlert('⚙️ Configuração da caixa atualizada', 'success');
+          
+          // Recalcular dados atuais
+          if (currentData.percentage >= 0) {
+            const novaLitros = Math.round((currentData.percentage / 100) * caixaConfig.volumeTotal);
+            currentData.liters = novaLitros;
+            atualizarInterface();
+          }
+          
+          // Fechar modal após 2 segundos
+          setTimeout(fecharModalConfig, 2000);
+        } else {
+          throw new Error('Erro ao salvar no servidor');
+        }
+      })
+      .catch(error => {
+        console.error('❌ Erro ao salvar configuração:', error);
+        showConfigResult('❌ Erro ao salvar no servidor', 'error');
+      });
+    }
+
+    function showConfigResult(message, type) {
+      const resultDiv = document.getElementById('configResult');
+      resultDiv.textContent = message;
+      resultDiv.className = `config-result ${type}`;
+      resultDiv.style.display = 'block';
+    }
+
+    // Função para abrir modal de configuração
+    function abrirModalConfig() {
+      document.getElementById('configModal').style.display = 'flex';
+      showConfigResult('', '');
+    }
+
+    // Função para fechar modal de configuração
+    function fecharModalConfig() {
+      document.getElementById('configModal').style.display = 'none';
     }
 
     // Função principal para carregar dados
@@ -1350,6 +1749,12 @@
           wifi_signal: data.wifi_signal || -50,
           lora_signal: data.lora_signal || { rssi: -70, snr: 0, quality: 50 }
         };
+        
+        // Aplicar configuração da caixa aos dados
+        if (currentData.percentage >= 0 && currentData.liters >= 0) {
+          // Recalcular litros baseado no volume total configurado
+          currentData.liters = Math.round((currentData.percentage / 100) * caixaConfig.volumeTotal);
+        }
         
         // Determinar modo atual
         currentMode = data.display_mode || "normal";
@@ -1394,24 +1799,35 @@
           sensorStatusElement.className = `status-value sensor-status ${hasSensorError ? 'error' : 'ok'}`;
         }
         
-        // Atualizar barra de sinal LoRa
+        // Atualizar barra de sinal LoRa (EM AZUL)
         if (data.lora_signal && data.lora_signal.quality !== null) {
           const quality = data.lora_signal.quality;
-          const colorClass = updateSignalBar(quality, 'signalBar');
+          updateSignalBar(quality, 'signalBar');
           const signalQualityElement = document.getElementById('signalQuality');
           if (signalQualityElement) {
             signalQualityElement.textContent = `${quality}%`;
-            signalQualityElement.className = `signal-quality ${colorClass}`;
+            signalQualityElement.style.color = 'var(--primary-dark)';
           }
         }
         
         // Atualizar histórico se disponível
         if (data.historico && data.historico.length > 0) {
-          atualizarHistorico(data.historico);
+          // Aplicar configuração da caixa ao histórico
+          const historicoAtualizado = data.historico.map(item => {
+            if (item.percentage >= 0 && item.liters >= 0) {
+              return {
+                ...item,
+                liters: Math.round((item.percentage / 100) * caixaConfig.volumeTotal)
+              };
+            }
+            return item;
+          });
+          
+          atualizarHistorico(historicoAtualizado);
           
           // Atualizar gráfico apenas se não estiver em modo de erro
           if (currentMode === "normal") {
-            const normalHistory = data.historico.filter(item => item.status === "normal");
+            const normalHistory = historicoAtualizado.filter(item => item.status === "normal");
             if (normalHistory.length > 0) {
               atualizarGrafico(normalHistory);
             }
@@ -1462,6 +1878,12 @@
       const levelText = document.getElementById('levelText');
       const litersText = document.getElementById('litersText');
       const sensorStatusText = document.getElementById('sensorStatusText');
+      const volumeTotalValue = document.getElementById('volumeTotalValue');
+      const volumeTotalDisplay = document.getElementById('volumeTotalDisplay');
+      
+      // Atualizar volume total da caixa
+      if (volumeTotalValue) volumeTotalValue.textContent = caixaConfig.volumeTotal.toFixed(0);
+      if (volumeTotalDisplay) volumeTotalDisplay.textContent = caixaConfig.volumeTotal.toFixed(0);
       
       // Resetar classes
       waterLevel.className = 'water';
@@ -1507,8 +1929,7 @@
           
           percentageText.textContent = "---";
           percentageText.classList.add('receptor-disconnected');
-          volumeText.textContent = "RECEPTOR DESCONECTADO";
-          volumeText.classList.add('receptor-disconnected');
+          volumeText.innerHTML = `0 / <span style="color: #e63946;">${caixaConfig.volumeTotal.toFixed(0)}</span> L`;
           statusMessage.textContent = message || "ESP32 receptor offline";
           statusMessage.classList.add('receptor-disconnected');
           
@@ -1550,8 +1971,7 @@
           
           percentageText.textContent = "---";
           percentageText.classList.add('waiting-lora');
-          volumeText.textContent = "AGUARDANDO LoRa";
-          volumeText.classList.add('waiting-lora');
+          volumeText.innerHTML = `0 / <span style="color: #ff9e00;">${caixaConfig.volumeTotal.toFixed(0)}</span> L`;
           statusMessage.textContent = message || "Aguardando transmissão LoRa";
           statusMessage.classList.add('waiting-lora');
           
@@ -1595,8 +2015,7 @@
           
           percentageText.textContent = "ERRO";
           percentageText.classList.add('sensor-error');
-          volumeText.textContent = "SENSOR COM FALHA";
-          volumeText.classList.add('sensor-error');
+          volumeText.innerHTML = `0 / <span style="color: #d00000;">${caixaConfig.volumeTotal.toFixed(0)}</span> L`;
           statusMessage.textContent = message || "ERRO NO SENSOR ULTRASSÔNICO";
           statusMessage.classList.add('sensor-error');
           
@@ -1638,7 +2057,7 @@
           waterLevel.style.height = `${waterPercentage}%`;
           
           percentageText.textContent = `${waterPercentage}%`;
-          volumeText.textContent = `${liters} / 5000 L`;
+          volumeText.innerHTML = `${liters} / <span style="color: var(--primary-dark);">${caixaConfig.volumeTotal.toFixed(0)}</span> L`;
           statusMessage.textContent = message || "Sistema funcionando normalmente";
           
           // Cards normais
@@ -1978,6 +2397,7 @@
     function debugData() {
       console.log('=== 🐛 MODO DEBUG ===');
       console.log('Dados atuais:', currentData);
+      console.log('Configuração da caixa:', caixaConfig);
       console.log('Modo atual:', currentMode);
       console.log('Tempo desde última atualização:', document.getElementById('lastUpdate').textContent);
       
@@ -2018,7 +2438,7 @@
       const messages = {
         distance: `Distância atual: ${currentData.distance} cm\nDistância do sensor ultrassônico até a superfície da água.`,
         level: `Nível atual: ${currentData.level} cm\nAltura da coluna de água na caixa.`,
-        volume: `Volume disponível: ${currentData.liters} L\nQuantidade de água disponível para uso.`,
+        volume: `Volume disponível: ${currentData.liters} L\nQuantidade de água disponível para uso.\nCapacidade total: ${caixaConfig.volumeTotal} L`,
         status: `Status: ${currentData.sensor_ok ? 'OK ✅' : 'ERRO ❌'}\n${currentData.sensor_ok ? 'Sensor funcionando normalmente.' : 'Problema detectado no sensor.'}`
       };
       
@@ -2029,6 +2449,9 @@
     window.debugData = debugData;
     window.carregarDados = carregarDados;
     window.showDetails = showDetails;
+    window.abrirModalConfig = abrirModalConfig;
+    window.fecharModalConfig = fecharModalConfig;
+    window.salvarConfiguracao = salvarConfiguracao;
   </script>
 </body>
 </html>
