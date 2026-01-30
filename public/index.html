@@ -21,14 +21,6 @@
       --gray: #6c757d;
       --water-blue: #48cae4;
       --water-deep: #0096c7;
-      --waiting: #6c757d;
-      --sensor-error: #d00000;
-      --signal-excellent: #0077b6;
-      --signal-good: #00b4d8;
-      --signal-fair: #48cae4;
-      --signal-poor: #90e0ef;
-      --signal-bad: #caf0f8;
-      --signal-none: #e9ecef;
     }
 
     * {
@@ -50,7 +42,7 @@
       margin: 0 auto;
     }
 
-    /* HEADER - MAIS COMPACTO */
+    /* HEADER */
     .header {
       text-align: center;
       margin-bottom: 12px;
@@ -98,7 +90,7 @@
       font-weight: 400;
     }
 
-    /* STATUS PANEL - COMPACTO */
+    /* STATUS PANEL */
     .status-panel {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -158,7 +150,7 @@
 
     .sensor-status.ok { color: var(--success); }
     .sensor-status.error { 
-      color: var(--sensor-error); 
+      color: var(--danger); 
       font-weight: bold;
       animation: blink 0.5s infinite;
     }
@@ -178,17 +170,13 @@
     
     .signal-bar-item {
       width: 6px;
-      background: var(--signal-none);
+      background: #e9ecef;
       border-radius: 2px;
       transition: all 0.3s ease;
     }
     
     .signal-bar-item.active {
       background: var(--primary) !important;
-    }
-    
-    .signal-bar-item.zero-signal {
-      background: var(--signal-none) !important;
     }
     
     .signal-bar-item:nth-child(1) { height: 4px; }
@@ -211,10 +199,7 @@
       font-family: 'Poppins', sans-serif !important;
     }
     
-    .signal-quality.zero {
-      color: var(--gray) !important;
-    }
-    
+    .signal-quality.zero { color: var(--gray) !important; }
     .signal-quality.excellent { color: var(--success) !important; }
     .signal-quality.good { color: #28a745 !important; }
     .signal-quality.fair { color: var(--warning) !important; }
@@ -272,7 +257,7 @@
       }
     }
 
-    /* LAYOUT GRID - REORGANIZADO */
+    /* LAYOUT GRID */
     .main-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -280,7 +265,7 @@
       margin-bottom: 15px;
     }
 
-    /* WATER LEVEL CARD - EFEITO VISUAL MELHORADO */
+    /* WATER LEVEL CARD */
     .water-level-card {
       background: white;
       border-radius: 15px;
@@ -327,13 +312,14 @@
       color: var(--secondary);
     }
 
-    /* TANK CONTAINER - VISUAL APRIMORADO */
+    /* TANK CONTAINER */
     .tank-container {
       display: flex;
       justify-content: center;
       align-items: center;
       margin: 20px 0;
       position: relative;
+      flex-direction: column;
     }
 
     .water-tank {
@@ -349,34 +335,82 @@
         0 10px 30px rgba(0, 119, 182, 0.2);
     }
 
+    /* WATER FILL - COM CORES DINÂMICAS */
     .water-fill {
       position: absolute;
       bottom: 0;
       left: 0;
       width: 100%;
-      background: linear-gradient(180deg, 
-        rgba(72, 202, 228, 0.9) 0%,
-        rgba(0, 119, 182, 0.95) 50%,
-        rgba(2, 62, 138, 1) 100%);
-      transition: height 1s cubic-bezier(0.4, 0.0, 0.2, 1);
-      box-shadow: 
-        0 -5px 20px rgba(0, 119, 182, 0.5),
-        inset 0 -2px 10px rgba(255, 255, 255, 0.3);
+      transition: all 1s cubic-bezier(0.4, 0.0, 0.2, 1);
+      overflow: hidden;
     }
 
+    /* VERMELHO < 25% */
+    .water-fill.level-critical {
+      background: linear-gradient(180deg, 
+        rgba(239, 68, 68, 0.85) 0%,
+        rgba(220, 38, 38, 0.9) 50%,
+        rgba(185, 28, 28, 1) 100%);
+      box-shadow: 
+        0 -8px 30px rgba(239, 68, 68, 0.7),
+        inset 0 -3px 15px rgba(255, 255, 255, 0.3),
+        0 0 40px rgba(239, 68, 68, 0.5);
+    }
+
+    /* LARANJA < 50% */
+    .water-fill.level-low {
+      background: linear-gradient(180deg, 
+        rgba(251, 146, 60, 0.85) 0%,
+        rgba(249, 115, 22, 0.9) 50%,
+        rgba(234, 88, 12, 1) 100%);
+      box-shadow: 
+        0 -8px 30px rgba(251, 146, 60, 0.7),
+        inset 0 -3px 15px rgba(255, 255, 255, 0.3),
+        0 0 40px rgba(251, 146, 60, 0.5);
+    }
+
+    /* AZUL < 75% */
+    .water-fill.level-medium {
+      background: linear-gradient(180deg, 
+        rgba(59, 130, 246, 0.85) 0%,
+        rgba(37, 99, 235, 0.9) 50%,
+        rgba(29, 78, 216, 1) 100%);
+      box-shadow: 
+        0 -8px 30px rgba(59, 130, 246, 0.7),
+        inset 0 -3px 15px rgba(255, 255, 255, 0.3),
+        0 0 40px rgba(59, 130, 246, 0.5);
+    }
+
+    /* VERDE <= 100% */
+    .water-fill.level-good {
+      background: linear-gradient(180deg, 
+        rgba(34, 197, 94, 0.85) 0%,
+        rgba(22, 163, 74, 0.9) 50%,
+        rgba(21, 128, 61, 1) 100%);
+      box-shadow: 
+        0 -8px 30px rgba(34, 197, 94, 0.7),
+        inset 0 -3px 15px rgba(255, 255, 255, 0.3),
+        0 0 40px rgba(34, 197, 94, 0.5);
+    }
+
+    /* EFEITO DE ONDA */
     .water-fill::before {
       content: '';
       position: absolute;
-      top: -20px;
+      top: -30px;
       left: -50%;
       width: 200%;
-      height: 20px;
+      height: 30px;
       background: radial-gradient(ellipse at center, 
-        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0.6) 0%, 
+        rgba(255, 255, 255, 0.4) 30%,
+        rgba(255, 255, 255, 0.2) 50%,
         transparent 70%);
-      animation: wave 3s ease-in-out infinite;
+      animation: wave 4s ease-in-out infinite;
+      border-radius: 45%;
     }
 
+    /* BOLHAS E REFLEXOS */
     .water-fill::after {
       content: '';
       position: absolute;
@@ -384,80 +418,168 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: linear-gradient(45deg,
-        transparent 48%,
-        rgba(255, 255, 255, 0.15) 50%,
-        transparent 52%);
-      background-size: 30px 30px;
-      animation: shimmer 2s linear infinite;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.4) 0%, transparent 4%),
+        radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.35) 0%, transparent 5%),
+        radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.3) 0%, transparent 3%),
+        radial-gradient(circle at 60% 70%, rgba(255, 255, 255, 0.4) 0%, transparent 4.5%),
+        radial-gradient(circle at 30% 60%, rgba(255, 255, 255, 0.25) 0%, transparent 3%),
+        radial-gradient(circle at 70% 50%, rgba(255, 255, 255, 0.3) 0%, transparent 3.5%),
+        radial-gradient(circle at 15% 30%, rgba(255, 255, 255, 0.35) 0%, transparent 4%),
+        linear-gradient(135deg,
+          transparent 45%,
+          rgba(255, 255, 255, 0.12) 50%,
+          transparent 55%);
+      background-size: 
+        100% 100%, 100% 100%, 100% 100%, 100% 100%,
+        100% 100%, 100% 100%, 100% 100%, 40px 40px;
+      animation: bubbles 10s ease-in-out infinite, shimmer 3s linear infinite;
     }
 
     @keyframes wave {
-      0%, 100% { transform: translateX(0) translateY(0); }
-      50% { transform: translateX(-25%) translateY(-5px); }
+      0%, 100% { 
+        transform: translateX(0) translateY(0) rotate(0deg);
+        border-radius: 45%;
+      }
+      25% { 
+        transform: translateX(-15%) translateY(-8px) rotate(1deg);
+        border-radius: 42%;
+      }
+      50% { 
+        transform: translateX(-25%) translateY(-12px) rotate(-1deg);
+        border-radius: 48%;
+      }
+      75% { 
+        transform: translateX(-15%) translateY(-8px) rotate(0.5deg);
+        border-radius: 43%;
+      }
     }
 
     @keyframes shimmer {
       0% { background-position: 0 0; }
-      100% { background-position: 30px 30px; }
+      100% { background-position: 40px 40px; }
     }
 
-    .percentage-display {
+    @keyframes bubbles {
+      0%, 100% { 
+        transform: translateY(0) scale(1);
+        opacity: 0.8;
+      }
+      50% { 
+        transform: translateY(-10px) scale(1.05);
+        opacity: 1;
+      }
+    }
+
+    .tank-info-display {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .percentage-display {
       font-size: 3rem;
       font-weight: 700;
       color: var(--primary-dark);
       text-shadow: 
-        0 2px 10px rgba(255, 255, 255, 0.8),
-        0 0 20px rgba(0, 119, 182, 0.5);
-      z-index: 10;
+        0 2px 10px rgba(255, 255, 255, 0.9),
+        0 0 20px rgba(0, 119, 182, 0.6);
+      margin-bottom: 5px;
       transition: all 0.5s ease;
     }
 
-    .percentage-display:hover {
-      transform: translate(-50%, -50%) scale(1.1);
+    .volume-display {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--primary);
+      text-shadow: 
+        0 1px 5px rgba(255, 255, 255, 0.9);
     }
 
+    .capacity-info {
+      margin-top: 10px;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--gray);
+      font-weight: 500;
+    }
+
+    .capacity-info span {
+      color: var(--primary-dark);
+      font-weight: 600;
+    }
+
+    /* LEVEL INDICATORS COM ÍCONES */
     .level-indicators {
-      display: flex;
-      justify-content: space-around;
-      margin-top: 15px;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
       gap: 10px;
+      margin-top: 15px;
+      width: 100%;
     }
 
     .level-indicator {
-      text-align: center;
-      padding: 8px 12px;
-      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-      border-radius: 10px;
-      flex: 1;
-      min-width: 80px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      background: white;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
       transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
     }
 
     .level-indicator:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 119, 182, 0.15);
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
     }
 
-    .level-indicator .value {
+    .indicator-icon {
+      width: 45px;
+      height: 45px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 1.3rem;
-      font-weight: 700;
-      color: var(--primary);
-      display: block;
-      margin-bottom: 2px;
+      color: white;
+      flex-shrink: 0;
     }
 
-    .level-indicator .label {
+    .indicator-icon.distance { 
+      background: linear-gradient(135deg, #667eea, #764ba2); 
+    }
+    
+    .indicator-icon.level { 
+      background: linear-gradient(135deg, #f093fb, #f5576c); 
+    }
+    
+    .indicator-icon.volume { 
+      background: linear-gradient(135deg, #4facfe, #00f2fe); 
+    }
+
+    .indicator-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .indicator-info .label {
       font-size: 0.7rem;
       color: var(--gray);
       font-weight: 500;
       text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+
+    .indicator-info .value {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--primary-dark);
     }
 
     /* CHART CARD */
@@ -469,11 +591,11 @@
     }
 
     .chart-container {
-      height: 350px;
+      height: 400px;
       position: relative;
     }
 
-    /* HISTORY SECTION - SIMÉTRICA */
+    /* HISTORY SECTION */
     .history-section {
       display: grid;
       grid-template-columns: 2fr 1fr;
@@ -555,7 +677,7 @@
       color: #721c24;
     }
 
-    /* UPDATE HISTORY - CARD FINO VERTICAL */
+    /* UPDATE HISTORY */
     .update-history-card {
       background: white;
       border-radius: 15px;
@@ -592,7 +714,7 @@
       font-size: 0.75rem;
     }
 
-    /* LOADING & MESSAGES */
+    /* LOADING */
     .loading {
       text-align: center;
       padding: 30px;
@@ -637,6 +759,10 @@
       .history-section {
         grid-template-columns: 1fr;
       }
+
+      .level-indicators {
+        grid-template-columns: 1fr;
+      }
     }
 
     @media (max-width: 768px) {
@@ -653,8 +779,8 @@
         font-size: 2.5rem;
       }
 
-      .level-indicators {
-        flex-direction: column;
+      .chart-container {
+        height: 300px;
       }
     }
   </style>
@@ -673,7 +799,7 @@
     <!-- ALERTS -->
     <div id="alertContainer"></div>
 
-    <!-- STATUS PANEL COMPACTO -->
+    <!-- STATUS PANEL -->
     <div class="status-panel">
       <div class="status-item">
         <span class="status-label">Status API</span>
@@ -715,7 +841,7 @@
       </div>
     </div>
 
-    <!-- MAIN GRID: NÍVEL + GRÁFICO -->
+    <!-- MAIN GRID -->
     <div class="main-grid">
       <!-- WATER LEVEL CARD -->
       <div class="water-level-card">
@@ -727,22 +853,46 @@
         <div class="tank-container">
           <div class="water-tank">
             <div class="water-fill" id="waterFill"></div>
-            <div class="percentage-display" id="percentageDisplay">0%</div>
+            <div class="tank-info-display">
+              <div class="percentage-display" id="percentageDisplay">0%</div>
+              <div class="volume-display" id="volumeDisplay">0 L</div>
+            </div>
+          </div>
+          
+          <div class="capacity-info">
+            Capacidade Total: <span id="capacityTotal">500 L</span>
           </div>
         </div>
         
         <div class="level-indicators">
           <div class="level-indicator">
-            <span class="value" id="volumeValue">0</span>
-            <span class="label">Litros</span>
+            <div class="indicator-icon distance">
+              <i class="fas fa-ruler"></i>
+            </div>
+            <div class="indicator-info">
+              <div class="label">Distância Sensor</div>
+              <div class="value" id="distanceValue">0 cm</div>
+            </div>
           </div>
+          
           <div class="level-indicator">
-            <span class="value" id="levelValue">0</span>
-            <span class="label">cm Altura</span>
+            <div class="indicator-icon level">
+              <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="indicator-info">
+              <div class="label">Nível Água</div>
+              <div class="value" id="levelValue">0 cm</div>
+            </div>
           </div>
+          
           <div class="level-indicator">
-            <span class="value" id="distanceValue">0</span>
-            <span class="label">cm Sensor</span>
+            <div class="indicator-icon volume">
+              <i class="fas fa-tint"></i>
+            </div>
+            <div class="indicator-info">
+              <div class="label">Volume Disp.</div>
+              <div class="value" id="volumeValue">0 L</div>
+            </div>
           </div>
         </div>
       </div>
@@ -759,7 +909,7 @@
       </div>
     </div>
 
-    <!-- HISTORY SECTION SIMÉTRICA -->
+    <!-- HISTORY SECTION -->
     <div class="history-section">
       <!-- HISTÓRICO DE LEITURAS -->
       <div class="history-card">
@@ -798,7 +948,7 @@
         </div>
       </div>
 
-      <!-- HISTÓRICO DE ATUALIZAÇÕES - FINO VERTICAL -->
+      <!-- HISTÓRICO DE ATUALIZAÇÕES -->
       <div class="update-history-card">
         <h2 class="card-title">
           <i class="fas fa-sync-alt"></i>
@@ -825,6 +975,7 @@
     };
     let currentMode = "normal";
     let updateHistoryData = [];
+    let capacityTotal = 500; // Valor padrão
     const MAX_HISTORY_ITEMS = 20;
 
     // Carregar dados
@@ -842,6 +993,12 @@
         
         const data = await response.json();
         console.log('Dados recebidos:', data);
+        
+        // Atualizar capacidade total se disponível
+        if (data.config && data.config.volumeTotal) {
+          capacityTotal = data.config.volumeTotal;
+          document.getElementById('capacityTotal').textContent = `${capacityTotal} L`;
+        }
         
         // Atualizar status do receptor
         const receptorStatus = document.getElementById('receptorStatus');
@@ -907,7 +1064,7 @@
         adicionarAtualizacao(`Dados atualizados - ${currentMode === "normal" ? currentData.percentage + "%" : "Modo: " + currentMode}`);
         
         // Atualizar histórico e gráfico
-        if (data.history) {
+        if (data.history && Array.isArray(data.history)) {
           atualizarHistorico(data.history);
           atualizarGrafico(data.history);
         }
@@ -922,28 +1079,47 @@
       }
     }
 
-    // Atualizar interface principal
+    // Atualizar interface COM CORES DINÂMICAS
     function atualizarInterface(data) {
-      // Atualizar tanque
       const waterFill = document.getElementById('waterFill');
-      waterFill.style.height = `${data.percentage}%`;
+      const percentage = data.percentage;
       
-      // Atualizar porcentagem
-      document.getElementById('percentageDisplay').textContent = `${data.percentage}%`;
+      // Atualizar altura
+      waterFill.style.height = `${percentage}%`;
       
-      // Atualizar indicadores
-      document.getElementById('volumeValue').textContent = data.liters;
-      document.getElementById('levelValue').textContent = data.level;
-      document.getElementById('distanceValue').textContent = data.distance.toFixed(1);
+      // Aplicar classe de cor baseada no nível
+      waterFill.className = 'water-fill';
+      if (percentage < 25) {
+        waterFill.classList.add('level-critical');  // VERMELHO
+      } else if (percentage < 50) {
+        waterFill.classList.add('level-low');        // LARANJA
+      } else if (percentage < 75) {
+        waterFill.classList.add('level-medium');     // AZUL
+      } else {
+        waterFill.classList.add('level-good');       // VERDE
+      }
+      
+      // Atualizar displays centrais
+      document.getElementById('percentageDisplay').textContent = `${percentage}%`;
+      document.getElementById('volumeDisplay').textContent = `${data.liters} L`;
+      
+      // Atualizar indicadores com ícones
+      document.getElementById('distanceValue').textContent = `${data.distance.toFixed(1)} cm`;
+      document.getElementById('levelValue').textContent = `${data.level} cm`;
+      document.getElementById('volumeValue').textContent = `${data.liters} L`;
     }
 
     // Mostrar estado anormal
     function mostrarEstadoAnormal() {
-      document.getElementById('waterFill').style.height = '0%';
+      const waterFill = document.getElementById('waterFill');
+      waterFill.style.height = '0%';
+      waterFill.className = 'water-fill';
+      
       document.getElementById('percentageDisplay').textContent = '---';
-      document.getElementById('volumeValue').textContent = '---';
-      document.getElementById('levelValue').textContent = '---';
-      document.getElementById('distanceValue').textContent = '---';
+      document.getElementById('volumeDisplay').textContent = '--- L';
+      document.getElementById('distanceValue').textContent = '--- cm';
+      document.getElementById('levelValue').textContent = '--- cm';
+      document.getElementById('volumeValue').textContent = '--- L';
       
       let message = '';
       if (currentMode === "receptor_disconnected") {
@@ -969,11 +1145,8 @@
         qualityText.className = 'signal-quality zero';
         bars.forEach(bar => {
           bar.classList.remove('active');
-          bar.classList.add('zero-signal');
         });
       } else {
-        bars.forEach(bar => bar.classList.remove('zero-signal'));
-        
         let activeClass = 'good';
         if (quality >= 80) activeClass = 'excellent';
         else if (quality >= 60) activeClass = 'good';
@@ -994,7 +1167,7 @@
       }
     }
 
-    // Adicionar atualização ao histórico
+    // Adicionar atualização
     function adicionarAtualizacao(texto) {
       const now = new Date();
       const timeString = now.toLocaleTimeString('pt-BR');
@@ -1053,8 +1226,9 @@
       
       if (loading) loading.style.display = 'none';
       
-      if (historico.length === 0 || currentMode !== "normal") {
+      if (!historico || historico.length === 0) {
         if (container) container.style.display = 'none';
+        if (message) message.style.display = 'block';
         return;
       }
       
@@ -1069,7 +1243,7 @@
       historicoLimitado.forEach(item => {
         const row = document.createElement('tr');
         
-        let formattedDate = '--/--/-- --:--';
+        let formattedDate = '--:--:--';
         try {
           const date = new Date(item.timestamp);
           if (!isNaN(date.getTime())) {
@@ -1109,15 +1283,22 @@
         
         let signalQualityText = "0%";
         let signalQualityClass = "zero";
+        let rssiText = "0";
         
-        if (item.lora_signal && item.lora_signal.quality !== null && item.lora_signal.quality > 0) {
-          signalQualityText = `${item.lora_signal.quality}%`;
+        if (item.lora_signal) {
+          if (item.lora_signal.quality !== null && item.lora_signal.quality > 0) {
+            signalQualityText = `${item.lora_signal.quality}%`;
+            
+            if (item.lora_signal.quality >= 80) signalQualityClass = "excellent";
+            else if (item.lora_signal.quality >= 60) signalQualityClass = "good";
+            else if (item.lora_signal.quality >= 40) signalQualityClass = "fair";
+            else if (item.lora_signal.quality >= 20) signalQualityClass = "poor";
+            else signalQualityClass = "bad";
+          }
           
-          if (item.lora_signal.quality >= 80) signalQualityClass = "excellent";
-          else if (item.lora_signal.quality >= 60) signalQualityClass = "good";
-          else if (item.lora_signal.quality >= 40) signalQualityClass = "fair";
-          else if (item.lora_signal.quality >= 20) signalQualityClass = "poor";
-          else signalQualityClass = "bad";
+          if (item.lora_signal.rssi) {
+            rssiText = item.lora_signal.rssi.toString();
+          }
         }
         
         row.innerHTML = `
@@ -1128,7 +1309,7 @@
           <td>${displayLiters}</td>
           <td>${displayDistance}</td>
           <td>${displayLevel}</td>
-          <td>${item.lora_signal?.rssi || 0}</td>
+          <td>${rssiText}</td>
           <td><span class="signal-quality ${signalQualityClass}">${signalQualityText}</span></td>
         `;
         
