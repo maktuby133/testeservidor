@@ -1084,7 +1084,10 @@
       
       // Verificar se está aguardando LoRa COM DELAY
       // NOVO: Lógica com delay para transmissor LoRa desconectado
-      if (data.lora_connected === false && data.receptor_connected === true) {
+      // Só considera desconectado se lora_connected for false E lora_signal for 0
+      if (data.lora_connected === false && 
+          data.receptor_connected === true && 
+          (!data.lora_signal || data.lora_signal.quality === 0)) {
         loraDisconnectCount++;
         console.log(`⚠️ LoRa desconectado - Contagem: ${loraDisconnectCount}/${LORA_DISCONNECT_THRESHOLD}`);
         
@@ -1092,8 +1095,11 @@
         if (loraDisconnectCount >= LORA_DISCONNECT_THRESHOLD) {
           currentStatus = 'waiting_lora';
         }
-      } else {
-        // Reset o contador se reconectar
+      } else if (data.lora_connected === true || (data.lora_signal && data.lora_signal.quality > 0)) {
+        // Reset o contador se reconectar OU se houver sinal LoRa
+        if (loraDisconnectCount > 0) {
+          console.log(`✅ LoRa reconectado - Reset contador (era ${loraDisconnectCount})`);
+        }
         loraDisconnectCount = 0;
       }
       
