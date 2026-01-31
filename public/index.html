@@ -851,19 +851,25 @@
           lora_signal: data.lora_signal || { quality: 0 },
           device: data.device || 'ESP32',
           status: data.status || 'normal',
-          config_volume_total: parseInt(data.config_volume_total) || 0,
+          config_volume_total: data.caixa_config?.volumeTotal || 0,
           receptor_connected: data.receptor_connected !== false,
           lora_connected: data.lora_connected !== false
         };
         
         console.log('📊 Dados processados:', currentData);
-        console.log('🗄️ Capacidade total recebida da API:', data.config_volume_total);
-        console.log('🗄️ Tipo:', typeof data.config_volume_total);
+        console.log('🗄️ Capacidade total recebida da API:', data.caixa_config);
+        console.log('🗄️ Tipo:', typeof data.caixa_config);
         
-        // GUARDAR capacidade total quando receber (não perder nos heartbeats)
-        if (data.config_volume_total && data.config_volume_total > 0) {
-          savedCapacityTotal = parseInt(data.config_volume_total);
+        // ✅ CORREÇÃO: Pegar de caixa_config.volumeTotal (não config_volume_total)
+        if (data.caixa_config && 
+            data.caixa_config.volumeTotal !== null && 
+            data.caixa_config.volumeTotal !== undefined && 
+            !isNaN(data.caixa_config.volumeTotal) && 
+            parseFloat(data.caixa_config.volumeTotal) > 0) {
+          savedCapacityTotal = parseFloat(data.caixa_config.volumeTotal);
           console.log('✅ Capacidade total SALVA:', savedCapacityTotal, 'L');
+        } else {
+          console.log('⚠️ caixa_config.volumeTotal não recebido:', data.caixa_config);
         }
         
         // Atualizar capacidade total no display
@@ -945,7 +951,7 @@
         document.getElementById('sensorStatus').textContent = 'Indisponível';
         document.getElementById('sensorStatus').className = 'status-value sensor-status';
         
-        // ✅ Manter capacidade total visível mesmo quando receptor estiver offline
+        // ✅ Manter capacidade visível mesmo offline
         if (savedCapacityTotal > 0) {
           document.getElementById('totalCapacity').textContent = `${savedCapacityTotal} L`;
         }
@@ -966,7 +972,7 @@
         document.getElementById('sensorStatus').textContent = 'Aguardando';
         document.getElementById('sensorStatus').className = 'status-value sensor-status';
         
-        // ✅ Manter capacidade total visível mesmo quando aguardando LoRa
+        // ✅ Manter capacidade visível aguardando LoRa
         if (savedCapacityTotal > 0) {
           document.getElementById('totalCapacity').textContent = `${savedCapacityTotal} L`;
         }
@@ -980,7 +986,7 @@
         document.getElementById('sensorStatus').className = 'status-value sensor-status error';
         showAlert('Erro no sensor ultrassônico! Verifique as conexões.', 'error');
         
-        // ✅ Manter capacidade total visível mesmo com erro de sensor
+        // ✅ Manter capacidade visível com erro de sensor
         if (savedCapacityTotal > 0) {
           document.getElementById('totalCapacity').textContent = `${savedCapacityTotal} L`;
         }
@@ -1357,7 +1363,8 @@
           console.log('Status LoRa:', data.lora_connected);
           console.log('Qualidade Sinal LoRa:', data.lora_signal?.quality + '%');
           console.log('Status Sensor:', data.sensor_ok);
-          console.log('Config Volume Total na API:', data.config_volume_total);
+          console.log('Config caixa_config completo:', data.caixa_config);
+          console.log('Volume Total (caixa_config.volumeTotal):', data.caixa_config?.volumeTotal);
         })
         .catch(err => console.error('❌ Erro na requisição:', err));
       
