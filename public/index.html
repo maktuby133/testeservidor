@@ -399,6 +399,15 @@
       font-size: 0.75rem;
       color: var(--gray);
       margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .info-label i {
+      font-size: 0.85rem;
+      color: var(--primary);
     }
 
     .info-value {
@@ -719,19 +728,31 @@
         </div>
         <div class="water-info">
           <div class="info-item">
-            <div class="info-label">Volume Atual</div>
+            <div class="info-label">
+              <i class="fas fa-flask"></i>
+              Volume Atual
+            </div>
             <div id="currentVolume" class="info-value">-- L</div>
           </div>
           <div class="info-item">
-            <div class="info-label">Distância</div>
+            <div class="info-label">
+              <i class="fas fa-arrows-alt-v"></i>
+              Distância
+            </div>
             <div id="distance" class="info-value">-- cm</div>
           </div>
           <div class="info-item">
-            <div class="info-label">Altura Água</div>
+            <div class="info-label">
+              <i class="fas fa-ruler-vertical"></i>
+              Altura Água
+            </div>
             <div id="waterLevel" class="info-value">-- cm</div>
           </div>
           <div class="info-item">
-            <div class="info-label">Última Leitura</div>
+            <div class="info-label">
+              <i class="fas fa-clock"></i>
+              Última Leitura
+            </div>
             <div id="lastUpdate" class="info-value">--:--:--</div>
           </div>
         </div>
@@ -803,11 +824,10 @@
   </div>
 
   <script>
-    const API_URL = '/api/caixa-dagua';
+    const API_URL = '/api/lora';
     let chart = null;
     let updateHistoryData = [];
     const MAX_HISTORY_ITEMS = 5;
-    let lastReceptorTime = null;
 
     // Carregar dados da API
     async function carregarDados() {
@@ -825,19 +845,13 @@
         document.getElementById('apiStatus').className = 'status-value api-status connected';
         
         // Processar dados recebidos
-        if (data.latest) {
-          atualizarInterface(data.latest);
-          lastReceptorTime = data.latest.receptor_time;
-        }
+        atualizarInterface(data);
         
         // Atualizar histórico
         if (data.history && Array.isArray(data.history)) {
           atualizarHistorico(data.history);
           atualizarGrafico(data.history);
         }
-        
-        // Verificar conexão do receptor
-        verificarConexaoReceptor(data.latest);
         
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
@@ -851,87 +865,69 @@
       }
     }
 
-    // Verificar conexão do receptor
-    function verificarConexaoReceptor(data) {
-      const receptorWarning = document.getElementById('receptorWarning');
-      const loraWarning = document.getElementById('loraWarning');
-      
-      if (!data || !data.receptor_time) {
-        // Receptor completamente desconectado
-        receptorWarning.classList.add('show');
-        loraWarning.classList.remove('show');
-        return;
-      }
-      
-      // Receptor conectado
-      receptorWarning.classList.remove('show');
-      
-      // Verificar status LoRa
-      if (data.status === 'waiting_lora' || data.status === 'receptor_disconnected') {
-        loraWarning.classList.add('show');
-      } else {
-        loraWarning.classList.remove('show');
-      }
-    }
-
     // Atualizar interface principal
     function atualizarInterface(data) {
       // Atualizar timestamp do sistema
       const now = new Date();
       document.getElementById('lastSystemUpdate').textContent = now.toLocaleTimeString('pt-BR');
       
-      // === CORREÇÃO: Processar capacidade da caixa corretamente ===
-      let tankCapacityValue = '-- L';
-      if (data.config_volume_total !== undefined && data.config_volume_total !== null && data.config_volume_total > 0) {
-        tankCapacityValue = `${data.config_volume_total} L`;
-        adicionarAtualizacao(`📦 Capacidade: ${data.config_volume_total}L`);
-      }
-      document.getElementById('tankCapacity').textContent = tankCapacityValue;
+      // Verificar conexão do receptor
+      const receptorWarning = document.getElementById('receptorWarning');
+      const loraWarning = document.getElementById('loraWarning');
       
       // Status do Receptor
-      let receptorStatusText = 'Desconectado';
-      let receptorStatusClass = 'receptor-status disconnected';
-      
-      if (data.receptor_time) {
-        receptorStatusText = 'Conectado';
-        receptorStatusClass = 'receptor-status connected';
-      }
+      let receptorConnected = data.receptor_status?.connected || false;
+      let receptorStatusText = receptorConnected ? 'Conectado' : 'Desconectado';
+      let receptorStatusClass = receptorConnected ? 'receptor-status connected' : 'receptor-status disconnected';
       
       document.getElementById('receptorStatus').textContent = receptorStatusText;
       document.getElementById('receptorStatus').className = `status-value ${receptorStatusClass}`;
       
-      // Status LoRa
-      let loraStatusText = 'Sem Sinal';
-      let loraStatusClass = 'lora-status disconnected';
-      
-      if (data.status === 'normal' || (data.lora_rssi && data.lora_rssi !== 0)) {
-        loraStatusText = 'Conectado';
-        loraStatusClass = 'lora-status connected';
-      } else if (data.status === 'waiting_lora') {
-        loraStatusText = 'Aguardando';
-        loraStatusClass = 'lora-status disconnected';
+      if (!receptorConnected) {
+        receptorWarning.classList.add('show');
+        loraWarning.classList.remove('show');
+        adicionarAtualizacao('⚠️ Receptor ESP32 desconectado');
+        return;
+      } else {
+        receptorWarning.classList.remove('show');
       }
+      
+      // Status LoRa
+      let loraConnected = data.lora_connection_status?.connected || false;
+      let loraStatusText = loraConnected ? 'Conectado' : 'Aguardando';
+      let loraStatusClass = loraConnected ? 'lora-status connected' : 'lora-status disconnected';
       
       document.getElementById('loraStatus').textContent = loraStatusText;
       document.getElementById('loraStatus').className = `status-value ${loraStatusClass}`;
       
-      // Status do Sensor
-      let sensorStatusText = 'Erro';
-      let sensorStatusClass = 'sensor-status error';
-      
-      if (data.sensor_ok === true) {
-        sensorStatusText = 'OK';
-        sensorStatusClass = 'sensor-status ok';
+      if (!loraConnected) {
+        loraWarning.classList.add('show');
+        adicionarAtualizacao('📡 Aguardando transmissão LoRa');
+      } else {
+        loraWarning.classList.remove('show');
       }
+      
+      // Status do Sensor
+      let sensorHasError = data.sensor_status?.has_error || false;
+      let sensorStatusText = sensorHasError ? 'Erro' : 'OK';
+      let sensorStatusClass = sensorHasError ? 'sensor-status error' : 'sensor-status ok';
       
       document.getElementById('sensorStatus').textContent = sensorStatusText;
       document.getElementById('sensorStatus').className = `status-value ${sensorStatusClass}`;
       
-      // Atualizar nível da água
-      const percentage = data.percentage >= 0 ? data.percentage : 0;
-      const liters = data.liters >= 0 ? data.liters : 0;
-      const distance = data.distance >= 0 ? data.distance.toFixed(1) : '--';
-      const level = data.level >= 0 ? data.level : 0;
+      // Capacidade da caixa
+      let tankCapacityValue = '-- L';
+      if (data.tank_config?.volume_total) {
+        tankCapacityValue = `${data.tank_config.volume_total} L`;
+      }
+      document.getElementById('tankCapacity').textContent = tankCapacityValue;
+      
+      // Dados da água
+      const waterData = data.water_data || {};
+      const percentage = waterData.percentage >= 0 ? waterData.percentage : 0;
+      const liters = waterData.liters >= 0 ? waterData.liters : 0;
+      const distance = waterData.distance >= 0 ? waterData.distance.toFixed(1) : '--';
+      const level = waterData.level >= 0 ? waterData.level : 0;
       
       document.getElementById('waterFill').style.height = `${percentage}%`;
       document.getElementById('percentageText').textContent = `${percentage}%`;
@@ -952,14 +948,13 @@
       }
       
       // Atualizar sinal LoRa
-      atualizarSinalLora(data.lora_signal);
+      const loraSignal = data.lora_connection_status?.signal_quality || 0;
+      atualizarSinalLora({ quality: loraSignal });
       
       // Adicionar atualização ao histórico do sistema
-      if (data.status === 'normal' && data.sensor_ok) {
+      if (loraConnected && !sensorHasError) {
         adicionarAtualizacao(`✅ Leitura OK: ${percentage}% (${liters}L)`);
-      } else if (data.status === 'waiting_lora') {
-        adicionarAtualizacao('⏳ Aguardando transmissão LoRa');
-      } else if (!data.sensor_ok) {
+      } else if (sensorHasError) {
         adicionarAtualizacao('⚠️ Erro no sensor ultrassônico');
       }
     }
@@ -1047,7 +1042,7 @@
       }, duration);
     }
 
-    // === CORREÇÃO: Atualizar histórico com limite de 5 linhas ===
+    // Atualizar histórico
     function atualizarHistorico(historico) {
       const historyBody = document.getElementById('historyBody');
       const loading = document.getElementById('historyLoading');
