@@ -379,8 +379,8 @@
     /* TANK WRAPPER — centra tudo */
     .tank-wrapper {
       position: relative;
-      width: 400px;
-      height: 440px;
+      width: 320px;
+      height: 350px;
       margin: 20px auto;
       display: flex;
       align-items: center;
@@ -393,8 +393,8 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 115%;
-      height: 115%;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
       object-position: center;
       z-index: 1;
@@ -405,12 +405,12 @@
     .tank {
       position: absolute;
       /* posição horizontal da barra */
-      left: 38%;
+      left: 50%;
       transform: translateX(-50%);
       width: 58px;
       /* altura máxima da barra (a água sobe até aqui) */
-      top: 95px;
-      bottom: 100px;
+      top: 70px;
+      bottom: 75px;
       border-radius: 10px;
       overflow: hidden;
       z-index: 2;
@@ -460,11 +460,11 @@
     /* MARCADORES de nível (0% / 50% / 100%) */
     .tank-marks {
       position: absolute;
-      left: 38%;
+      left: 50%;
       transform: translateX(-50%);
       width: 58px;
-      top: 95px;
-      bottom: 100px;
+      top: 70px;
+      bottom: 75px;
       z-index: 3;
       pointer-events: none;
     }
