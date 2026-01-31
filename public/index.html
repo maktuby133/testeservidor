@@ -35,7 +35,7 @@
       font-family: 'Poppins', sans-serif;
       background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
       min-height: 100vh;
-      padding: 15px;
+      padding: 8px;
       color: var(--dark);
     }
 
@@ -47,8 +47,8 @@
     /* HEADER - REDUZIDO */
     .header {
       text-align: center;
-      margin-bottom: 8px;
-      padding: 8px 12px;
+      margin-bottom: 4px;
+      padding: 4px 12px;
       background: white;
       border-radius: 12px;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
@@ -68,8 +68,8 @@
 
     .header h1 {
       color: var(--primary-dark);
-      font-size: 1.4rem;
-      margin-bottom: 2px;
+      font-size: 1.1rem;
+      margin-bottom: 0px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -88,7 +88,7 @@
 
     .subtitle {
       color: var(--gray);
-      font-size: 0.75rem;
+      font-size: 0.6rem;
       font-weight: 400;
     }
 
@@ -139,9 +139,9 @@
     /* STATUS PANEL - CARDS MENORES */
     .status-panel {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 6px;
-      margin-bottom: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 4px;
+      margin-bottom: 4px;
     }
 
     .status-item {
@@ -150,11 +150,11 @@
       justify-content: space-between;
       gap: 6px;
       background: white;
-      padding: 6px 10px;
+      padding: 3px 8px;
       border-radius: 8px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.05);
       transition: all 0.3s ease;
-      min-height: 38px;
+      min-height: 28px;
     }
 
     .status-item:hover {
@@ -165,14 +165,14 @@
     .status-label {
       font-weight: 600;
       color: var(--primary-dark);
-      font-size: 0.75rem;
+      font-size: 0.65rem;
       white-space: nowrap;
     }
 
     .status-value {
       color: var(--dark);
       font-weight: 500;
-      font-size: 0.85rem;
+      font-size: 0.7rem;
       text-align: right;
       font-family: 'Poppins', sans-serif;
     }
@@ -307,26 +307,26 @@
     .main-content {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 15px;
-      margin-bottom: 15px;
+      gap: 8px;
+      margin-bottom: 6px;
     }
 
     /* TANK CONTAINER */
     .tank-container {
       background: white;
-      padding: 20px;
+      padding: 8px 12px;
       border-radius: 15px;
       box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
     }
 
     .tank-header {
       text-align: center;
-      margin-bottom: 15px;
+      margin-bottom: 2px;
     }
 
     .tank-header h2 {
       color: var(--primary-dark);
-      font-size: 1.3rem;
+      font-size: 0.9rem;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -379,9 +379,9 @@
     /* TANK WRAPPER — centra tudo */
     .tank-wrapper {
       position: relative;
-      width: 320px;
-      height: 350px;
-      margin: 20px auto;
+      width: 240px;
+      height: 220px;
+      margin: 4px auto;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -407,11 +407,11 @@
       /* posição horizontal da barra */
       left: 50%;
       transform: translateX(-50%);
-      width: 58px;
+      width: 44px;
       /* altura máxima da barra (a água sobe até aqui) */
-      top: 70px;
-      bottom: 75px;
-      border-radius: 10px;
+      top: 38px;
+      bottom: 42px;
+      border-radius: 8px;
       overflow: hidden;
       z-index: 2;
       /* fundo semi-transparente para ver a imagem por trás */
@@ -432,9 +432,9 @@
       justify-content: center;
       color: white;
       font-weight: 700;
-      font-size: 1.1rem;
+      font-size: 0.7rem;
       text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
-      min-height: 30px;
+      min-height: 20px;
       border-radius: 0 0 8px 8px;
     }
 
@@ -462,9 +462,9 @@
       position: absolute;
       left: 50%;
       transform: translateX(-50%);
-      width: 58px;
-      top: 70px;
-      bottom: 75px;
+      width: 44px;
+      top: 38px;
+      bottom: 42px;
       z-index: 3;
       pointer-events: none;
     }
@@ -517,19 +517,19 @@
     /* CHART CONTAINER */
     .chart-container {
       background: white;
-      padding: 20px;
+      padding: 8px 12px;
       border-radius: 15px;
       box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
     }
 
     .chart-header {
       text-align: center;
-      margin-bottom: 15px;
+      margin-bottom: 4px;
     }
 
     .chart-header h2 {
       color: var(--primary-dark);
-      font-size: 1.3rem;
+      font-size: 0.9rem;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -537,29 +537,29 @@
     }
 
     #nivelChart {
-      max-height: 300px;
+      max-height: 180px;
     }
 
     /* HISTORY SECTION */
     .history-section {
       background: white;
-      padding: 20px;
+      padding: 8px 12px;
       border-radius: 15px;
       box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-      margin-bottom: 15px;
+      margin-bottom: 6px;
     }
 
     .history-header {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      margin-bottom: 15px;
+      gap: 6px;
+      margin-bottom: 4px;
     }
 
     .history-header h2 {
       color: var(--primary-dark);
-      font-size: 1.3rem;
+      font-size: 0.9rem;
     }
 
     .table-container {
@@ -569,7 +569,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.85rem;
+      font-size: 0.7rem;
     }
 
     thead {
@@ -578,14 +578,14 @@
     }
 
     th {
-      padding: 10px;
+      padding: 4px 6px;
       text-align: left;
       font-weight: 600;
       white-space: nowrap;
     }
 
     td {
-      padding: 10px;
+      padding: 4px 6px;
       border-bottom: 1px solid #e9ecef;
     }
 
@@ -624,7 +624,7 @@
     /* UPDATES SECTION */
     .updates-section {
       background: white;
-      padding: 20px;
+      padding: 6px 12px;
       border-radius: 15px;
       box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
     }
@@ -633,35 +633,35 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      margin-bottom: 15px;
+      gap: 6px;
+      margin-bottom: 4px;
     }
 
     .updates-header h2 {
       color: var(--primary-dark);
-      font-size: 1.3rem;
+      font-size: 0.9rem;
     }
 
     #updateHistory {
-      max-height: 200px;
+      max-height: 80px;
       overflow-y: auto;
     }
 
     .update-entry {
-      padding: 8px 12px;
-      margin-bottom: 8px;
+      padding: 3px 8px;
+      margin-bottom: 3px;
       background: #f8f9fa;
       border-left: 3px solid var(--primary);
       border-radius: 5px;
       display: flex;
       gap: 10px;
-      font-size: 0.85rem;
+      font-size: 0.65rem;
     }
 
     .update-time {
       color: var(--primary);
       font-weight: 600;
-      min-width: 70px;
+      min-width: 55px;
     }
 
     .update-text {
