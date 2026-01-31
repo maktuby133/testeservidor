@@ -23,6 +23,12 @@
       --water-deep: #0096c7;
       --waiting: #6c757d;
       --sensor-error: #d00000;
+      /* Cores para níveis da barra */
+      --level-critical: #e63946;
+      --level-low: #ff9e00;
+      --level-medium: #ffd500;
+      --level-good: #90e0ef;
+      --level-full: #0077b6;
     }
 
     * {
@@ -35,7 +41,7 @@
       font-family: 'Poppins', sans-serif;
       background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
       min-height: 100vh;
-      padding: 8px;
+      padding: 15px;
       color: var(--dark);
     }
 
@@ -47,8 +53,8 @@
     /* HEADER - REDUZIDO */
     .header {
       text-align: center;
-      margin-bottom: 4px;
-      padding: 4px 12px;
+      margin-bottom: 8px;
+      padding: 8px 12px;
       background: white;
       border-radius: 12px;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
@@ -68,8 +74,8 @@
 
     .header h1 {
       color: var(--primary-dark);
-      font-size: 1.1rem;
-      margin-bottom: 0px;
+      font-size: 1.4rem;
+      margin-bottom: 2px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -88,7 +94,7 @@
 
     .subtitle {
       color: var(--gray);
-      font-size: 0.6rem;
+      font-size: 0.75rem;
       font-weight: 400;
     }
 
@@ -139,9 +145,9 @@
     /* STATUS PANEL - CARDS MENORES */
     .status-panel {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 4px;
-      margin-bottom: 4px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 6px;
+      margin-bottom: 10px;
     }
 
     .status-item {
@@ -150,11 +156,11 @@
       justify-content: space-between;
       gap: 6px;
       background: white;
-      padding: 3px 8px;
+      padding: 6px 10px;
       border-radius: 8px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.05);
       transition: all 0.3s ease;
-      min-height: 28px;
+      min-height: 38px;
     }
 
     .status-item:hover {
@@ -165,14 +171,14 @@
     .status-label {
       font-weight: 600;
       color: var(--primary-dark);
-      font-size: 0.65rem;
+      font-size: 0.75rem;
       white-space: nowrap;
     }
 
     .status-value {
       color: var(--dark);
       font-weight: 500;
-      font-size: 0.7rem;
+      font-size: 0.85rem;
       text-align: right;
       font-family: 'Poppins', sans-serif;
     }
@@ -307,26 +313,26 @@
     .main-content {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 6px;
+      gap: 15px;
+      margin-bottom: 15px;
     }
 
     /* TANK CONTAINER */
     .tank-container {
       background: white;
-      padding: 8px 12px;
+      padding: 20px;
       border-radius: 15px;
       box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
     }
 
     .tank-header {
       text-align: center;
-      margin-bottom: 2px;
+      margin-bottom: 15px;
     }
 
     .tank-header h2 {
       color: var(--primary-dark);
-      font-size: 0.9rem;
+      font-size: 1.3rem;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -337,13 +343,13 @@
     .info-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-      margin-top: 6px;
+      gap: 10px;
+      margin-top: 15px;
     }
 
     .info-card {
       background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-      padding: 6px 8px;
+      padding: 12px;
       border-radius: 10px;
       text-align: center;
       transition: all 0.3s ease;
@@ -356,160 +362,131 @@
     }
 
     .info-card-label {
-      font-size: 0.6rem;
+      font-size: 0.75rem;
       color: var(--gray);
       font-weight: 600;
-      margin-bottom: 2px;
+      margin-bottom: 5px;
       text-transform: uppercase;
     }
 
     .info-card-value {
-      font-size: 0.85rem;
+      font-size: 1.3rem;
       font-weight: 700;
       color: var(--primary-dark);
     }
 
     .info-card-unit {
-      font-size: 0.7rem;
+      font-size: 0.85rem;
       color: var(--gray);
-      margin-left: 2px;
+      margin-left: 3px;
     }
 
     /* TANK VISUAL */
-    /* TANK WRAPPER — centra tudo */
-    .tank-wrapper {
-      position: relative;
-      width: 240px;
-      height: 220px;
-      margin: 4px auto;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    /* IMAGEM DA CAIXA — camada de trás */
-    .tank-image {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      object-position: center;
-      z-index: 1;
-      pointer-events: none;
-    }
-
-    /* BARRA DE NÍVEL — estreita, sobre a imagem */
     .tank {
-      position: absolute;
-      /* posição horizontal da barra */
-      left: 50%;
-      transform: translateX(-50%);
-      width: 44px;
-      /* altura máxima da barra (a água sobe até aqui) */
-      top: 38px;
-      bottom: 42px;
-      border-radius: 8px;
+      position: relative;
+      width: 200px;
+      height: 300px;
+      margin: 20px auto;
+      border: 4px solid var(--primary-dark);
+      border-radius: 15px;
+      background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
       overflow: hidden;
-      z-index: 2;
-      /* fundo semi-transparente para ver a imagem por trás */
-      background: rgba(20, 40, 60, 0.35);
-      backdrop-filter: blur(1px);
-      box-shadow: 0 0 12px rgba(0,0,0,0.25), inset 0 0 8px rgba(0,0,0,0.15);
+      box-shadow: inset 0 0 30px rgba(0,0,0,0.1);
     }
 
-    /* ÁGUA dentro da barra */
     .water {
       position: absolute;
       bottom: 0;
       width: 100%;
-      background: linear-gradient(to top, var(--water-deep) 0%, var(--water-blue) 60%, rgba(72,202,228,0.7) 100%);
+      background: linear-gradient(to top, var(--water-deep) 0%, var(--water-blue) 100%);
       transition: height 0.8s ease;
       display: flex;
       align-items: center;
       justify-content: center;
       color: white;
       font-weight: 700;
-      font-size: 0.7rem;
-      text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
-      min-height: 20px;
-      border-radius: 0 0 8px 8px;
+      font-size: 1.8rem;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      min-height: 40px;
     }
 
-    /* ONDULAÇÃO no topo da água */
+    /* Classes para cores da barra conforme nível */
+    .water.critical {
+      background: linear-gradient(to top, #dc2626, #ef4444) !important;
+      animation: wave-critical 2s infinite;
+    }
+
+    .water.low {
+      background: linear-gradient(to top, #ea580c, #fb923c) !important;
+      animation: wave-low 2.5s infinite;
+    }
+
+    .water.medium {
+      background: linear-gradient(to top, #ca8a04, #fbbf24) !important;
+    }
+
+    .water.good {
+      background: linear-gradient(to top, #0284c7, #38bdf8) !important;
+    }
+
+    .water.full {
+      background: linear-gradient(to top, #0369a1, #0ea5e9) !important;
+      animation: wave-full 3s infinite;
+    }
+
+    @keyframes wave-critical {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+
+    @keyframes wave-low {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+    }
+
+    @keyframes wave-full {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-1px); }
+    }
+
     .water::before {
       content: '';
       position: absolute;
-      top: -6px;
-      left: -60%;
-      width: 220%;
-      height: 14px;
-      background: rgba(255, 255, 255, 0.25);
+      top: -10px;
+      left: -50%;
+      width: 200%;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.3);
       border-radius: 50%;
       animation: wave 3s infinite linear;
     }
 
     @keyframes wave {
-      0%   { transform: translateX(0); }
-      50%  { transform: translateX(-20%); }
-      100% { transform: translateX(-50%); }
+      0% { transform: translateX(0) translateZ(0) scaleY(1); }
+      50% { transform: translateX(-25%) translateZ(0) scaleY(0.8); }
+      100% { transform: translateX(-50%) translateZ(0) scaleY(1); }
     }
-
-    /* MARCADORES de nível (0% / 50% / 100%) */
-    .tank-marks {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 44px;
-      top: 38px;
-      bottom: 42px;
-      z-index: 3;
-      pointer-events: none;
-    }
-    .tank-mark {
-      position: absolute;
-      right: -28px;
-      font-size: 0.6rem;
-      color: var(--gray);
-      font-weight: 600;
-      white-space: nowrap;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .tank-mark::before {
-      content: '';
-      display: block;
-      width: 8px;
-      height: 1px;
-      background: var(--gray);
-    }
-    .tank-mark.top    { top: 0; }
-    .tank-mark.mid    { top: 50%; transform: translateY(-50%); }
-    .tank-mark.bottom { bottom: 0; }
 
     /* CAPACIDADE TOTAL */
     .tank-capacity {
       text-align: center;
-      margin-top: 4px;
-      padding: 4px 8px;
+      margin-top: 10px;
+      padding: 8px;
       background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
       border-radius: 8px;
       border: 2px solid var(--primary);
     }
 
     .tank-capacity-label {
-      font-size: 0.6rem;
+      font-size: 0.75rem;
       color: var(--gray);
       font-weight: 600;
       text-transform: uppercase;
-      margin-bottom: 1px;
+      margin-bottom: 3px;
     }
 
     .tank-capacity-value {
-      font-size: 0.85rem;
+      font-size: 1.2rem;
       font-weight: 700;
       color: var(--primary-dark);
     }
@@ -517,19 +494,19 @@
     /* CHART CONTAINER */
     .chart-container {
       background: white;
-      padding: 8px 12px;
+      padding: 20px;
       border-radius: 15px;
       box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
     }
 
     .chart-header {
       text-align: center;
-      margin-bottom: 4px;
+      margin-bottom: 15px;
     }
 
     .chart-header h2 {
       color: var(--primary-dark);
-      font-size: 0.9rem;
+      font-size: 1.3rem;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -537,29 +514,29 @@
     }
 
     #nivelChart {
-      max-height: 180px;
+      max-height: 300px;
     }
 
     /* HISTORY SECTION */
     .history-section {
       background: white;
-      padding: 8px 12px;
+      padding: 20px;
       border-radius: 15px;
       box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-      margin-bottom: 6px;
+      margin-bottom: 15px;
     }
 
     .history-header {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      margin-bottom: 4px;
+      gap: 10px;
+      margin-bottom: 15px;
     }
 
     .history-header h2 {
       color: var(--primary-dark);
-      font-size: 0.9rem;
+      font-size: 1.3rem;
     }
 
     .table-container {
@@ -569,7 +546,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.7rem;
+      font-size: 0.85rem;
     }
 
     thead {
@@ -578,14 +555,14 @@
     }
 
     th {
-      padding: 4px 6px;
+      padding: 10px;
       text-align: left;
       font-weight: 600;
       white-space: nowrap;
     }
 
     td {
-      padding: 4px 6px;
+      padding: 10px;
       border-bottom: 1px solid #e9ecef;
     }
 
@@ -624,7 +601,7 @@
     /* UPDATES SECTION */
     .updates-section {
       background: white;
-      padding: 6px 12px;
+      padding: 20px;
       border-radius: 15px;
       box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
     }
@@ -633,35 +610,35 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      margin-bottom: 4px;
+      gap: 10px;
+      margin-bottom: 15px;
     }
 
     .updates-header h2 {
       color: var(--primary-dark);
-      font-size: 0.9rem;
+      font-size: 1.3rem;
     }
 
     #updateHistory {
-      max-height: 80px;
+      max-height: 200px;
       overflow-y: auto;
     }
 
     .update-entry {
-      padding: 3px 8px;
-      margin-bottom: 3px;
+      padding: 8px 12px;
+      margin-bottom: 8px;
       background: #f8f9fa;
       border-left: 3px solid var(--primary);
       border-radius: 5px;
       display: flex;
       gap: 10px;
-      font-size: 0.65rem;
+      font-size: 0.85rem;
     }
 
     .update-time {
       color: var(--primary);
       font-weight: 600;
-      min-width: 55px;
+      min-width: 70px;
     }
 
     .update-text {
@@ -781,21 +758,8 @@
           <h2><i class="fas fa-tint"></i> Status da Caixa</h2>
         </div>
         
-        <div class="tank-wrapper">
-          <!-- Imagem da caixa d'água (fundo) -->
-          <img class="tank-image"
-               src="https://ik.imagekit.io/o7q7lmyva/Caixa-5000-frontal-sl-1024x762.png?updatedAt=1763608669534"
-               alt="Caixa d'água">
-          <!-- Barra de nível (frente) -->
-          <div class="tank">
-            <div class="water" id="waterLevel" style="height: 0%;">0%</div>
-          </div>
-          <!-- Marcadores de nível -->
-          <div class="tank-marks">
-            <div class="tank-mark top">100%</div>
-            <div class="tank-mark mid">50%</div>
-            <div class="tank-mark bottom">0%</div>
-          </div>
+        <div class="tank">
+          <div class="water" id="waterLevel" style="height: 0%;">0%</div>
         </div>
 
         <!-- CAPACIDADE TOTAL -->
@@ -807,7 +771,7 @@
         <!-- INFORMAÇÕES LADO A LADO -->
         <div class="info-grid">
           <div class="info-card" onclick="showDetails('volume')">
-            <div class="info-card-label">Volume Atual</div>
+            <div class="info-card-label"><i class="fas fa-tint"></i> Volume Atual</div>
             <div class="info-card-value">
               <span id="currentVolume">0</span>
               <span class="info-card-unit">L</span>
@@ -815,7 +779,7 @@
           </div>
           
           <div class="info-card" onclick="showDetails('distance')">
-            <div class="info-card-label">Distância</div>
+            <div class="info-card-label"><i class="fas fa-ruler-vertical"></i> Distância</div>
             <div class="info-card-value">
               <span id="currentDistance">0</span>
               <span class="info-card-unit">cm</span>
@@ -823,7 +787,7 @@
           </div>
           
           <div class="info-card" onclick="showDetails('level')">
-            <div class="info-card-label">Altura Água</div>
+            <div class="info-card-label"><i class="fas fa-arrows-alt-v"></i> Altura Água</div>
             <div class="info-card-value">
               <span id="currentLevel">0</span>
               <span class="info-card-unit">cm</span>
@@ -865,6 +829,9 @@
                 <th>Distância</th>
                 <th>Altura</th>
                 <th>Sinal LoRa</th>
+                <th>Uso 1h</th>
+                <th>Uso Semana</th>
+                <th>Uso Mês</th>
               </tr>
             </thead>
             <tbody id="historyBody"></tbody>
@@ -908,6 +875,31 @@
       config_volume_total: 0
     };
     let currentMode = "normal";
+    
+    // NOVO: Variável para rastrear status de conexão LoRa com delay
+    let loraDisconnectCount = 0;
+    const LORA_DISCONNECT_THRESHOLD = 3; // Precisa de 3 verificações consecutivas (15s) para considerar desconectado
+
+    // NOVA FUNÇÃO: Atualizar cor da barra de água baseada no percentual
+    function atualizarCorBarraAgua(percentage) {
+      const waterBar = document.getElementById('waterLevel');
+      
+      // Remove todas as classes de cor
+      waterBar.classList.remove('critical', 'low', 'medium', 'good', 'full');
+      
+      // Adiciona a classe apropriada baseada no percentual
+      if (percentage <= 10) {
+        waterBar.classList.add('critical');
+      } else if (percentage <= 25) {
+        waterBar.classList.add('low');
+      } else if (percentage <= 50) {
+        waterBar.classList.add('medium');
+      } else if (percentage <= 80) {
+        waterBar.classList.add('good');
+      } else {
+        waterBar.classList.add('full');
+      }
+    }
 
     // Carregar dados da API
     async function carregarDados() {
@@ -1012,9 +1004,19 @@
         currentStatus = 'receptor_disconnected';
       }
       
-      // Verificar se está aguardando LoRa
+      // Verificar se está aguardando LoRa COM DELAY
+      // NOVO: Lógica com delay para transmissor LoRa desconectado
       if (data.lora_connected === false && data.receptor_connected === true) {
-        currentStatus = 'waiting_lora';
+        loraDisconnectCount++;
+        console.log(`⚠️ LoRa desconectado - Contagem: ${loraDisconnectCount}/${LORA_DISCONNECT_THRESHOLD}`);
+        
+        // Só muda para waiting_lora após threshold
+        if (loraDisconnectCount >= LORA_DISCONNECT_THRESHOLD) {
+          currentStatus = 'waiting_lora';
+        }
+      } else {
+        // Reset o contador se reconectar
+        loraDisconnectCount = 0;
       }
       
       // Verificar status do receptor
@@ -1087,6 +1089,9 @@
       const waterElement = document.getElementById('waterLevel');
       waterElement.style.height = `${percentage}%`;
       waterElement.textContent = `${percentage}%`;
+      
+      // NOVO: Atualizar cor da barra baseada no percentual
+      atualizarCorBarraAgua(percentage);
       
       // Atualizar informações
       document.getElementById('currentVolume').textContent = data.liters >= 0 ? data.liters : '---';
@@ -1272,6 +1277,11 @@
           else signalQualityClass = "bad";
         }
         
+        // Calcular displays de consumo
+        const displayUso1h = item.uso_1h !== null && item.uso_1h !== undefined ? `${item.uso_1h} L` : "---";
+        const displayUsoSemana = item.uso_semana !== null && item.uso_semana !== undefined ? `${item.uso_semana} L` : "---";
+        const displayUsoMes = item.uso_mes !== null && item.uso_mes !== undefined ? `${item.uso_mes} L` : "---";
+        
         row.innerHTML = `
           <td>${formattedDate}</td>
           <td>${item.device || 'ESP32'}</td>
@@ -1281,6 +1291,9 @@
           <td>${displayDistance}</td>
           <td>${displayLevel}</td>
           <td><span class="signal-quality ${signalQualityClass}">${signalQualityText}</span></td>
+          <td>${displayUso1h}</td>
+          <td>${displayUsoSemana}</td>
+          <td>${displayUsoMes}</td>
         `;
         
         if (historyBody) historyBody.appendChild(row);
