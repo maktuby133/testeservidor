@@ -315,32 +315,40 @@ app.post("/api/lora", authMiddleware, (req, res) => {
   if (isHeartbeat || isNoDataPacket) {
     console.log("📭 Receptor online, aguardando LoRa");
     
-    // Não atualizar sinal LoRa em heartbeats sem dados
-    const waitingRecord = {
-      device: device || "RECEPTOR_CASA",
-      distance: -1,
-      level: -1,
-      percentage: -1,
-      liters: -1,
-      sensor_ok: false,
-      timestamp: new Date().toISOString(),
-      status: "waiting_lora",
-      lora_signal: {
-        rssi: null,
-        snr: null,
-        quality: 0
-      }
-    };
+    // ✅ CORREÇÃO: NÃO adicionar ao histórico se houver dados válidos recentes
+    const hasRecentData = historico.length > 0 && 
+      historico[historico.length - 1].status === "normal" &&
+      (Date.now() - new Date(historico[historico.length - 1].timestamp).getTime()) < 60000;
     
-    if (historico.length === 0 || historico[historico.length - 1].status !== "waiting_lora") {
-      historico.push(waitingRecord);
-      if (historico.length > 500) historico.shift();
+    // Só adiciona registro de waiting_lora se NÃO houver dados recentes
+    if (!hasRecentData) {
+      const waitingRecord = {
+        device: device || "RECEPTOR_CASA",
+        distance: -1,
+        level: -1,
+        percentage: -1,
+        liters: -1,
+        sensor_ok: false,
+        timestamp: new Date().toISOString(),
+        status: "waiting_lora",
+        lora_signal: {
+          rssi: null,
+          snr: null,
+          quality: 0
+        }
+      };
+      
+      // Só adiciona se o último registro também não for waiting_lora
+      if (historico.length === 0 || historico[historico.length - 1].status !== "waiting_lora") {
+        historico.push(waitingRecord);
+        if (historico.length > 500) historico.shift();
+      }
     }
     
     return res.json({ 
       success: true, 
-      message: "Aguardando dados LoRa",
-      status: "waiting_lora"
+      message: hasRecentData ? "Dados recentes disponíveis" : "Aguardando dados LoRa",
+      status: hasRecentData ? "normal" : "waiting_lora"
     });
   }
 
@@ -402,6 +410,12 @@ app.get("/api/lora", (req, res) => {
   let responseData = null;
   
   // ====== LÓGICA DE DECISÃO DO MODO DE EXIBIÇÃO ======
+  
+  // ✅ Verificar se há dados válidos recentes (menos de 2 minutos)
+  const hasRecentValidData = historico.length > 0 && 
+    historico[historico.length - 1].status === "normal" &&
+    (Date.now() - new Date(historico[historico.length - 1].timestamp).getTime()) < 120000; // 2 minutos
+  
   if (!systemStatus.receptor.connected) {
     displayMode = "receptor_disconnected";
     responseData = criarRespostaStatus("receptor_disconnected");
@@ -421,7 +435,8 @@ app.get("/api/lora", (req, res) => {
         altura_caixa: caixaConfig.altura
       }
     };
-  } else if (!systemStatus.lora.connected || systemStatus.lora.waitingData) {
+  } else if ((!systemStatus.lora.connected || systemStatus.lora.waitingData) && !hasRecentValidData) {
+    // ✅ Só mostra waiting_lora se NÃO houver dados válidos recentes
     displayMode = "waiting_lora";
     responseData = criarRespostaStatus("waiting_lora");
   } else if (historico.length > 0) {
@@ -431,7 +446,7 @@ app.get("/api/lora", (req, res) => {
       ...lastReading,
       display_mode: "normal",
       receptor_connected: true,
-      lora_connected: true,
+      lora_connected: true, // ✅ Marca como conectado se há dados válidos
       wifi_signal: systemStatus.receptor.wifiSignal,
       config_applied: {
         volume_total: caixaConfig.volumeTotal,
@@ -444,7 +459,32 @@ app.get("/api/lora", (req, res) => {
   }
 
   // ====== PREPARAR HISTÓRICO COM CÁLCULO DE CONSUMO ======
-  const historicoParaDashboard = historico.slice(-100).map((item, index, array) => {
+  // ✅ Filtrar registros waiting_lora redundantes (quando há dados válidos próximos)
+  const historicoFiltrado = historico.filter((item, index, array) => {
+    // Manter todos os registros normais e de erro
+    if (item.status === "normal" || item.status === "sensor_error" || item.status === "receptor_disconnected") {
+      return true;
+    }
+    
+    // Para registros waiting_lora, verificar se há dados normais recentes
+    if (item.status === "waiting_lora") {
+      // Procurar por registros normais nos próximos 5 minutos
+      const itemTime = new Date(item.timestamp).getTime();
+      const hasNormalAfter = array.some((other, otherIndex) => {
+        if (otherIndex <= index) return false; // Só olhar registros posteriores
+        const otherTime = new Date(other.timestamp).getTime();
+        const timeDiff = otherTime - itemTime;
+        return other.status === "normal" && timeDiff < 300000; // 5 minutos
+      });
+      
+      // Se há registro normal logo depois, não mostrar o waiting_lora
+      return !hasNormalAfter;
+    }
+    
+    return true;
+  });
+  
+  const historicoParaDashboard = historicoFiltrado.slice(-100).map((item, index, array) => {
     const consumo = calcularConsumo(historico.indexOf(item));
     return {
       ...item,
