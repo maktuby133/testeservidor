@@ -185,13 +185,6 @@
       font-weight: bold;
       animation: blink 1s infinite;
     }
-    
-    .lora-status.connected { color: var(--success); }
-    .lora-status.disconnected { 
-      color: var(--danger); 
-      font-weight: bold;
-      animation: blink 1s infinite;
-    }
 
     .sensor-status.ok { color: var(--success); }
     .sensor-status.error { 
@@ -672,7 +665,7 @@
     <!-- ALERTS -->
     <div id="alertContainer"></div>
 
-    <!-- STATUS PANEL -->
+    <!-- STATUS PANEL (REMOVIDOS: LoRa Conectado e Capacidade) -->
     <div class="status-panel">
       <div class="status-item">
         <span class="status-label">📡 API</span>
@@ -685,18 +678,8 @@
       </div>
       
       <div class="status-item">
-        <span class="status-label">📻 LoRa</span>
-        <span id="loraStatus" class="status-value lora-status">--</span>
-      </div>
-      
-      <div class="status-item">
         <span class="status-label">📏 Sensor</span>
         <span id="sensorStatus" class="status-value sensor-status">--</span>
-      </div>
-      
-      <div class="status-item">
-        <span class="status-label">🔋 Capacidade</span>
-        <span id="tankCapacity" class="status-value">-- L</span>
       </div>
       
       <div class="status-item">
@@ -798,7 +781,6 @@
               <th>Litros</th>
               <th>Distância</th>
               <th>Altura</th>
-              <th>RSSI</th>
               <th>Qualidade</th>
             </tr>
           </thead>
@@ -828,6 +810,8 @@
     let chart = null;
     let updateHistoryData = [];
     const MAX_HISTORY_ITEMS = 5;
+    let currentData = {};
+    let currentMode = "normal";
 
     // Carregar dados da API
     async function carregarDados() {
@@ -839,13 +823,34 @@
         }
         
         const data = await response.json();
+        console.log('📊 Dados recebidos:', data);
         
         // Atualizar status da API
         document.getElementById('apiStatus').textContent = 'Conectado';
         document.getElementById('apiStatus').className = 'status-value api-status connected';
         
-        // Processar dados recebidos
-        atualizarInterface(data);
+        // Atualizar dados atuais conforme estrutura do código base
+        currentData = {
+          percentage: parseInt(data.percentage) || 0,
+          liters: parseInt(data.liters) || 0,
+          distance: parseFloat(data.distance) || 0,
+          level: parseInt(data.level) || 0,
+          sensor_ok: data.sensor_ok !== false,
+          device: data.device || "ESP32",
+          timestamp: data.timestamp,
+          display_mode: data.display_mode || "normal",
+          status: data.status || "normal",
+          message: data.message || "",
+          sensor_error: data.sensor_error || false,
+          receptor_connected: data.receptor_connected,
+          lora_connected: data.lora_connected,
+          lora_signal: data.lora_signal || { rssi: -70, snr: 0, quality: 0 }
+        };
+        
+        currentMode = data.display_mode || "normal";
+        
+        // Processar dados
+        atualizarInterface();
         
         // Atualizar histórico
         if (data.history && Array.isArray(data.history)) {
@@ -856,7 +861,6 @@
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
         
-        // Atualizar status da API como desconectado
         document.getElementById('apiStatus').textContent = 'Desconectado';
         document.getElementById('apiStatus').className = 'status-value api-status disconnected';
         
@@ -866,22 +870,17 @@
     }
 
     // Atualizar interface principal
-    function atualizarInterface(data) {
-      // Atualizar timestamp do sistema
+    function atualizarInterface() {
       const now = new Date();
       document.getElementById('lastSystemUpdate').textContent = now.toLocaleTimeString('pt-BR');
       
-      // Verificar conexão do receptor
       const receptorWarning = document.getElementById('receptorWarning');
       const loraWarning = document.getElementById('loraWarning');
       
       // Status do Receptor
-      let receptorConnected = data.receptor_status?.connected || false;
-      let receptorStatusText = receptorConnected ? 'Conectado' : 'Desconectado';
-      let receptorStatusClass = receptorConnected ? 'receptor-status connected' : 'receptor-status disconnected';
-      
-      document.getElementById('receptorStatus').textContent = receptorStatusText;
-      document.getElementById('receptorStatus').className = `status-value ${receptorStatusClass}`;
+      let receptorConnected = currentData.receptor_connected !== false;
+      document.getElementById('receptorStatus').textContent = receptorConnected ? 'Conectado' : 'Desconectado';
+      document.getElementById('receptorStatus').className = `status-value receptor-status ${receptorConnected ? 'connected' : 'disconnected'}`;
       
       if (!receptorConnected) {
         receptorWarning.classList.add('show');
@@ -892,15 +891,9 @@
         receptorWarning.classList.remove('show');
       }
       
-      // Status LoRa
-      let loraConnected = data.lora_connection_status?.connected || false;
-      let loraStatusText = loraConnected ? 'Conectado' : 'Aguardando';
-      let loraStatusClass = loraConnected ? 'lora-status connected' : 'lora-status disconnected';
-      
-      document.getElementById('loraStatus').textContent = loraStatusText;
-      document.getElementById('loraStatus').className = `status-value ${loraStatusClass}`;
-      
-      if (!loraConnected) {
+      // Verificar LoRa
+      let loraConnected = currentData.lora_connected !== false;
+      if (!loraConnected || currentMode === "waiting_lora") {
         loraWarning.classList.add('show');
         adicionarAtualizacao('📡 Aguardando transmissão LoRa');
       } else {
@@ -908,26 +901,18 @@
       }
       
       // Status do Sensor
-      let sensorHasError = data.sensor_status?.has_error || false;
-      let sensorStatusText = sensorHasError ? 'Erro' : 'OK';
-      let sensorStatusClass = sensorHasError ? 'sensor-status error' : 'sensor-status ok';
+      let sensorHasError = currentData.sensor_error || !currentData.sensor_ok || 
+                          (currentData.distance === -1 && currentData.level === -1 && 
+                           currentData.percentage === -1 && currentData.liters === -1);
       
-      document.getElementById('sensorStatus').textContent = sensorStatusText;
-      document.getElementById('sensorStatus').className = `status-value ${sensorStatusClass}`;
-      
-      // Capacidade da caixa
-      let tankCapacityValue = '-- L';
-      if (data.tank_config?.volume_total) {
-        tankCapacityValue = `${data.tank_config.volume_total} L`;
-      }
-      document.getElementById('tankCapacity').textContent = tankCapacityValue;
+      document.getElementById('sensorStatus').textContent = sensorHasError ? 'Erro' : 'OK';
+      document.getElementById('sensorStatus').className = `status-value sensor-status ${sensorHasError ? 'error' : 'ok'}`;
       
       // Dados da água
-      const waterData = data.water_data || {};
-      const percentage = waterData.percentage >= 0 ? waterData.percentage : 0;
-      const liters = waterData.liters >= 0 ? waterData.liters : 0;
-      const distance = waterData.distance >= 0 ? waterData.distance.toFixed(1) : '--';
-      const level = waterData.level >= 0 ? waterData.level : 0;
+      const percentage = Math.max(0, Math.min(100, currentData.percentage));
+      const liters = currentData.liters >= 0 ? currentData.liters : 0;
+      const distance = currentData.distance >= 0 ? currentData.distance.toFixed(1) : '--';
+      const level = currentData.level >= 0 ? currentData.level : 0;
       
       document.getElementById('waterFill').style.height = `${percentage}%`;
       document.getElementById('percentageText').textContent = `${percentage}%`;
@@ -936,9 +921,9 @@
       document.getElementById('waterLevel').textContent = `${level} cm`;
       
       // Última atualização
-      if (data.timestamp) {
+      if (currentData.timestamp) {
         try {
-          const date = new Date(data.timestamp);
+          const date = new Date(currentData.timestamp);
           if (!isNaN(date.getTime())) {
             document.getElementById('lastUpdate').textContent = date.toLocaleTimeString('pt-BR');
           }
@@ -948,11 +933,10 @@
       }
       
       // Atualizar sinal LoRa
-      const loraSignal = data.lora_connection_status?.signal_quality || 0;
-      atualizarSinalLora({ quality: loraSignal });
+      atualizarSinalLora(currentData.lora_signal);
       
       // Adicionar atualização ao histórico do sistema
-      if (loraConnected && !sensorHasError) {
+      if (currentMode === "normal" && !sensorHasError) {
         adicionarAtualizacao(`✅ Leitura OK: ${percentage}% (${liters}L)`);
       } else if (sensorHasError) {
         adicionarAtualizacao('⚠️ Erro no sensor ultrassônico');
@@ -964,12 +948,13 @@
       const qualityText = document.getElementById('signalQuality');
       const bars = document.querySelectorAll('.signal-bar-item');
       
-      if (!loraSignal || loraSignal.quality === null || loraSignal.quality === 0) {
+      const quality = loraSignal?.quality || 0;
+      
+      if (quality === 0) {
         qualityText.textContent = '0%';
         qualityText.className = 'signal-quality zero';
         bars.forEach(bar => bar.classList.remove('active'));
       } else {
-        const quality = loraSignal.quality;
         qualityText.textContent = `${quality}%`;
         
         let activeClass = 'zero';
@@ -1109,22 +1094,15 @@
         
         let signalQualityText = "0%";
         let signalQualityClass = "zero";
-        let rssiText = "0";
         
-        if (item.lora_signal) {
-          if (item.lora_signal.quality !== null && item.lora_signal.quality > 0) {
-            signalQualityText = `${item.lora_signal.quality}%`;
-            
-            if (item.lora_signal.quality >= 80) signalQualityClass = "excellent";
-            else if (item.lora_signal.quality >= 60) signalQualityClass = "good";
-            else if (item.lora_signal.quality >= 40) signalQualityClass = "fair";
-            else if (item.lora_signal.quality >= 20) signalQualityClass = "poor";
-            else signalQualityClass = "bad";
-          }
+        if (item.lora_signal && item.lora_signal.quality !== null && item.lora_signal.quality > 0) {
+          signalQualityText = `${item.lora_signal.quality}%`;
           
-          if (item.lora_signal.rssi) {
-            rssiText = item.lora_signal.rssi.toString();
-          }
+          if (item.lora_signal.quality >= 80) signalQualityClass = "excellent";
+          else if (item.lora_signal.quality >= 60) signalQualityClass = "good";
+          else if (item.lora_signal.quality >= 40) signalQualityClass = "fair";
+          else if (item.lora_signal.quality >= 20) signalQualityClass = "poor";
+          else signalQualityClass = "bad";
         }
         
         row.innerHTML = `
@@ -1135,7 +1113,6 @@
           <td>${displayLiters}</td>
           <td>${displayDistance}</td>
           <td>${displayLevel}</td>
-          <td>${rssiText}</td>
           <td><span class="signal-quality ${signalQualityClass}">${signalQualityText}</span></td>
         `;
         
@@ -1247,8 +1224,6 @@
     // Iniciar
     carregarDados();
     setInterval(carregarDados, 5000);
-    
-    // Adicionar mensagem inicial
     adicionarAtualizacao('🚀 Sistema iniciado');
   </script>
 </body>
