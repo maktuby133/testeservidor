@@ -813,6 +813,7 @@
     let chart = null;
     let updateHistoryData = [];
     const MAX_HISTORY_ITEMS = 10;
+    let savedCapacityTotal = 0; // GUARDAR CAPACIDADE PARA NÃO PERDER
     let currentData = {
       percentage: 0,
       liters: 0,
@@ -859,18 +860,23 @@
         console.log('🗄️ Capacidade total recebida da API:', data.config_volume_total);
         console.log('🗄️ Tipo:', typeof data.config_volume_total);
         
-        // Atualizar capacidade total CORRETAMENTE
+        // GUARDAR capacidade total quando receber (não perder nos heartbeats)
+        if (data.config_volume_total && data.config_volume_total > 0) {
+          savedCapacityTotal = parseInt(data.config_volume_total);
+          console.log('✅ Capacidade total SALVA:', savedCapacityTotal, 'L');
+        }
+        
+        // Atualizar capacidade total no display
         const totalCapacityElement = document.getElementById('totalCapacity');
         console.log('📍 Elemento totalCapacity encontrado:', totalCapacityElement !== null);
         
         if (totalCapacityElement) {
-          if (data.config_volume_total) {
-            const capacidade = parseInt(data.config_volume_total);
-            totalCapacityElement.textContent = `${capacidade} L`;
-            console.log('✅ Capacidade total EXIBIDA:', capacidade, 'L');
+          if (savedCapacityTotal > 0) {
+            totalCapacityElement.textContent = `${savedCapacityTotal} L`;
+            console.log('✅ Capacidade total EXIBIDA:', savedCapacityTotal, 'L');
           } else {
             totalCapacityElement.textContent = '-- L';
-            console.log('⚠️ Capacidade total não disponível na API');
+            console.log('⚠️ Aguardando capacidade total da API...');
           }
         } else {
           console.error('❌ ERRO: Elemento totalCapacity não encontrado no DOM!');
@@ -1309,7 +1315,7 @@
       const messages = {
         distance: `Distância atual: ${currentData.distance.toFixed(1)} cm\nDistância do sensor ultrassônico até a superfície da água.`,
         level: `Nível atual: ${currentData.level} cm\nAltura da coluna de água na caixa.`,
-        volume: `Volume disponível: ${currentData.liters} L\nQuantidade de água disponível para uso.\n\nCapacidade total: ${currentData.config_volume_total} L`,
+        volume: `Volume disponível: ${currentData.liters} L\nQuantidade de água disponível para uso.\n\nCapacidade total: ${savedCapacityTotal > 0 ? savedCapacityTotal + ' L' : 'Não disponível'}`,
         status: `Status: ${currentData.sensor_ok ? 'OK ✅' : 'ERRO ❌'}\nSinal LoRa: ${currentData.lora_signal.quality}%\n${currentData.sensor_ok ? 'Sensor funcionando normalmente.' : 'Problema detectado no sensor.'}`
       };
       
@@ -1321,7 +1327,7 @@
       console.log('=== 🐛 MODO DEBUG ===');
       console.log('Dados atuais:', currentData);
       console.log('Modo atual:', currentMode);
-      console.log('Capacidade total:', currentData.config_volume_total, 'L');
+      console.log('Capacidade total SALVA:', savedCapacityTotal, 'L');
       console.log('Sinal LoRa:', currentData.lora_signal.quality + '%');
       console.log('Tempo desde última atualização:', document.getElementById('lastUpdate').textContent);
       
@@ -1336,7 +1342,7 @@
           console.log('Status LoRa:', data.lora_connected);
           console.log('Qualidade Sinal LoRa:', data.lora_signal?.quality + '%');
           console.log('Status Sensor:', data.sensor_ok);
-          console.log('Config Volume Total:', data.config_volume_total);
+          console.log('Config Volume Total na API:', data.config_volume_total);
         })
         .catch(err => console.error('❌ Erro na requisição:', err));
       
