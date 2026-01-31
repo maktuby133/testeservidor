@@ -179,8 +179,13 @@ function checkSystemStatus() {
 
   // ====== REGRA 2: STATUS LoRa ======
   if (systemStatus.receptor.connected) {
-    if (timeSinceLoRa > LORA_TIMEOUT_MS) {
-      // AGUARDANDO LoRa - ZERAR SINAL
+    // ✅ CORREÇÃO: Verificar se há dados válidos recentes no histórico
+    const hasRecentValidData = historico.length > 0 && 
+      historico[historico.length - 1].status === "normal" &&
+      (Date.now() - new Date(historico[historico.length - 1].timestamp).getTime()) < 60000; // menos de 60s
+    
+    if (timeSinceLoRa > LORA_TIMEOUT_MS && !hasRecentValidData) {
+      // AGUARDANDO LoRa - ZERAR SINAL (apenas se não houver dados válidos recentes)
       systemStatus.lora.connected = false;
       systemStatus.lora.waitingData = true;
       systemStatus.lora.description = "Aguardando transmissão LoRa";
