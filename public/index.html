@@ -379,8 +379,8 @@
     /* TANK WRAPPER — centra tudo */
     .tank-wrapper {
       position: relative;
-      width: 340px;
-      height: 380px;
+      width: 400px;
+      height: 440px;
       margin: 20px auto;
       display: flex;
       align-items: center;
@@ -390,9 +390,10 @@
     /* IMAGEM DA CAIXA — camada de trás */
     .tank-image {
       position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
+      top: -30px;
+      left: -20px;
+      width: 140%;
+      height: 140%;
       object-fit: contain;
       object-position: center;
       z-index: 1;
@@ -402,13 +403,13 @@
     /* BARRA DE NÍVEL — estreita, sobre a imagem */
     .tank {
       position: absolute;
-      /* centra horizontalmente na imagem */
-      left: 50%;
+      /* posição horizontal da barra */
+      left: 38%;
       transform: translateX(-50%);
-      width: 88px;
+      width: 58px;
       /* altura máxima da barra (a água sobe até aqui) */
-      top: 22px;
-      bottom: 48px;
+      top: 95px;
+      bottom: 100px;
       border-radius: 10px;
       overflow: hidden;
       z-index: 2;
@@ -458,11 +459,11 @@
     /* MARCADORES de nível (0% / 50% / 100%) */
     .tank-marks {
       position: absolute;
-      left: 50%;
+      left: 38%;
       transform: translateX(-50%);
-      width: 88px;
-      top: 22px;
-      bottom: 48px;
+      width: 58px;
+      top: 95px;
+      bottom: 100px;
       z-index: 3;
       pointer-events: none;
     }
