@@ -376,51 +376,117 @@
     }
 
     /* TANK VISUAL */
-    .tank {
+    /* TANK WRAPPER — centra tudo */
+    .tank-wrapper {
       position: relative;
-      width: 200px;
+      width: 260px;
       height: 300px;
       margin: 20px auto;
-      border: 4px solid var(--primary-dark);
-      border-radius: 15px;
-      background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
-      overflow: hidden;
-      box-shadow: inset 0 0 30px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
+    /* IMAGEM DA CAIXA — camada de trás */
+    .tank-image {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* BARRA DE NÍVEL — estreita, sobre a imagem */
+    .tank {
+      position: absolute;
+      /* centra horizontalmente na imagem */
+      left: 50%;
+      transform: translateX(-50%);
+      width: 68px;
+      /* altura máxima da barra (a água sobe até aqui) */
+      top: 18px;
+      bottom: 38px;
+      border-radius: 10px;
+      overflow: hidden;
+      z-index: 2;
+      /* fundo semi-transparente para ver a imagem por trás */
+      background: rgba(20, 40, 60, 0.35);
+      backdrop-filter: blur(1px);
+      box-shadow: 0 0 12px rgba(0,0,0,0.25), inset 0 0 8px rgba(0,0,0,0.15);
+    }
+
+    /* ÁGUA dentro da barra */
     .water {
       position: absolute;
       bottom: 0;
       width: 100%;
-      background: linear-gradient(to top, var(--water-deep) 0%, var(--water-blue) 100%);
+      background: linear-gradient(to top, var(--water-deep) 0%, var(--water-blue) 60%, rgba(72,202,228,0.7) 100%);
       transition: height 0.8s ease;
       display: flex;
       align-items: center;
       justify-content: center;
       color: white;
       font-weight: 700;
-      font-size: 1.8rem;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-      min-height: 40px;
+      font-size: 1.1rem;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+      min-height: 30px;
+      border-radius: 0 0 8px 8px;
     }
 
+    /* ONDULAÇÃO no topo da água */
     .water::before {
       content: '';
       position: absolute;
-      top: -10px;
-      left: -50%;
-      width: 200%;
-      height: 20px;
-      background: rgba(255, 255, 255, 0.3);
+      top: -6px;
+      left: -60%;
+      width: 220%;
+      height: 14px;
+      background: rgba(255, 255, 255, 0.25);
       border-radius: 50%;
       animation: wave 3s infinite linear;
     }
 
     @keyframes wave {
-      0% { transform: translateX(0) translateZ(0) scaleY(1); }
-      50% { transform: translateX(-25%) translateZ(0) scaleY(0.8); }
-      100% { transform: translateX(-50%) translateZ(0) scaleY(1); }
+      0%   { transform: translateX(0); }
+      50%  { transform: translateX(-20%); }
+      100% { transform: translateX(-50%); }
     }
+
+    /* MARCADORES de nível (0% / 50% / 100%) */
+    .tank-marks {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 68px;
+      top: 18px;
+      bottom: 38px;
+      z-index: 3;
+      pointer-events: none;
+    }
+    .tank-mark {
+      position: absolute;
+      right: -28px;
+      font-size: 0.6rem;
+      color: var(--gray);
+      font-weight: 600;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .tank-mark::before {
+      content: '';
+      display: block;
+      width: 8px;
+      height: 1px;
+      background: var(--gray);
+    }
+    .tank-mark.top    { top: 0; }
+    .tank-mark.mid    { top: 50%; transform: translateY(-50%); }
+    .tank-mark.bottom { bottom: 0; }
 
     /* CAPACIDADE TOTAL */
     .tank-capacity {
@@ -713,8 +779,21 @@
           <h2><i class="fas fa-tint"></i> Status da Caixa</h2>
         </div>
         
-        <div class="tank">
-          <div class="water" id="waterLevel" style="height: 0%;">0%</div>
+        <div class="tank-wrapper">
+          <!-- Imagem da caixa d'água (fundo) -->
+          <img class="tank-image"
+               src="https://ik.imagekit.io/o7q7lmyva/Caixa-5000-frontal-sl-1024x762.png?updatedAt=1763608669534"
+               alt="Caixa d'água">
+          <!-- Barra de nível (frente) -->
+          <div class="tank">
+            <div class="water" id="waterLevel" style="height: 0%;">0%</div>
+          </div>
+          <!-- Marcadores de nível -->
+          <div class="tank-marks">
+            <div class="tank-mark top">100%</div>
+            <div class="tank-mark mid">50%</div>
+            <div class="tank-mark bottom">0%</div>
+          </div>
         </div>
 
         <!-- CAPACIDADE TOTAL -->
@@ -784,9 +863,6 @@
                 <th>Distância</th>
                 <th>Altura</th>
                 <th>Sinal LoRa</th>
-                <th>Uso 1h</th>
-                <th>Uso Semana</th>
-                <th>Uso Mês</th>
               </tr>
             </thead>
             <tbody id="historyBody"></tbody>
@@ -1194,11 +1270,6 @@
           else signalQualityClass = "bad";
         }
         
-        // Calcular displays de consumo
-        const displayUso1h = item.uso_1h !== null && item.uso_1h !== undefined ? `${item.uso_1h} L` : "---";
-        const displayUsoSemana = item.uso_semana !== null && item.uso_semana !== undefined ? `${item.uso_semana} L` : "---";
-        const displayUsoMes = item.uso_mes !== null && item.uso_mes !== undefined ? `${item.uso_mes} L` : "---";
-        
         row.innerHTML = `
           <td>${formattedDate}</td>
           <td>${item.device || 'ESP32'}</td>
@@ -1208,9 +1279,6 @@
           <td>${displayDistance}</td>
           <td>${displayLevel}</td>
           <td><span class="signal-quality ${signalQualityClass}">${signalQualityText}</span></td>
-          <td>${displayUso1h}</td>
-          <td>${displayUsoSemana}</td>
-          <td>${displayUsoMes}</td>
         `;
         
         if (historyBody) historyBody.appendChild(row);
