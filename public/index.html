@@ -784,6 +784,9 @@
                 <th>Distância</th>
                 <th>Altura</th>
                 <th>Sinal LoRa</th>
+                <th>Uso 1h</th>
+                <th>Uso Semana</th>
+                <th>Uso Mês</th>
               </tr>
             </thead>
             <tbody id="historyBody"></tbody>
@@ -1191,6 +1194,11 @@
           else signalQualityClass = "bad";
         }
         
+        // Calcular displays de consumo
+        const displayUso1h = item.uso_1h !== null && item.uso_1h !== undefined ? `${item.uso_1h} L` : "---";
+        const displayUsoSemana = item.uso_semana !== null && item.uso_semana !== undefined ? `${item.uso_semana} L` : "---";
+        const displayUsoMes = item.uso_mes !== null && item.uso_mes !== undefined ? `${item.uso_mes} L` : "---";
+        
         row.innerHTML = `
           <td>${formattedDate}</td>
           <td>${item.device || 'ESP32'}</td>
@@ -1200,6 +1208,9 @@
           <td>${displayDistance}</td>
           <td>${displayLevel}</td>
           <td><span class="signal-quality ${signalQualityClass}">${signalQualityText}</span></td>
+          <td>${displayUso1h}</td>
+          <td>${displayUsoSemana}</td>
+          <td>${displayUsoMes}</td>
         `;
         
         if (historyBody) historyBody.appendChild(row);
