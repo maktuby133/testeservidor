@@ -47,11 +47,11 @@
     /* HEADER - REDUZIDO */
     .header {
       text-align: center;
-      margin-bottom: 10px;
-      padding: 10px 15px;
+      margin-bottom: 8px;
+      padding: 8px 12px;
       background: white;
-      border-radius: 15px;
-      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
       position: relative;
       overflow: hidden;
     }
@@ -68,12 +68,12 @@
 
     .header h1 {
       color: var(--primary-dark);
-      font-size: 1.6rem;
+      font-size: 1.4rem;
       margin-bottom: 2px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     .header h1 i {
@@ -88,19 +88,19 @@
 
     .subtitle {
       color: var(--gray);
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       font-weight: 400;
     }
 
     /* CONNECTION WARNING BANNER */
     .connection-warning {
       display: none;
-      padding: 12px;
-      margin-bottom: 12px;
-      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
       text-align: center;
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       animation: slideInDown 0.5s ease;
     }
 
@@ -140,21 +140,21 @@
     .status-panel {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 8px;
-      margin-bottom: 12px;
+      gap: 6px;
+      margin-bottom: 10px;
     }
 
     .status-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
+      gap: 6px;
       background: white;
-      padding: 8px 12px;
-      border-radius: 10px;
-      box-shadow: 0 3px 12px rgba(0,0,0,0.06);
+      padding: 6px 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
       transition: all 0.3s ease;
-      min-height: 45px;
+      min-height: 38px;
     }
 
     .status-item:hover {
@@ -165,14 +165,14 @@
     .status-label {
       font-weight: 600;
       color: var(--primary-dark);
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       white-space: nowrap;
     }
 
     .status-value {
       color: var(--dark);
       font-weight: 500;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       text-align: right;
       font-family: 'Poppins', sans-serif;
     }
@@ -211,11 +211,11 @@
       display: flex;
       align-items: flex-end;
       gap: 2px;
-      height: 18px;
+      height: 14px;
     }
     
     .signal-bar-item {
-      width: 6px;
+      width: 5px;
       background: #e9ecef;
       border-radius: 2px;
       transition: all 0.3s ease;
@@ -225,11 +225,11 @@
       background: var(--primary) !important;
     }
     
-    .signal-bar-item:nth-child(1) { height: 4px; }
-    .signal-bar-item:nth-child(2) { height: 7px; }
-    .signal-bar-item:nth-child(3) { height: 10px; }
-    .signal-bar-item:nth-child(4) { height: 13px; }
-    .signal-bar-item:nth-child(5) { height: 16px; }
+    .signal-bar-item:nth-child(1) { height: 3px; }
+    .signal-bar-item:nth-child(2) { height: 5px; }
+    .signal-bar-item:nth-child(3) { height: 8px; }
+    .signal-bar-item:nth-child(4) { height: 11px; }
+    .signal-bar-item:nth-child(5) { height: 14px; }
     
     .signal-info {
       display: flex;
@@ -240,8 +240,8 @@
     
     .signal-quality {
       font-weight: 600;
-      margin-top: 2px;
-      font-size: 0.85rem !important;
+      margin-top: 0px;
+      font-size: 0.75rem !important;
       font-family: 'Poppins', sans-serif !important;
     }
     
@@ -693,8 +693,10 @@
             <div class="signal-bar-item"></div>
             <div class="signal-bar-item"></div>
           </div>
-          <span class="signal-quality zero" id="signalQuality">0%</span>
-          <span class="signal-dbm" id="signalDbm" style="font-size: 0.7rem; color: var(--gray); margin-top: 2px;">-- dBm</span>
+          <div style="display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+            <span class="signal-quality zero" id="signalQuality">0%</span>
+            <span class="signal-dbm" id="signalDbm" style="font-size: 0.7rem; color: var(--gray);">-- dBm</span>
+          </div>
         </div>
       </div>
       <div class="status-item">
