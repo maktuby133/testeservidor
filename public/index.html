@@ -2,7 +2,8 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="description" content="Monitor Inteligente de Caixa d'Água com comunicação LoRa">
   <title>🌊 Monitor Inteligente de Caixa d'Água</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -29,17 +30,23 @@
       box-sizing: border-box;
     }
 
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
       font-family: 'Poppins', sans-serif;
       background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
       min-height: 100vh;
       padding: 15px;
       color: var(--dark);
+      line-height: 1.5;
     }
 
     .container {
       max-width: 1400px;
       margin: 0 auto;
+      width: 100%;
     }
 
     /* HEADER */
@@ -72,6 +79,7 @@
       align-items: center;
       justify-content: center;
       gap: 10px;
+      flex-wrap: wrap;
     }
 
     .header h1 i {
@@ -613,12 +621,15 @@
     .history-table-container {
       overflow-x: auto;
       margin-top: 15px;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
     }
 
     .history-table {
       width: 100%;
       border-collapse: collapse;
       font-size: 0.85rem;
+      min-width: 700px;
     }
 
     .history-table th {
@@ -629,6 +640,8 @@
       font-weight: 600;
       font-size: 0.8rem;
       white-space: nowrap;
+      position: sticky;
+      top: 0;
     }
 
     .history-table th:first-child {
@@ -655,6 +668,7 @@
       font-size: 0.75rem;
       font-weight: 600;
       white-space: nowrap;
+      display: inline-block;
     }
 
     .status-badge.normal {
@@ -707,11 +721,13 @@
       font-weight: 600;
       display: block;
       margin-bottom: 3px;
+      font-size: 0.75rem;
     }
 
     .update-text {
       color: var(--gray);
       font-size: 0.75rem;
+      line-height: 1.3;
     }
 
     /* LOADING */
@@ -750,6 +766,16 @@
       display: block;
     }
 
+    /* FOOTER */
+    .footer {
+      text-align: center;
+      padding: 15px;
+      color: var(--gray);
+      font-size: 0.8rem;
+      border-top: 1px solid #e9ecef;
+      margin-top: 20px;
+    }
+
     /* RESPONSIVE */
     @media (max-width: 1024px) {
       .main-grid {
@@ -761,13 +787,13 @@
       }
 
       .level-indicators {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(3, 1fr);
       }
     }
 
     @media (max-width: 768px) {
       .status-panel {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
       }
 
       .water-tank {
@@ -782,25 +808,69 @@
       .chart-container {
         height: 300px;
       }
+
+      .level-indicators {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .status-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .header h1 {
+        font-size: 1.3rem;
+      }
+
+      .water-tank {
+        width: 140px;
+        height: 180px;
+      }
+
+      .percentage-display {
+        font-size: 2rem;
+      }
+
+      .card-title {
+        font-size: 1rem;
+      }
+
+      body {
+        padding: 10px;
+      }
+    }
+
+    /* UTILITY CLASSES */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <!-- HEADER -->
-    <div class="header">
+    <header class="header" role="banner">
       <h1>
-        <i class="fas fa-water"></i>
-        Monitor Inteligente de Caixa d'Água
+        <i class="fas fa-water" aria-hidden="true"></i>
+        <span>Monitor Inteligente de Caixa d'Água</span>
       </h1>
       <p class="subtitle">Monitoramento em Tempo Real via LoRa</p>
-    </div>
+    </header>
 
     <!-- ALERTS -->
-    <div id="alertContainer"></div>
+    <div id="alertContainer" role="alert" aria-live="polite"></div>
 
     <!-- STATUS PANEL -->
-    <div class="status-panel">
+    <section class="status-panel" aria-label="Status do sistema">
       <div class="status-item">
         <span class="status-label">Status API</span>
         <span class="status-value api-status" id="apiStatus">Verificando...</span>
@@ -824,12 +894,12 @@
       <div class="status-item">
         <span class="status-label">Sinal LoRa</span>
         <div class="signal-info">
-          <div class="signal-bar">
-            <div class="signal-bar-item"></div>
-            <div class="signal-bar-item"></div>
-            <div class="signal-bar-item"></div>
-            <div class="signal-bar-item"></div>
-            <div class="signal-bar-item"></div>
+          <div class="signal-bar" aria-label="Força do sinal LoRa">
+            <div class="signal-bar-item" role="presentation"></div>
+            <div class="signal-bar-item" role="presentation"></div>
+            <div class="signal-bar-item" role="presentation"></div>
+            <div class="signal-bar-item" role="presentation"></div>
+            <div class="signal-bar-item" role="presentation"></div>
           </div>
           <span class="signal-quality zero" id="signalQuality">0%</span>
         </div>
@@ -837,24 +907,24 @@
       
       <div class="status-item">
         <span class="status-label">Última Atualização</span>
-        <span class="status-value" id="lastUpdate">--:--:--</span>
+        <time class="status-value" id="lastUpdate" datetime="">--:--:--</time>
       </div>
-    </div>
+    </section>
 
     <!-- MAIN GRID -->
-    <div class="main-grid">
+    <main class="main-grid" role="main">
       <!-- WATER LEVEL CARD -->
-      <div class="water-level-card">
+      <section class="water-level-card" aria-label="Nível atual da água">
         <h2 class="card-title">
-          <i class="fas fa-tint"></i>
+          <i class="fas fa-tint" aria-hidden="true"></i>
           Nível Atual da Água
         </h2>
         
         <div class="tank-container">
-          <div class="water-tank">
+          <div class="water-tank" role="img" aria-label="Tanque de água">
             <div class="water-fill" id="waterFill"></div>
             <div class="tank-info-display">
-              <div class="percentage-display" id="percentageDisplay">0%</div>
+              <div class="percentage-display" id="percentageDisplay" aria-live="polite">0%</div>
               <div class="volume-display" id="volumeDisplay">0 L</div>
             </div>
           </div>
@@ -867,7 +937,7 @@
         <div class="level-indicators">
           <div class="level-indicator">
             <div class="indicator-icon distance">
-              <i class="fas fa-ruler"></i>
+              <i class="fas fa-ruler" aria-hidden="true"></i>
             </div>
             <div class="indicator-info">
               <div class="label">Distância Sensor</div>
@@ -877,7 +947,7 @@
           
           <div class="level-indicator">
             <div class="indicator-icon level">
-              <i class="fas fa-chart-line"></i>
+              <i class="fas fa-chart-line" aria-hidden="true"></i>
             </div>
             <div class="indicator-info">
               <div class="label">Nível Água</div>
@@ -887,7 +957,7 @@
           
           <div class="level-indicator">
             <div class="indicator-icon volume">
-              <i class="fas fa-tint"></i>
+              <i class="fas fa-tint" aria-hidden="true"></i>
             </div>
             <div class="indicator-info">
               <div class="label">Volume Disp.</div>
@@ -895,36 +965,36 @@
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       <!-- CHART CARD -->
-      <div class="chart-card">
+      <section class="chart-card" aria-label="Histórico de nível da água">
         <h2 class="card-title">
-          <i class="fas fa-chart-line"></i>
+          <i class="fas fa-chart-line" aria-hidden="true"></i>
           Histórico de Nível
         </h2>
         <div class="chart-container">
-          <canvas id="nivelChart"></canvas>
+          <canvas id="nivelChart" role="img" aria-label="Gráfico do histórico do nível da água"></canvas>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
 
     <!-- HISTORY SECTION -->
-    <div class="history-section">
+    <section class="history-section">
       <!-- HISTÓRICO DE LEITURAS -->
       <div class="history-card">
         <h2 class="card-title">
-          <i class="fas fa-history"></i>
+          <i class="fas fa-history" aria-hidden="true"></i>
           Histórico de Leituras (Últimas 5)
         </h2>
         
         <div id="historyLoading" class="loading">
-          <div class="spinner"></div>
+          <div class="spinner" aria-hidden="true"></div>
           <p>Carregando histórico...</p>
         </div>
         
         <div id="historyMessage" class="no-data-message" style="display: none;">
-          <i class="fas fa-inbox"></i>
+          <i class="fas fa-inbox" aria-hidden="true"></i>
           <p>Nenhum dado disponível</p>
         </div>
         
@@ -951,16 +1021,22 @@
       <!-- HISTÓRICO DE ATUALIZAÇÕES -->
       <div class="update-history-card">
         <h2 class="card-title">
-          <i class="fas fa-sync-alt"></i>
-          Atualizações
+          <i class="fas fa-sync-alt" aria-hidden="true"></i>
+          Atualizações do Sistema
         </h2>
-        <div id="updateHistory"></div>
+        <div id="updateHistory" aria-live="polite"></div>
       </div>
-    </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <p>Monitor Inteligente de Caixa d'Água &copy; <span id="currentYear"></span> | Atualização automática a cada 5 segundos</p>
+    </footer>
 
   </div>
 
   <script>
+    // Configurações globais
     let chart = null;
     let currentData = {
       percentage: 0,
@@ -975,17 +1051,47 @@
     };
     let currentMode = "normal";
     let updateHistoryData = [];
-    let capacityTotal = 500; // Valor padrão
+    let capacityTotal = 500;
     const MAX_HISTORY_ITEMS = 20;
+    let refreshInterval = 5000; // 5 segundos
+    let lastUpdateTime = null;
 
-    // Carregar dados
+    // Inicialização
+    document.addEventListener('DOMContentLoaded', function() {
+      // Atualizar ano no footer
+      document.getElementById('currentYear').textContent = new Date().getFullYear();
+      
+      // Carregar dados pela primeira vez
+      carregarDados();
+      
+      // Configurar atualização periódica
+      setInterval(carregarDados, refreshInterval);
+      
+      // Adicionar listener para recarregar manualmente
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'r' && e.ctrlKey) {
+          e.preventDefault();
+          carregarDados();
+          showAlert('Dados recarregados manualmente', 'info', 3000);
+        }
+      });
+    });
+
+    // Carregar dados da API
     async function carregarDados() {
       try {
         const apiStatus = document.getElementById('apiStatus');
-        apiStatus.textContent = 'Conectado';
-        apiStatus.className = 'status-value api-status connected';
+        apiStatus.textContent = 'Conectando...';
+        apiStatus.className = 'status-value api-status';
         
-        const response = await fetch('/api/lora');
+        const response = await fetch('/api/lora', {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+          },
+          timeout: 10000
+        });
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -993,6 +1099,10 @@
         
         const data = await response.json();
         console.log('Dados recebidos:', data);
+        
+        // Atualizar status da API
+        apiStatus.textContent = 'Conectado';
+        apiStatus.className = 'status-value api-status connected';
         
         // Atualizar capacidade total se disponível
         if (data.config && data.config.volumeTotal) {
@@ -1052,13 +1162,17 @@
           };
           
           atualizarInterface(currentData);
+          clearAlerts(); // Limpar alertas se voltou ao normal
         } else {
-          mostrarEstadoAnormal();
+          mostrarEstadoAnormal(currentMode);
         }
         
         // Atualizar última atualização
         const now = new Date();
-        document.getElementById('lastUpdate').textContent = now.toLocaleTimeString('pt-BR');
+        lastUpdateTime = now;
+        const timeElement = document.getElementById('lastUpdate');
+        timeElement.textContent = now.toLocaleTimeString('pt-BR');
+        timeElement.setAttribute('datetime', now.toISOString());
         
         // Adicionar ao histórico de atualizações
         adicionarAtualizacao(`Dados atualizados - ${currentMode === "normal" ? currentData.percentage + "%" : "Modo: " + currentMode}`);
@@ -1074,46 +1188,46 @@
         const apiStatus = document.getElementById('apiStatus');
         apiStatus.textContent = 'Erro';
         apiStatus.className = 'status-value api-status disconnected';
-        showAlert('Erro ao conectar com a API', 'error', 5000);
-        adicionarAtualizacao('Erro na conexão com API');
+        showAlert('Erro ao conectar com a API. Verifique a conexão de rede.', 'error', 5000);
+        adicionarAtualizacao('Erro na conexão com API: ' + error.message);
       }
     }
 
-    // Atualizar interface COM CORES DINÂMICAS
+    // Atualizar interface com cores dinâmicas
     function atualizarInterface(data) {
       const waterFill = document.getElementById('waterFill');
-      const percentage = data.percentage;
+      const percentage = Math.min(Math.max(data.percentage, 0), 100);
       
-      // Atualizar altura
+      // Atualizar altura com animação suave
       waterFill.style.height = `${percentage}%`;
       
       // Aplicar classe de cor baseada no nível
       waterFill.className = 'water-fill';
       if (percentage < 25) {
-        waterFill.classList.add('level-critical');  // VERMELHO
+        waterFill.classList.add('level-critical');
       } else if (percentage < 50) {
-        waterFill.classList.add('level-low');        // LARANJA
+        waterFill.classList.add('level-low');
       } else if (percentage < 75) {
-        waterFill.classList.add('level-medium');     // AZUL
+        waterFill.classList.add('level-medium');
       } else {
-        waterFill.classList.add('level-good');       // VERDE
+        waterFill.classList.add('level-good');
       }
       
       // Atualizar displays centrais
       document.getElementById('percentageDisplay').textContent = `${percentage}%`;
-      document.getElementById('volumeDisplay').textContent = `${data.liters} L`;
+      document.getElementById('volumeDisplay').textContent = `${data.liters.toFixed(1)} L`;
       
       // Atualizar indicadores com ícones
       document.getElementById('distanceValue').textContent = `${data.distance.toFixed(1)} cm`;
-      document.getElementById('levelValue').textContent = `${data.level} cm`;
-      document.getElementById('volumeValue').textContent = `${data.liters} L`;
+      document.getElementById('levelValue').textContent = `${data.level.toFixed(1)} cm`;
+      document.getElementById('volumeValue').textContent = `${data.liters.toFixed(1)} L`;
     }
 
     // Mostrar estado anormal
-    function mostrarEstadoAnormal() {
+    function mostrarEstadoAnormal(mode) {
       const waterFill = document.getElementById('waterFill');
       waterFill.style.height = '0%';
-      waterFill.className = 'water-fill';
+      waterFill.className = 'water-fill level-critical';
       
       document.getElementById('percentageDisplay').textContent = '---';
       document.getElementById('volumeDisplay').textContent = '--- L';
@@ -1122,16 +1236,39 @@
       document.getElementById('volumeValue').textContent = '--- L';
       
       let message = '';
-      if (currentMode === "receptor_disconnected") {
-        message = 'Receptor ESP32 desconectado!';
-        showAlert(message, 'error');
-      } else if (currentMode === "waiting_lora") {
-        message = 'Aguardando dados do transmissor LoRa...';
-        showAlert(message, 'warning');
-      } else if (currentMode === "sensor_error") {
-        message = 'Erro no sensor ultrassônico!';
-        showAlert(message, 'error');
+      let alertType = 'warning';
+      
+      switch(mode) {
+        case "receptor_disconnected":
+          message = 'Receptor ESP32 desconectado! Verifique a alimentação e conexão USB.';
+          alertType = 'error';
+          break;
+        case "waiting_lora":
+          message = 'Aguardando dados do transmissor LoRa... Verifique se o transmissor está ligado.';
+          alertType = 'warning';
+          break;
+        case "sensor_error":
+          message = 'Erro no sensor ultrassônico! Verifique a conexão do sensor.';
+          alertType = 'error';
+          break;
+        default:
+          message = 'Modo de operação desconhecido';
+          alertType = 'warning';
       }
+      
+      if (message) {
+        showAlert(message, alertType);
+      }
+    }
+
+    // Limpar alertas
+    function clearAlerts() {
+      const container = document.getElementById('alertContainer');
+      const alerts = container.querySelectorAll('.alert:not(.persistent)');
+      alerts.forEach(alert => {
+        alert.style.opacity = '0';
+        setTimeout(() => alert.remove(), 500);
+      });
     }
 
     // Atualizar sinal LoRa
@@ -1167,16 +1304,18 @@
       }
     }
 
-    // Adicionar atualização
+    // Adicionar atualização ao histórico
     function adicionarAtualizacao(texto) {
       const now = new Date();
       const timeString = now.toLocaleTimeString('pt-BR');
       
       updateHistoryData.unshift({
         time: timeString,
-        text: texto
+        text: texto,
+        timestamp: now.getTime()
       });
       
+      // Manter apenas os últimos itens
       if (updateHistoryData.length > MAX_HISTORY_ITEMS) {
         updateHistoryData = updateHistoryData.slice(0, MAX_HISTORY_ITEMS);
       }
@@ -1188,6 +1327,11 @@
     function renderizarHistoricoAtualizacoes() {
       const container = document.getElementById('updateHistory');
       container.innerHTML = '';
+      
+      if (updateHistoryData.length === 0) {
+        container.innerHTML = '<div class="update-entry"><span class="update-text">Nenhuma atualização registrada</span></div>';
+        return;
+      }
       
       updateHistoryData.forEach(item => {
         const entry = document.createElement('div');
@@ -1203,21 +1347,54 @@
     // Mostrar alerta
     function showAlert(message, type = 'info', duration = 5000) {
       const container = document.getElementById('alertContainer');
-      const alert = document.createElement('div');
-      alert.className = `alert ${type}`;
-      alert.innerHTML = `
-        <i class="fas fa-${type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
-        <span>${message}</span>
-      `;
-      container.appendChild(alert);
       
-      setTimeout(() => {
+      // Remover alertas antigos do mesmo tipo
+      const oldAlerts = container.querySelectorAll(`.alert.${type}`);
+      oldAlerts.forEach(alert => {
         alert.style.opacity = '0';
         setTimeout(() => alert.remove(), 500);
-      }, duration);
+      });
+      
+      const alert = document.createElement('div');
+      alert.className = `alert ${type}`;
+      alert.setAttribute('role', 'alert');
+      
+      let icon = 'info-circle';
+      switch(type) {
+        case 'error': icon = 'exclamation-circle'; break;
+        case 'success': icon = 'check-circle'; break;
+        case 'warning': icon = 'exclamation-triangle'; break;
+      }
+      
+      alert.innerHTML = `
+        <i class="fas fa-${icon}" aria-hidden="true"></i>
+        <span>${message}</span>
+        ${duration > 0 ? '<button class="alert-close" aria-label="Fechar alerta">&times;</button>' : ''}
+      `;
+      
+      container.appendChild(alert);
+      
+      // Adicionar funcionalidade de fechar
+      const closeBtn = alert.querySelector('.alert-close');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+          alert.style.opacity = '0';
+          setTimeout(() => alert.remove(), 500);
+        });
+      }
+      
+      // Auto-remover após duração
+      if (duration > 0) {
+        setTimeout(() => {
+          if (alert.parentNode) {
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 500);
+          }
+        }, duration);
+      }
     }
 
-    // Atualizar histórico
+    // Atualizar histórico de leituras
     function atualizarHistorico(historico) {
       const historyBody = document.getElementById('historyBody');
       const loading = document.getElementById('historyLoading');
@@ -1235,14 +1412,16 @@
       if (container) container.style.display = 'block';
       if (message) message.style.display = 'none';
       
-      if (historyBody) historyBody.innerHTML = '';
+      historyBody.innerHTML = '';
       
+      // Ordenar por timestamp (mais recente primeiro) e limitar a 5
       historico.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       const historicoLimitado = historico.slice(0, 5);
       
       historicoLimitado.forEach(item => {
         const row = document.createElement('tr');
         
+        // Formatar data
         let formattedDate = '--:--:--';
         try {
           const date = new Date(item.timestamp);
@@ -1253,6 +1432,7 @@
           console.warn('Erro ao formatar data:', e);
         }
         
+        // Determinar status
         let statusText, statusClass;
         switch(item.status) {
           case "normal":
@@ -1276,11 +1456,13 @@
             statusClass = "normal";
         }
         
+        // Formatar valores
         const displayPercentage = item.percentage >= 0 ? `${item.percentage}%` : "---";
-        const displayLiters = item.liters >= 0 ? `${item.liters} L` : "---";
+        const displayLiters = item.liters >= 0 ? `${item.liters.toFixed(1)} L` : "---";
         const displayDistance = item.distance >= 0 ? `${item.distance.toFixed(1)} cm` : "---";
-        const displayLevel = item.level >= 0 ? `${item.level} cm` : "---";
+        const displayLevel = item.level >= 0 ? `${item.level.toFixed(1)} cm` : "---";
         
+        // Formatar sinal LoRa
         let signalQualityText = "0%";
         let signalQualityClass = "zero";
         let rssiText = "0";
@@ -1313,7 +1495,7 @@
           <td><span class="signal-quality ${signalQualityClass}">${signalQualityText}</span></td>
         `;
         
-        if (historyBody) historyBody.appendChild(row);
+        historyBody.appendChild(row);
       });
     }
 
@@ -1322,22 +1504,28 @@
       const ctx = document.getElementById('nivelChart');
       if (!ctx) return;
       
-      const normalHistory = historico.filter(item => item.status === "normal" && item.percentage !== -1);
+      // Filtrar apenas dados normais com porcentagem válida
+      const normalHistory = historico.filter(item => 
+        item.status === "normal" && item.percentage !== -1 && item.percentage !== null
+      );
       
       if (normalHistory.length === 0) {
+        // Destruir gráfico existente se não houver dados
+        if (chart) {
+          chart.destroy();
+          chart = null;
+        }
         return;
       }
       
+      // Ordenar por timestamp (mais antigo primeiro para o gráfico)
       normalHistory.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
       
+      // Preparar dados
       const labels = normalHistory.map(item => {
         try {
           const date = new Date(item.timestamp);
-          if (!isNaN(date.getTime())) {
-            return date;
-          } else {
-            return new Date();
-          }
+          return isNaN(date.getTime()) ? new Date() : date;
         } catch (e) {
           return new Date();
         }
@@ -1345,6 +1533,7 @@
       
       const data = normalHistory.map(item => item.percentage || 0);
       
+      // Criar ou atualizar gráfico
       if (!chart) {
         chart = new Chart(ctx.getContext('2d'), {
           type: 'line',
@@ -1417,10 +1606,6 @@
         chart.update('none');
       }
     }
-
-    // Iniciar
-    carregarDados();
-    setInterval(carregarDados, 5000);
   </script>
 </body>
 </html>
