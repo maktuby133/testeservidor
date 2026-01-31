@@ -694,6 +694,7 @@
             <div class="signal-bar-item"></div>
           </div>
           <span class="signal-quality zero" id="signalQuality">0%</span>
+          <span class="signal-dbm" id="signalDbm" style="font-size: 0.7rem; color: var(--gray); margin-top: 2px;">-- dBm</span>
         </div>
       </div>
       <div class="status-item">
@@ -947,7 +948,7 @@
         document.getElementById('currentVolume').textContent = '---';
         document.getElementById('currentDistance').textContent = '---';
         document.getElementById('currentLevel').textContent = '---';
-        atualizarSinalLoRa(0);
+        atualizarSinalLoRa(0, null);
         document.getElementById('sensorStatus').textContent = 'Indisponível';
         document.getElementById('sensorStatus').className = 'status-value sensor-status';
         
@@ -968,7 +969,7 @@
         warningBanner.className = 'connection-warning lora-off show';
         warningBanner.innerHTML = '<i class="fas fa-satellite-dish"></i> AGUARDANDO SINAL LoRa... O transmissor não está enviando dados.';
         
-        atualizarSinalLoRa(0);
+        atualizarSinalLoRa(0, null);
         document.getElementById('sensorStatus').textContent = 'Aguardando';
         document.getElementById('sensorStatus').className = 'status-value sensor-status';
         
@@ -1011,25 +1012,35 @@
       
       // Atualizar sinal LoRa
       const signalQuality = data.lora_signal?.quality ?? 0;
-      atualizarSinalLoRa(signalQuality);
+      const signalRssi = data.lora_signal?.rssi ?? null;
+      atualizarSinalLoRa(signalQuality, signalRssi);
       
       // Adicionar atualização ao histórico
       adicionarAtualizacao(`📊 Nível: ${percentage}% | Volume: ${data.liters}L | Distância: ${data.distance.toFixed(1)}cm`);
     }
 
     // Atualizar sinal LoRa
-    function atualizarSinalLoRa(quality) {
+    function atualizarSinalLoRa(quality, rssi = null) {
       const qualityText = document.getElementById('signalQuality');
+      const dbmText = document.getElementById('signalDbm');
       const bars = document.querySelectorAll('.signal-bar-item');
       
       if (quality === 0 || quality === null) {
         qualityText.textContent = '0%';
         qualityText.className = 'signal-quality zero';
+        if (dbmText) dbmText.textContent = '-- dBm';
         bars.forEach(bar => bar.classList.remove('active'));
         return;
       }
       
       qualityText.textContent = `${quality}%`;
+      
+      // ✅ Atualizar dBm
+      if (dbmText && rssi !== null && rssi !== undefined) {
+        dbmText.textContent = `${rssi} dBm`;
+      } else if (dbmText) {
+        dbmText.textContent = '-- dBm';
+      }
       
       let activeClass = 'zero';
       if (quality >= 80) activeClass = 'excellent';
