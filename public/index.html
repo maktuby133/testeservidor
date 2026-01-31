@@ -21,6 +21,8 @@
       --gray: #6c757d;
       --water-blue: #48cae4;
       --water-deep: #0096c7;
+      --waiting: #6c757d;
+      --sensor-error: #d00000;
     }
 
     * {
@@ -186,6 +188,12 @@
       animation: blink 1s infinite;
     }
 
+    .lora-status.connected { color: var(--success); }
+    .lora-status.disconnected { 
+      color: var(--danger); 
+      font-weight: bold;
+    }
+
     .sensor-status.ok { color: var(--success); }
     .sensor-status.error { 
       color: var(--danger); 
@@ -195,7 +203,7 @@
 
     @keyframes blink {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+      50% { opacity: 0.5); }
     }
 
     /* SIGNAL BARS */
@@ -278,6 +286,12 @@
       border-left: 4px solid #ffeaa7;
     }
 
+    .alert.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border-left: 4px solid #bee5eb;
+    }
+
     @keyframes slideIn {
       from {
         opacity: 0;
@@ -333,6 +347,7 @@
       border-radius: 10px;
       text-align: center;
       transition: all 0.3s ease;
+      cursor: pointer;
     }
 
     .info-card:hover {
@@ -602,6 +617,28 @@
       100% { transform: rotate(360deg); }
     }
 
+    /* DEBUG BUTTON */
+    .debug-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .debug-btn:hover {
+      transform: scale(1.1);
+      background: var(--primary-dark);
+    }
+
     /* RESPONSIVE */
     @media (max-width: 768px) {
       .main-content {
@@ -680,12 +717,12 @@
         <!-- CAPACIDADE TOTAL -->
         <div class="tank-capacity">
           <div class="tank-capacity-label">Capacidade Total</div>
-          <div class="tank-capacity-value" id="totalCapacity">1000 L</div>
+          <div class="tank-capacity-value" id="totalCapacity">-- L</div>
         </div>
 
         <!-- INFORMAÇÕES LADO A LADO -->
         <div class="info-grid">
-          <div class="info-card">
+          <div class="info-card" onclick="showDetails('volume')">
             <div class="info-card-label">Volume Atual</div>
             <div class="info-card-value">
               <span id="currentVolume">0</span>
@@ -693,7 +730,7 @@
             </div>
           </div>
           
-          <div class="info-card">
+          <div class="info-card" onclick="showDetails('distance')">
             <div class="info-card-label">Distância</div>
             <div class="info-card-value">
               <span id="currentDistance">0</span>
@@ -701,7 +738,7 @@
             </div>
           </div>
           
-          <div class="info-card">
+          <div class="info-card" onclick="showDetails('level')">
             <div class="info-card-label">Altura Água</div>
             <div class="info-card-value">
               <span id="currentLevel">0</span>
@@ -766,6 +803,11 @@
     </div>
   </div>
 
+  <!-- DEBUG BUTTON -->
+  <button class="debug-btn" onclick="debugData()" title="Modo Debug">
+    <i class="fas fa-bug"></i>
+  </button>
+
   <script>
     // Variáveis globais
     let chart = null;
@@ -777,8 +819,10 @@
       distance: 0,
       level: 0,
       sensor_ok: false,
-      lora_signal: { quality: 0 }
+      lora_signal: { quality: 0 },
+      config_volume_total: 0
     };
+    let currentMode = "normal";
 
     // Carregar dados da API
     async function carregarDados() {
@@ -805,14 +849,23 @@
           sensor_ok: data.sensor_ok !== false,
           lora_signal: data.lora_signal || { quality: 0 },
           device: data.device || 'ESP32',
-          status: data.status || 'normal'
+          status: data.status || 'normal',
+          config_volume_total: parseInt(data.config_volume_total) || 0,
+          receptor_connected: data.receptor_connected !== false,
+          lora_connected: data.lora_connected !== false
         };
         
         console.log('📊 Dados processados:', currentData);
+        console.log('🗄️ Capacidade total da API:', data.config_volume_total);
         
-        // Atualizar capacidade total se disponível
-        if (data.config_volume_total) {
-          document.getElementById('totalCapacity').textContent = `${data.config_volume_total} L`;
+        // Atualizar capacidade total CORRETAMENTE
+        const totalCapacityElement = document.getElementById('totalCapacity');
+        if (data.config_volume_total && data.config_volume_total > 0) {
+          totalCapacityElement.textContent = `${data.config_volume_total} L`;
+          console.log('✅ Capacidade total atualizada para:', data.config_volume_total, 'L');
+        } else {
+          totalCapacityElement.textContent = '-- L';
+          console.log('⚠️ Capacidade total não disponível');
         }
         
         // Atualizar interface
@@ -850,24 +903,63 @@
       // Determinar status baseado nos dados recebidos
       let currentStatus = status || 'normal';
       
-      // Se não temos dados válidos de sensor, verificar
-      if (data.percentage === 0 && data.liters === 0 && data.distance === 0 && data.level === 0) {
+      // Verificar se receptor está desconectado
+      if (data.receptor_connected === false) {
+        currentStatus = 'receptor_disconnected';
+      }
+      
+      // Verificar se está aguardando LoRa
+      if (data.lora_connected === false && data.receptor_connected === true) {
         currentStatus = 'waiting_lora';
       }
       
-      // Verificar status do receptor (API sempre conectada se chegou aqui)
-      document.getElementById('receptorStatus').textContent = 'Conectado';
-      document.getElementById('receptorStatus').className = 'status-value receptor-status connected';
-      
-      // Verificar status do sensor
-      if (!data.sensor_ok || currentStatus === 'sensor_error') {
-        document.getElementById('sensorStatus').textContent = 'Erro';
-        document.getElementById('sensorStatus').className = 'status-value sensor-status error';
-        showAlert('Erro no sensor ultrassônico! Verifique as conexões.', 'error');
+      // Verificar status do receptor
+      if (currentStatus === 'receptor_disconnected') {
+        document.getElementById('receptorStatus').textContent = 'Desconectado';
+        document.getElementById('receptorStatus').className = 'status-value receptor-status disconnected';
+        
+        warningBanner.className = 'connection-warning receptor-off show';
+        warningBanner.innerHTML = '<i class="fas fa-exclamation-triangle"></i> RECEPTOR ESP32 DESCONECTADO! Verifique a alimentação e conexão WiFi do dispositivo.';
+        
+        // Zerar valores
+        document.getElementById('waterLevel').style.height = '0%';
+        document.getElementById('waterLevel').textContent = '---';
+        document.getElementById('currentVolume').textContent = '---';
+        document.getElementById('currentDistance').textContent = '---';
+        document.getElementById('currentLevel').textContent = '---';
+        atualizarSinalLoRa(0);
+        document.getElementById('sensorStatus').textContent = 'Indisponível';
+        document.getElementById('sensorStatus').className = 'status-value sensor-status';
+        
         return;
       }
       
-      // Sensor OK
+      // Receptor conectado
+      document.getElementById('receptorStatus').textContent = 'Conectado';
+      document.getElementById('receptorStatus').className = 'status-value receptor-status connected';
+      
+      // Verificar status LoRa
+      if (currentStatus === 'waiting_lora') {
+        warningBanner.className = 'connection-warning lora-off show';
+        warningBanner.innerHTML = '<i class="fas fa-satellite-dish"></i> AGUARDANDO SINAL LoRa... O transmissor não está enviando dados.';
+        
+        atualizarSinalLoRa(0);
+        document.getElementById('sensorStatus').textContent = 'Aguardando';
+        document.getElementById('sensorStatus').className = 'status-value sensor-status';
+        
+        return;
+      }
+      
+      // Verificar erro de sensor
+      if (currentStatus === 'sensor_error' || !data.sensor_ok) {
+        document.getElementById('sensorStatus').textContent = 'Erro';
+        document.getElementById('sensorStatus').className = 'status-value sensor-status error';
+        showAlert('Erro no sensor ultrassônico! Verifique as conexões.', 'error');
+        
+        return;
+      }
+      
+      // Tudo OK - atualizar valores
       document.getElementById('sensorStatus').textContent = 'OK';
       document.getElementById('sensorStatus').className = 'status-value sensor-status ok';
       
@@ -1188,6 +1280,65 @@
         console.log('✅ Gráfico atualizado');
       }
     }
+
+    // Função para mostrar detalhes
+    function showDetails(type) {
+      if (currentMode === "receptor_disconnected") {
+        alert('❌ RECEPTOR ESP32 DESCONECTADO!\n\nO dispositivo receptor está offline. Verifique:\n\n1. Alimentação do ESP32 receptor\n2. Conexão WiFi do receptor\n3. Se o ESP32 está ligado\n4. Conexão física do dispositivo');
+        return;
+      }
+      
+      if (currentMode === "waiting_lora") {
+        alert('📡 AGUARDANDO DADOS DO TRANSMISSOR LoRa\n\nO receptor está conectado ao WiFi e servidor, mas não está recebendo dados do transmissor LoRa. Verifique:\n\n1. Transmissor está ligado e com bateria\n2. Distância entre os dispositivos\n3. Antenas conectadas corretamente\n4. Configurações LoRa idênticas em ambos\n\n⚠️ SINAL LoRa ZERADO até reconexão');
+        return;
+      }
+      
+      if (currentMode === "sensor_error") {
+        alert('❌ ERRO NO SENSOR ULTRASSÔNICO!\n\nO sensor está com falha. Verifique:\n\n1. Conexões do sensor (VCC=5V, GND, TRIG=GPIO12, ECHO=GPIO13)\n2. Alimentação do sensor (5V, não 3.3V)\n3. Sensor não está obstruído\n4. Distância entre 2cm e 400cm\n5. Cabos do sensor em bom estado');
+        return;
+      }
+      
+      const messages = {
+        distance: `Distância atual: ${currentData.distance.toFixed(1)} cm\nDistância do sensor ultrassônico até a superfície da água.`,
+        level: `Nível atual: ${currentData.level} cm\nAltura da coluna de água na caixa.`,
+        volume: `Volume disponível: ${currentData.liters} L\nQuantidade de água disponível para uso.\n\nCapacidade total: ${currentData.config_volume_total} L`,
+        status: `Status: ${currentData.sensor_ok ? 'OK ✅' : 'ERRO ❌'}\nSinal LoRa: ${currentData.lora_signal.quality}%\n${currentData.sensor_ok ? 'Sensor funcionando normalmente.' : 'Problema detectado no sensor.'}`
+      };
+      
+      alert(messages[type] || 'Informações detalhadas');
+    }
+
+    // Função de debug
+    function debugData() {
+      console.log('=== 🐛 MODO DEBUG ===');
+      console.log('Dados atuais:', currentData);
+      console.log('Modo atual:', currentMode);
+      console.log('Capacidade total:', currentData.config_volume_total, 'L');
+      console.log('Sinal LoRa:', currentData.lora_signal.quality + '%');
+      console.log('Tempo desde última atualização:', document.getElementById('lastUpdate').textContent);
+      
+      fetch('/api/lora')
+        .then(res => {
+          console.log('Status API:', res.status, res.statusText);
+          return res.json();
+        })
+        .then(data => {
+          console.log('Resposta API completa:', data);
+          console.log('Status Receptor:', data.receptor_connected);
+          console.log('Status LoRa:', data.lora_connected);
+          console.log('Qualidade Sinal LoRa:', data.lora_signal?.quality + '%');
+          console.log('Status Sensor:', data.sensor_ok);
+          console.log('Config Volume Total:', data.config_volume_total);
+        })
+        .catch(err => console.error('❌ Erro na requisição:', err));
+      
+      showAlert('🐛 Modo debug ativado. Verifique o console (F12).', 'info', 3000);
+    }
+
+    // Exportar funções para debug
+    window.debugData = debugData;
+    window.carregarDados = carregarDados;
+    window.showDetails = showDetails;
 
     // Iniciar
     console.log('🚀 Iniciando sistema...');
