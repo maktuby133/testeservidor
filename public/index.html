@@ -945,6 +945,11 @@
         document.getElementById('sensorStatus').textContent = 'Indisponível';
         document.getElementById('sensorStatus').className = 'status-value sensor-status';
         
+        // ✅ Manter capacidade total visível mesmo quando receptor estiver offline
+        if (savedCapacityTotal > 0) {
+          document.getElementById('totalCapacity').textContent = `${savedCapacityTotal} L`;
+        }
+        
         return;
       }
       
@@ -961,6 +966,11 @@
         document.getElementById('sensorStatus').textContent = 'Aguardando';
         document.getElementById('sensorStatus').className = 'status-value sensor-status';
         
+        // ✅ Manter capacidade total visível mesmo quando aguardando LoRa
+        if (savedCapacityTotal > 0) {
+          document.getElementById('totalCapacity').textContent = `${savedCapacityTotal} L`;
+        }
+        
         return;
       }
       
@@ -969,6 +979,11 @@
         document.getElementById('sensorStatus').textContent = 'Erro';
         document.getElementById('sensorStatus').className = 'status-value sensor-status error';
         showAlert('Erro no sensor ultrassônico! Verifique as conexões.', 'error');
+        
+        // ✅ Manter capacidade total visível mesmo com erro de sensor
+        if (savedCapacityTotal > 0) {
+          document.getElementById('totalCapacity').textContent = `${savedCapacityTotal} L`;
+        }
         
         return;
       }
