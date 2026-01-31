@@ -23,6 +23,12 @@
       --water-deep: #0096c7;
       --waiting: #6c757d;
       --sensor-error: #d00000;
+      /* Cores para níveis da barra */
+      --level-critical: #e63946;
+      --level-low: #ff9e00;
+      --level-medium: #ffd500;
+      --level-good: #90e0ef;
+      --level-full: #0077b6;
     }
 
     * {
@@ -438,6 +444,45 @@
       border-radius: 0 0 8px 8px;
     }
 
+    /* Classes para cores da barra conforme nível */
+    .water.critical {
+      background: linear-gradient(to top, #dc2626, #ef4444) !important;
+      animation: wave-critical 2s infinite;
+    }
+
+    .water.low {
+      background: linear-gradient(to top, #ea580c, #fb923c) !important;
+      animation: wave-low 2.5s infinite;
+    }
+
+    .water.medium {
+      background: linear-gradient(to top, #ca8a04, #fbbf24) !important;
+    }
+
+    .water.good {
+      background: linear-gradient(to top, #0284c7, #38bdf8) !important;
+    }
+
+    .water.full {
+      background: linear-gradient(to top, #0369a1, #0ea5e9) !important;
+      animation: wave-full 3s infinite;
+    }
+
+    @keyframes wave-critical {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+
+    @keyframes wave-low {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+    }
+
+    @keyframes wave-full {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-1px); }
+    }
+
     /* ONDULAÇÃO no topo da água */
     .water::before {
       content: '';
@@ -807,7 +852,7 @@
         <!-- INFORMAÇÕES LADO A LADO -->
         <div class="info-grid">
           <div class="info-card" onclick="showDetails('volume')">
-            <div class="info-card-label">Volume Atual</div>
+            <div class="info-card-label"><i class="fas fa-tint"></i> Volume Atual</div>
             <div class="info-card-value">
               <span id="currentVolume">0</span>
               <span class="info-card-unit">L</span>
@@ -815,7 +860,7 @@
           </div>
           
           <div class="info-card" onclick="showDetails('distance')">
-            <div class="info-card-label">Distância</div>
+            <div class="info-card-label"><i class="fas fa-ruler-vertical"></i> Distância</div>
             <div class="info-card-value">
               <span id="currentDistance">0</span>
               <span class="info-card-unit">cm</span>
@@ -823,7 +868,7 @@
           </div>
           
           <div class="info-card" onclick="showDetails('level')">
-            <div class="info-card-label">Altura Água</div>
+            <div class="info-card-label"><i class="fas fa-arrows-alt-v"></i> Altura Água</div>
             <div class="info-card-value">
               <span id="currentLevel">0</span>
               <span class="info-card-unit">cm</span>
@@ -908,6 +953,31 @@
       config_volume_total: 0
     };
     let currentMode = "normal";
+    
+    // NOVO: Variável para rastrear status de conexão LoRa com delay
+    let loraDisconnectCount = 0;
+    const LORA_DISCONNECT_THRESHOLD = 3; // Precisa de 3 verificações consecutivas (15s) para considerar desconectado
+
+    // NOVA FUNÇÃO: Atualizar cor da barra de água baseada no percentual
+    function atualizarCorBarraAgua(percentage) {
+      const waterBar = document.getElementById('waterLevel');
+      
+      // Remove todas as classes de cor
+      waterBar.classList.remove('critical', 'low', 'medium', 'good', 'full');
+      
+      // Adiciona a classe apropriada baseada no percentual
+      if (percentage <= 10) {
+        waterBar.classList.add('critical');
+      } else if (percentage <= 25) {
+        waterBar.classList.add('low');
+      } else if (percentage <= 50) {
+        waterBar.classList.add('medium');
+      } else if (percentage <= 80) {
+        waterBar.classList.add('good');
+      } else {
+        waterBar.classList.add('full');
+      }
+    }
 
     // Carregar dados da API
     async function carregarDados() {
@@ -1012,9 +1082,19 @@
         currentStatus = 'receptor_disconnected';
       }
       
-      // Verificar se está aguardando LoRa
+      // Verificar se está aguardando LoRa COM DELAY
+      // NOVO: Lógica com delay para transmissor LoRa desconectado
       if (data.lora_connected === false && data.receptor_connected === true) {
-        currentStatus = 'waiting_lora';
+        loraDisconnectCount++;
+        console.log(`⚠️ LoRa desconectado - Contagem: ${loraDisconnectCount}/${LORA_DISCONNECT_THRESHOLD}`);
+        
+        // Só muda para waiting_lora após threshold
+        if (loraDisconnectCount >= LORA_DISCONNECT_THRESHOLD) {
+          currentStatus = 'waiting_lora';
+        }
+      } else {
+        // Reset o contador se reconectar
+        loraDisconnectCount = 0;
       }
       
       // Verificar status do receptor
@@ -1087,6 +1167,9 @@
       const waterElement = document.getElementById('waterLevel');
       waterElement.style.height = `${percentage}%`;
       waterElement.textContent = `${percentage}%`;
+      
+      // NOVO: Atualizar cor da barra baseada no percentual
+      atualizarCorBarraAgua(percentage);
       
       // Atualizar informações
       document.getElementById('currentVolume').textContent = data.liters >= 0 ? data.liters : '---';
