@@ -1,4 +1,3 @@
-
 import express from "express";
 import path from "path";
 import { fileURLToPath } from 'url';
@@ -87,6 +86,75 @@ function salvarConfiguracao() {
   } catch (error) {
     console.error("❌ Erro ao salvar configuração:", error.message);
   }
+}
+
+// ====== FUNÇÃO PARA CALCULAR CONSUMO DE ÁGUA ======
+function calcularConsumo(currentIndex) {
+  const now = new Date(historico[currentIndex].timestamp);
+  
+  // Filtrar apenas registros com status normal e com liters válidos
+  const validReadings = historico.filter(item => 
+    item.status === "normal" && 
+    item.liters !== null && 
+    item.liters !== undefined && 
+    item.liters >= 0
+  );
+  
+  if (validReadings.length === 0) {
+    return { uso1h: null, usoSemana: null, usoMes: null };
+  }
+  
+  const currentReading = validReadings.find(item => item.timestamp === historico[currentIndex].timestamp);
+  if (!currentReading) {
+    return { uso1h: null, usoSemana: null, usoMes: null };
+  }
+  
+  // Calcular uso em 1 hora (litros consumidos)
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+  const readingsLastHour = validReadings.filter(item => {
+    const itemDate = new Date(item.timestamp);
+    return itemDate >= oneHourAgo && itemDate <= now;
+  });
+  
+  let uso1h = null;
+  if (readingsLastHour.length >= 2) {
+    const firstInHour = readingsLastHour[0];
+    const lastInHour = readingsLastHour[readingsLastHour.length - 1];
+    const consumo = firstInHour.liters - lastInHour.liters;
+    uso1h = consumo > 0 ? Math.round(consumo) : 0;
+  }
+  
+  // Calcular uso na última semana
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const readingsLastWeek = validReadings.filter(item => {
+    const itemDate = new Date(item.timestamp);
+    return itemDate >= oneWeekAgo && itemDate <= now;
+  });
+  
+  let usoSemana = null;
+  if (readingsLastWeek.length >= 2) {
+    const firstInWeek = readingsLastWeek[0];
+    const lastInWeek = readingsLastWeek[readingsLastWeek.length - 1];
+    const consumo = firstInWeek.liters - lastInWeek.liters;
+    usoSemana = consumo > 0 ? Math.round(consumo) : 0;
+  }
+  
+  // Calcular uso no último mês
+  const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const readingsLastMonth = validReadings.filter(item => {
+    const itemDate = new Date(item.timestamp);
+    return itemDate >= oneMonthAgo && itemDate <= now;
+  });
+  
+  let usoMes = null;
+  if (readingsLastMonth.length >= 2) {
+    const firstInMonth = readingsLastMonth[0];
+    const lastInMonth = readingsLastMonth[readingsLastMonth.length - 1];
+    const consumo = firstInMonth.liters - lastInMonth.liters;
+    usoMes = consumo > 0 ? Math.round(consumo) : 0;
+  }
+  
+  return { uso1h, usoSemana, usoMes };
 }
 
 // ====== FUNÇÃO PRINCIPAL DE VERIFICAÇÃO ======
@@ -252,159 +320,152 @@ app.post("/api/lora", authMiddleware, (req, res) => {
       sensor_ok: false,
       timestamp: new Date().toISOString(),
       status: "waiting_lora",
-      message: message || "Receptor online, aguardando transmissão LoRa",
-      lora_connected: false,
-      receptor_connected: true,
-      wifi_signal: wifi_rssi || null,
       lora_signal: {
         rssi: null,
         snr: null,
-        quality: 0 // ZERADO
+        quality: 0
       }
     };
     
-    historico.push(waitingRecord);
-    if (historico.length > 100) historico.shift();
+    if (historico.length === 0 || historico[historico.length - 1].status !== "waiting_lora") {
+      historico.push(waitingRecord);
+      if (historico.length > 500) historico.shift();
+    }
     
     return res.json({ 
-      status: "ok", 
-      message: "Status registrado",
-      receptor_connected: true
+      success: true, 
+      message: "Aguardando dados LoRa",
+      status: "waiting_lora"
     });
   }
 
-  // ====== PACOTE NORMAL COM DADOS LoRa ======
-  console.log("📦 Dados LoRa recebidos - Sistema NORMAL");
-  
+  // ====== ATUALIZAR ÚLTIMO PACOTE LoRa ======
   lastLoRaPacket = Date.now();
   systemStatus.lora.lastPacket = lastLoRaPacket;
   
-  // Atualizar e salvar qualidade do sinal (apenas quando tem dados LoRa)
-  if (lora_rssi !== undefined) {
-    const quality = calculateSignalQuality(lora_rssi, lora_snr);
-    systemStatus.lora.rssi = lora_rssi;
-    systemStatus.lora.snr = lora_snr;
-    systemStatus.lora.quality = quality;
-    
-    // Salvar como último sinal bom
+  // ====== PROCESSAR SINAL LoRa ======
+  const loraQuality = calculateSignalQuality(lora_rssi, lora_snr);
+  
+  // GUARDAR ÚLTIMO SINAL BOM
+  if (loraQuality > 0) {
     lastGoodLoRaSignal = {
       rssi: lora_rssi,
       snr: lora_snr,
-      quality: quality
+      quality: loraQuality
     };
   }
-
-  const registro = {
+  
+  systemStatus.lora.rssi = lora_rssi;
+  systemStatus.lora.snr = lora_snr;
+  systemStatus.lora.quality = loraQuality;
+  
+  // ====== CRIAR REGISTRO NO HISTÓRICO ======
+  const novoRegistro = {
     device: device || "ESP32_TX",
     distance: parseFloat(distance) || 0,
-    level: parseInt(level) || 0,
+    level: parseFloat(level) || 0,
     percentage: parseInt(percentage) || 0,
     liters: parseInt(liters) || 0,
-    sensor_ok: sensor_ok !== false,
+    sensor_ok: sensor_ok,
     timestamp: new Date().toISOString(),
     status: isSensorError ? "sensor_error" : "normal",
-    lora_connected: true,
-    receptor_connected: true,
-    wifi_signal: wifi_rssi || null,
     lora_signal: {
-      rssi: systemStatus.lora.rssi,
-      snr: systemStatus.lora.snr,
-      quality: systemStatus.lora.quality
-    },
-    sensor_error: isSensorError,
-    sensor_error_message: isSensorError ? "Erro no sensor ultrassônico" : null
+      rssi: lora_rssi,
+      snr: lora_snr,
+      quality: loraQuality
+    }
   };
-
-  // Se for erro no sensor, forçar valores negativos
-  if (isSensorError) {
-    registro.distance = -1;
-    registro.level = -1;
-    registro.percentage = -1;
-    registro.liters = -1;
-    registro.sensor_ok = false;
-    registro.message = "ERRO NO SENSOR ULTRASSÔNICO";
-  }
-
-  historico.push(registro);
-  if (historico.length > 100) historico.shift();
   
-  systemStatus.lora.connected = true;
-  systemStatus.lora.waitingData = false;
-  systemStatus.lora.description = "Transmissão LoRa ativa";
-
+  historico.push(novoRegistro);
+  if (historico.length > 500) historico.shift();
+  
+  console.log(`✅ Dados processados - Status: ${novoRegistro.status} | Nível: ${percentage}% | Volume: ${liters}L | Sinal: ${loraQuality}%`);
+  
   res.json({ 
-    status: "ok", 
-    message: isSensorError ? "Erro no sensor detectado" : "Dados recebidos com sucesso!",
-    receptor_connected: true,
-    lora_connected: true,
-    sensor_error: isSensorError,
-    caixa_config: caixaConfig
+    success: true, 
+    message: "Dados recebidos com sucesso",
+    status: novoRegistro.status,
+    lora_quality: loraQuality
   });
 });
 
-// ====== ROTA GET: DADOS PARA DASHBOARD ======
+// ====== ROTA GET: DASHBOARD ======
 app.get("/api/lora", (req, res) => {
   checkSystemStatus();
   
-  let ultimo;
   let displayMode = "normal";
+  let responseData = null;
   
-  // ====== DECISÃO DE STATUS ======
+  // ====== LÓGICA DE DECISÃO DO MODO DE EXIBIÇÃO ======
   if (!systemStatus.receptor.connected) {
     displayMode = "receptor_disconnected";
-    ultimo = criarRespostaStatus("receptor_disconnected");
-  } 
-  else if (systemStatus.receptor.connected && systemStatus.lora.waitingData) {
-    displayMode = "waiting_lora";
-    ultimo = criarRespostaStatus("waiting_lora");
-  }
-  else if (systemStatus.receptor.connected && systemStatus.lora.connected && systemStatus.sensor.hasError) {
+    responseData = criarRespostaStatus("receptor_disconnected");
+  } else if (systemStatus.sensor.hasError && historico.length > 0) {
     displayMode = "sensor_error";
-    ultimo = criarRespostaStatus("sensor_error");
-  }
-  else if (systemStatus.receptor.connected && systemStatus.lora.connected) {
+    const lastReading = historico[historico.length - 1];
+    responseData = {
+      ...lastReading,
+      display_mode: "sensor_error",
+      receptor_connected: true,
+      lora_connected: systemStatus.lora.connected,
+      wifi_signal: systemStatus.receptor.wifiSignal,
+      sensor_error: true,
+      sensor_error_message: systemStatus.sensor.errorDescription,
+      config_applied: {
+        volume_total: caixaConfig.volumeTotal,
+        altura_caixa: caixaConfig.altura
+      }
+    };
+  } else if (!systemStatus.lora.connected || systemStatus.lora.waitingData) {
+    displayMode = "waiting_lora";
+    responseData = criarRespostaStatus("waiting_lora");
+  } else if (historico.length > 0) {
     displayMode = "normal";
-    const recentNormalData = historico.filter(item => item.status === "normal");
-    
-    if (recentNormalData.length > 0) {
-      ultimo = recentNormalData[recentNormalData.length - 1];
-      ultimo.display_mode = displayMode;
-      ultimo.receptor_connected = true;
-    } else {
-      ultimo = criarRespostaStatus("normal");
-    }
-  }
-  else {
-    displayMode = "unknown";
-    ultimo = criarRespostaStatus("unknown");
+    const lastReading = historico[historico.length - 1];
+    responseData = {
+      ...lastReading,
+      display_mode: "normal",
+      receptor_connected: true,
+      lora_connected: true,
+      wifi_signal: systemStatus.receptor.wifiSignal,
+      config_applied: {
+        volume_total: caixaConfig.volumeTotal,
+        altura_caixa: caixaConfig.altura
+      }
+    };
+  } else {
+    displayMode = "normal";
+    responseData = criarRespostaStatus("normal");
   }
 
-  // Preparar histórico
-  let historicoParaDashboard = systemStatus.receptor.connected ? 
-    historico.slice(-20).map(item => ({
+  // ====== PREPARAR HISTÓRICO COM CÁLCULO DE CONSUMO ======
+  const historicoParaDashboard = historico.slice(-100).map((item, index, array) => {
+    const consumo = calcularConsumo(historico.indexOf(item));
+    return {
       ...item,
-      timestamp: item.timestamp || new Date().toISOString()
-    })) : [];
+      uso_1h: consumo.uso1h,
+      uso_semana: consumo.usoSemana,
+      uso_mes: consumo.usoMes
+    };
+  }).reverse();
 
-  const responseData = {
-    ...ultimo,
+  // ====== ADICIONAR INFORMAÇÕES EXTRAS ======
+  responseData = {
+    ...responseData,
     receptor_status: {
       connected: systemStatus.receptor.connected,
-      last_seen: new Date(lastReceptorRequest).toISOString(),
-      seconds_since_last_seen: Math.floor((Date.now() - lastReceptorRequest) / 1000),
-      wifi_signal: systemStatus.receptor.wifiSignal,
+      last_seen: new Date(systemStatus.receptor.lastSeen).toISOString(),
+      wifi_rssi: systemStatus.receptor.wifiSignal,
       description: systemStatus.receptor.description
     },
-    lora_connection_status: {
+    lora_status: {
       connected: systemStatus.lora.connected,
       waiting_data: systemStatus.lora.waitingData,
       last_packet: systemStatus.lora.lastPacket ? 
         new Date(systemStatus.lora.lastPacket).toISOString() : null,
-      seconds_since_last_packet: systemStatus.lora.lastPacket ? 
-        Math.floor((Date.now() - systemStatus.lora.lastPacket) / 1000) : null,
-      signal_quality: systemStatus.lora.quality, // VAI ZERAR QUANDO PERDER LORA
       rssi: systemStatus.lora.rssi,
       snr: systemStatus.lora.snr,
+      quality: systemStatus.lora.quality,
       description: systemStatus.lora.description
     },
     sensor_status: {
@@ -622,7 +683,7 @@ const PORT = process.env.PORT || 3000;
 carregarConfiguracao();
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n🚀 SERVIDOR INICIADO - SISTEMA SIMPLIFICADO`);
+  console.log(`\n🚀 SERVIDOR INICIADO - SISTEMA COM CÁLCULO DE CONSUMO`);
   console.log(`============================================`);
   console.log(`✅ Porta: ${PORT}`);
   console.log(`📡 STATUS DETECTADOS:`);
@@ -630,6 +691,10 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   • Aguardando LoRa = Receptor online + sem LoRa há 30s (SINAL ZERADO)`);
   console.log(`   • Erro no sensor = Valores -1`);
   console.log(`   • Normal = Tudo funcionando`);
+  console.log(`\n💧 FUNCIONALIDADES:`);
+  console.log(`   • Cálculo de consumo por 1 hora`);
+  console.log(`   • Cálculo de consumo por semana`);
+  console.log(`   • Cálculo de consumo por mês`);
   
   if (caixaConfig.volumeTotal > 0) {
     console.log(`\n📋 CONFIGURAÇÃO DA CAIXA (do transmissor):`);
