@@ -21,6 +21,14 @@
       --gray: #6c757d;
       --water-blue: #48cae4;
       --water-deep: #0096c7;
+      --waiting: #6c757d;
+      --sensor-error: #d00000;
+      --signal-excellent: #0077b6;
+      --signal-good: #00b4d8;
+      --signal-fair: #48cae4;
+      --signal-poor: #90e0ef;
+      --signal-bad: #caf0f8;
+      --signal-none: #e9ecef;
     }
 
     * {
@@ -33,7 +41,7 @@
       font-family: 'Poppins', sans-serif;
       background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
       min-height: 100vh;
-      padding: 15px;
+      padding: 20px;
       color: var(--dark);
     }
 
@@ -45,8 +53,8 @@
     /* HEADER */
     .header {
       text-align: center;
-      margin-bottom: 12px;
-      padding: 12px 15px;
+      margin-bottom: 20px;
+      padding: 15px;
       background: white;
       border-radius: 15px;
       box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
@@ -66,8 +74,8 @@
 
     .header h1 {
       color: var(--primary-dark);
-      font-size: 1.6rem;
-      margin-bottom: 3px;
+      font-size: 1.8rem;
+      margin-bottom: 5px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -86,47 +94,49 @@
 
     .subtitle {
       color: var(--gray);
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       font-weight: 400;
     }
 
     /* STATUS PANEL */
     .status-panel {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 10px;
-      margin-bottom: 15px;
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin: 0 0 25px 0;
+      flex-wrap: wrap;
     }
 
     .status-item {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 8px;
+      gap: 10px;
       background: white;
-      padding: 10px 15px;
-      border-radius: 10px;
-      box-shadow: 0 3px 12px rgba(0,0,0,0.06);
+      padding: 15px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      min-width: 200px;
       transition: all 0.3s ease;
-      min-height: 50px;
+      min-height: 60px;
     }
 
     .status-item:hover {
       transform: translateY(-2px);
-      box-shadow: 0 5px 18px rgba(0,0,0,0.1);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
     }
 
     .status-label {
       font-weight: 600;
       color: var(--primary-dark);
-      font-size: 0.8rem;
-      white-space: nowrap;
+      font-size: 0.85rem;
+      min-width: 65px;
     }
 
     .status-value {
       color: var(--dark);
       font-weight: 500;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
+      flex: 1;
       text-align: right;
       font-family: 'Poppins', sans-serif;
     }
@@ -150,7 +160,7 @@
 
     .sensor-status.ok { color: var(--success); }
     .sensor-status.error { 
-      color: var(--danger); 
+      color: var(--sensor-error); 
       font-weight: bold;
       animation: blink 0.5s infinite;
     }
@@ -160,17 +170,18 @@
       50% { opacity: 0.5; }
     }
 
-    /* SIGNAL BARS */
+    /* SIGNAL BARS - COM ESTADO ZERADO */
     .signal-bar {
       display: flex;
       align-items: flex-end;
-      gap: 2px;
-      height: 18px;
+      gap: 3px;
+      height: 20px;
+      margin-top: 5px;
     }
     
     .signal-bar-item {
-      width: 6px;
-      background: #e9ecef;
+      width: 8px;
+      background: var(--signal-none);
       border-radius: 2px;
       transition: all 0.3s ease;
     }
@@ -179,27 +190,34 @@
       background: var(--primary) !important;
     }
     
-    .signal-bar-item:nth-child(1) { height: 4px; }
-    .signal-bar-item:nth-child(2) { height: 7px; }
-    .signal-bar-item:nth-child(3) { height: 10px; }
-    .signal-bar-item:nth-child(4) { height: 13px; }
-    .signal-bar-item:nth-child(5) { height: 16px; }
+    .signal-bar-item.zero-signal {
+      background: var(--signal-none) !important;
+    }
+    
+    .signal-bar-item:nth-child(1) { height: 5px; }
+    .signal-bar-item:nth-child(2) { height: 8px; }
+    .signal-bar-item:nth-child(3) { height: 11px; }
+    .signal-bar-item:nth-child(4) { height: 14px; }
+    .signal-bar-item:nth-child(5) { height: 17px; }
     
     .signal-info {
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      font-size: 0.75rem;
+      font-size: 0.8rem;
     }
     
     .signal-quality {
       font-weight: 600;
-      margin-top: 2px;
-      font-size: 0.85rem !important;
+      margin-top: 3px;
+      font-size: 0.9rem !important;
       font-family: 'Poppins', sans-serif !important;
     }
     
-    .signal-quality.zero { color: var(--gray) !important; }
+    .signal-quality.zero {
+      color: var(--gray) !important;
+    }
+    
     .signal-quality.excellent { color: var(--success) !important; }
     .signal-quality.good { color: #28a745 !important; }
     .signal-quality.fair { color: var(--warning) !important; }
@@ -208,18 +226,18 @@
 
     /* ALERT CONTAINER */
     #alertContainer {
-      margin-bottom: 15px;
+      margin-bottom: 20px;
     }
 
     .alert {
-      padding: 10px 14px;
+      padding: 12px 16px;
       border-radius: 8px;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       animation: slideIn 0.5s ease;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
     }
 
     .alert.error {
@@ -247,414 +265,590 @@
     }
 
     @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { transform: translateY(-20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
 
-    /* LAYOUT GRID */
-    .main-grid {
+    /* MAIN CONTENT */
+    .content {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 15px;
-      margin-bottom: 15px;
+      grid-template-columns: 1fr 2fr;
+      gap: 25px;
+      margin-bottom: 25px;
     }
 
-    /* WATER LEVEL CARD */
-    .water-level-card {
+    @media (max-width: 992px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* TANK SECTION */
+    .tank-section {
       background: white;
-      border-radius: 15px;
+      border-radius: 20px;
       padding: 20px;
-      box-shadow: 0 8px 25px rgba(0, 119, 182, 0.15);
-      position: relative;
-      overflow: hidden;
-      transition: all 0.3s ease;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: fit-content;
     }
 
-    .water-level-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 12px 35px rgba(0, 119, 182, 0.25);
-    }
-
-    .water-level-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, var(--primary), var(--secondary), var(--water-blue));
-      background-size: 200% 100%;
-      animation: gradientFlow 3s ease infinite;
-    }
-
-    @keyframes gradientFlow {
-      0%, 100% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-    }
-
-    .card-title {
-      font-size: 1.1rem;
+    .tank-section h2 {
       color: var(--primary-dark);
       margin-bottom: 15px;
+      font-size: 1.6rem;
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-weight: 600;
+      gap: 10px;
+      width: 100%;
+      padding-left: 10px;
     }
 
-    .card-title i {
-      color: var(--secondary);
-    }
-
-    /* TANK CONTAINER */
     .tank-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin: 20px 0;
       position: relative;
-      flex-direction: column;
-    }
-
-    .water-tank {
-      width: 200px;
-      height: 250px;
-      border: 4px solid var(--primary);
-      border-radius: 15px;
-      position: relative;
+      width: 100%;
+      height: 350px;
+      border: 8px solid var(--primary-dark);
+      border-radius: 20px;
+      background: linear-gradient(to bottom, #e3f2fd, #bbdefb);
       overflow: hidden;
-      background: linear-gradient(180deg, #e3f2fd 0%, #bbdefb 100%);
-      box-shadow: 
-        inset 0 0 30px rgba(0, 119, 182, 0.1),
-        0 10px 30px rgba(0, 119, 182, 0.2);
+      margin-bottom: 20px;
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.1);
     }
 
-    /* WATER FILL - COM CORES DINÂMICAS */
-    .water-fill {
+    /* WATER LEVELS */
+    .water {
       position: absolute;
       bottom: 0;
-      left: 0;
       width: 100%;
-      transition: all 1s cubic-bezier(0.4, 0.0, 0.2, 1);
-      overflow: hidden;
+      background: linear-gradient(to top, var(--water-blue), var(--water-deep));
+      transition: height 1s ease;
+      border-radius: 0 0 12px 12px;
     }
 
-    /* VERMELHO < 25% */
-    .water-fill.level-critical {
-      background: linear-gradient(180deg, 
-        rgba(239, 68, 68, 0.85) 0%,
-        rgba(220, 38, 38, 0.9) 50%,
-        rgba(185, 28, 28, 1) 100%);
-      box-shadow: 
-        0 -8px 30px rgba(239, 68, 68, 0.7),
-        inset 0 -3px 15px rgba(255, 255, 255, 0.3),
-        0 0 40px rgba(239, 68, 68, 0.5);
+    .water.receptor-disconnected {
+      background: linear-gradient(to top, #e63946, #d00000) !important;
+      animation: alertPulse 2s infinite;
     }
 
-    /* LARANJA < 50% */
-    .water-fill.level-low {
-      background: linear-gradient(180deg, 
-        rgba(251, 146, 60, 0.85) 0%,
-        rgba(249, 115, 22, 0.9) 50%,
-        rgba(234, 88, 12, 1) 100%);
-      box-shadow: 
-        0 -8px 30px rgba(251, 146, 60, 0.7),
-        inset 0 -3px 15px rgba(255, 255, 255, 0.3),
-        0 0 40px rgba(251, 146, 60, 0.5);
+    .water.waiting-lora {
+      background: linear-gradient(to top, #ff9e00, #ff6b00) !important;
+      animation: waitingPulse 2s infinite;
     }
 
-    /* AZUL < 75% */
-    .water-fill.level-medium {
-      background: linear-gradient(180deg, 
-        rgba(59, 130, 246, 0.85) 0%,
-        rgba(37, 99, 235, 0.9) 50%,
-        rgba(29, 78, 216, 1) 100%);
-      box-shadow: 
-        0 -8px 30px rgba(59, 130, 246, 0.7),
-        inset 0 -3px 15px rgba(255, 255, 255, 0.3),
-        0 0 40px rgba(59, 130, 246, 0.5);
+    .water.sensor-error {
+      background: linear-gradient(to top, #d00000, #9d0208) !important;
+      animation: errorPulse 1s infinite;
     }
 
-    /* VERDE <= 100% */
-    .water-fill.level-good {
-      background: linear-gradient(180deg, 
-        rgba(34, 197, 94, 0.85) 0%,
-        rgba(22, 163, 74, 0.9) 50%,
-        rgba(21, 128, 61, 1) 100%);
-      box-shadow: 
-        0 -8px 30px rgba(34, 197, 94, 0.7),
-        inset 0 -3px 15px rgba(255, 255, 255, 0.3),
-        0 0 40px rgba(34, 197, 94, 0.5);
-    }
-
-    /* EFEITO DE ONDA */
-    .water-fill::before {
-      content: '';
+    .water-wave {
       position: absolute;
-      top: -30px;
-      left: -50%;
+      top: -20px;
       width: 200%;
-      height: 30px;
-      background: radial-gradient(ellipse at center, 
-        rgba(255, 255, 255, 0.6) 0%, 
-        rgba(255, 255, 255, 0.4) 30%,
-        rgba(255, 255, 255, 0.2) 50%,
-        transparent 70%);
-      animation: wave 4s ease-in-out infinite;
-      border-radius: 45%;
+      height: 40px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 40%;
+      animation: wave 8s infinite linear;
     }
 
-    /* BOLHAS E REFLEXOS */
-    .water-fill::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: 
-        radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.4) 0%, transparent 4%),
-        radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.35) 0%, transparent 5%),
-        radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.3) 0%, transparent 3%),
-        radial-gradient(circle at 60% 70%, rgba(255, 255, 255, 0.4) 0%, transparent 4.5%),
-        radial-gradient(circle at 30% 60%, rgba(255, 255, 255, 0.25) 0%, transparent 3%),
-        radial-gradient(circle at 70% 50%, rgba(255, 255, 255, 0.3) 0%, transparent 3.5%),
-        radial-gradient(circle at 15% 30%, rgba(255, 255, 255, 0.35) 0%, transparent 4%),
-        linear-gradient(135deg,
-          transparent 45%,
-          rgba(255, 255, 255, 0.12) 50%,
-          transparent 55%);
-      background-size: 
-        100% 100%, 100% 100%, 100% 100%, 100% 100%,
-        100% 100%, 100% 100%, 100% 100%, 40px 40px;
-      animation: bubbles 10s ease-in-out infinite, shimmer 3s linear infinite;
+    .water-wave:nth-child(2) {
+      top: -15px;
+      opacity: 0.5;
+      animation-duration: 6s;
+    }
+
+    .water-wave:nth-child(3) {
+      top: -10px;
+      opacity: 0.3;
+      animation-duration: 10s;
     }
 
     @keyframes wave {
-      0%, 100% { 
-        transform: translateX(0) translateY(0) rotate(0deg);
-        border-radius: 45%;
-      }
-      25% { 
-        transform: translateX(-15%) translateY(-8px) rotate(1deg);
-        border-radius: 42%;
-      }
-      50% { 
-        transform: translateX(-25%) translateY(-12px) rotate(-1deg);
-        border-radius: 48%;
-      }
-      75% { 
-        transform: translateX(-15%) translateY(-8px) rotate(0.5deg);
-        border-radius: 43%;
-      }
+      0% { transform: translateX(0) rotate(0deg); }
+      100% { transform: translateX(-50%) rotate(360deg); }
     }
 
-    @keyframes shimmer {
-      0% { background-position: 0 0; }
-      100% { background-position: 40px 40px; }
+    @keyframes alertPulse {
+      0%, 100% { opacity: 0.8; }
+      50% { opacity: 0.6; }
     }
 
-    @keyframes bubbles {
-      0%, 100% { 
-        transform: translateY(0) scale(1);
-        opacity: 0.8;
-      }
-      50% { 
-        transform: translateY(-10px) scale(1.05);
-        opacity: 1;
-      }
+    @keyframes waitingPulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 0.5; }
     }
 
-    .tank-info-display {
+    @keyframes errorPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* TANK INFO */
+    .tank-info {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       text-align: center;
       z-index: 10;
-      pointer-events: none;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 20px 25px;
+      border-radius: 15px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+      min-width: 240px;
+      border: 2px solid rgba(0, 119, 182, 0.1);
     }
 
-    .percentage-display {
-      font-size: 3rem;
+    .tank-info.receptor-disconnected {
+      border: 2px solid #e63946;
+      background: rgba(255, 255, 255, 0.97);
+    }
+    
+    .tank-info.waiting-lora {
+      border: 2px dashed #ff9e00;
+      background: rgba(255, 255, 255, 0.97);
+    }
+    
+    .tank-info.sensor-error {
+      border: 2px solid #d00000;
+      background: rgba(255, 255, 255, 0.97);
+    }
+
+    .percentage {
+      font-size: 3.2rem;
       font-weight: 700;
       color: var(--primary-dark);
-      text-shadow: 
-        0 2px 10px rgba(255, 255, 255, 0.9),
-        0 0 20px rgba(0, 119, 182, 0.6);
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+      line-height: 1;
       margin-bottom: 5px;
-      transition: all 0.5s ease;
+      font-family: 'Poppins', sans-serif;
     }
 
-    .volume-display {
-      font-size: 1.1rem;
+    .percentage.receptor-disconnected {
+      color: #e63946;
+      font-size: 2.2rem;
+    }
+    
+    .percentage.waiting-lora {
+      color: #ff9e00;
+      font-size: 2.2rem;
+    }
+    
+    .percentage.sensor-error {
+      color: #d00000;
+      font-size: 2.2rem;
+    }
+
+    .volume {
+      font-size: 1.2rem;
+      color: var(--dark);
+      font-weight: 500;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .status-message {
+      font-size: 1rem;
       font-weight: 600;
-      color: var(--primary);
-      text-shadow: 
-        0 1px 5px rgba(255, 255, 255, 0.9);
+      margin-top: 8px;
+      min-height: 24px;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .status-message.receptor-disconnected {
+      color: #e63946;
+      animation: textPulse 1s infinite;
+    }
+    
+    .status-message.waiting-lora {
+      color: #ff9e00;
+      animation: textPulse 2s infinite;
+    }
+    
+    .status-message.sensor-error {
+      color: #d00000;
+      font-weight: bold;
+      animation: textPulse 0.5s infinite;
+    }
+
+    @keyframes textPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
     }
 
     .capacity-info {
-      margin-top: 10px;
-      text-align: center;
       font-size: 0.85rem;
       color: var(--gray);
+      margin-top: 5px;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    /* TANK SCALE */
+    .tank-scale {
+      position: absolute;
+      left: -40px;
+      top: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 15px 0;
+    }
+
+    .scale-mark {
+      position: relative;
+      text-align: right;
+      padding-right: 8px;
+      color: var(--gray);
+      font-size: 0.8rem;
       font-weight: 500;
     }
 
-    .capacity-info span {
-      color: var(--primary-dark);
-      font-weight: 600;
+    .scale-mark::after {
+      content: '';
+      position: absolute;
+      right: -25px;
+      top: 50%;
+      width: 15px;
+      height: 2px;
+      background: var(--gray);
     }
 
-    /* LEVEL INDICATORS COM ÍCONES */
-    .level-indicators {
+    /* STATS CARDS */
+    .stats-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-top: 15px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
       width: 100%;
     }
 
-    .level-indicator {
+    .stat-card {
       background: white;
       border-radius: 12px;
-      padding: 12px;
-      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
-      transition: all 0.3s ease;
+      padding: 18px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 15px;
+      transition: all 0.3s ease;
       cursor: pointer;
+      height: 90px;
     }
 
-    .level-indicator:hover {
+    .stat-card:hover {
       transform: translateY(-3px);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
     }
 
-    .indicator-icon {
-      width: 45px;
-      height: 45px;
+    .stat-card.receptor-disconnected {
+      background: #fff5f5;
+      border: 2px solid #e63946;
+      animation: panelPulse 2s infinite;
+    }
+    
+    .stat-card.waiting-lora {
+      background: #fff9e6;
+      border: 2px dashed #ff9e00;
+    }
+    
+    .stat-card.sensor-error {
+      background: #fff5f5;
+      border: 2px solid #d00000;
+      animation: errorPulse 1s infinite;
+    }
+
+    .stat-icon {
+      width: 55px;
+      height: 55px;
       border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.3rem;
+      font-size: 1.6rem;
       color: white;
       flex-shrink: 0;
     }
 
-    .indicator-icon.distance { 
-      background: linear-gradient(135deg, #667eea, #764ba2); 
+    .stat-icon.distance { background: linear-gradient(135deg, #667eea, #764ba2); }
+    .stat-icon.level { background: linear-gradient(135deg, #f093fb, #f5576c); }
+    .stat-icon.volume { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+    .stat-icon.status { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+    
+    .stat-icon.receptor-disconnected { 
+      background: linear-gradient(135deg, #e63946, #d00000); 
+      animation: iconPulse 1s infinite;
     }
     
-    .indicator-icon.level { 
-      background: linear-gradient(135deg, #f093fb, #f5576c); 
+    .stat-icon.waiting-lora { 
+      background: linear-gradient(135deg, #ff9e00, #ff6b00); 
     }
     
-    .indicator-icon.volume { 
-      background: linear-gradient(135deg, #4facfe, #00f2fe); 
+    .stat-icon.sensor-error { 
+      background: linear-gradient(135deg, #d00000, #9d0208); 
+      animation: iconPulse 0.5s infinite;
     }
 
-    .indicator-info {
+    @keyframes iconPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    @keyframes panelPulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(230, 57, 70, 0.5); }
+      50% { box-shadow: 0 0 30px rgba(230, 57, 70, 0.8); }
+    }
+
+    .stat-info {
       flex: 1;
       min-width: 0;
     }
 
-    .indicator-info .label {
-      font-size: 0.7rem;
+    .stat-info h3 {
+      font-size: 0.85rem;
       color: var(--gray);
       font-weight: 500;
-      text-transform: uppercase;
-      margin-bottom: 3px;
+      margin-bottom: 5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .indicator-info .value {
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: var(--primary-dark);
+    .stat-info p {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: var(--dark);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    /* CHART CARD */
-    .chart-card {
+    .stat-info p.receptor-disconnected {
+      color: #e63946;
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+    
+    .stat-info p.waiting-lora {
+      color: #ff9e00;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    
+    .stat-info p.sensor-error {
+      color: #d00000;
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+
+    /* CHART SECTION */
+    .chart-section {
       background: white;
-      border-radius: 15px;
+      border-radius: 20px;
       padding: 20px;
-      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      height: fit-content;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .chart-header h2 {
+      color: var(--primary-dark);
+      font-size: 1.6rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .time-selector {
+      display: flex;
+      gap: 8px;
+    }
+
+    .time-btn {
+      padding: 6px 12px;
+      background: #e9ecef;
+      border: none;
+      border-radius: 6px;
+      color: var(--gray);
+      font-weight: 500;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .time-btn.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .time-btn:hover:not(.active) {
+      background: #dee2e6;
     }
 
     .chart-container {
-      height: 400px;
       position: relative;
+      height: 280px;
+      width: 100%;
+    }
+    
+    .chart-message {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      text-align: center;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 10px;
+    }
+    
+    .chart-message i {
+      font-size: 3.5rem;
+      margin-bottom: 15px;
+    }
+    
+    .chart-message.receptor-disconnected {
+      color: #e63946;
+      background: #fff5f5;
+      border: 2px solid #e63946;
+    }
+    
+    .chart-message.waiting-lora {
+      color: #ff9e00;
+      background: #fff9e6;
+      border: 2px dashed #ff9e00;
+    }
+    
+    .chart-message.sensor-error {
+      color: #d00000;
+      background: #fff5f5;
+      border: 2px solid #d00000;
+    }
+
+    .chart-message i.fa-spin {
+      animation: spin 2s infinite linear;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
     /* HISTORY SECTION */
     .history-section {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 15px;
-      margin-bottom: 15px;
+      background: white;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      margin-top: 25px;
+      grid-column: 1 / -1;
     }
 
-    .history-card {
-      background: white;
-      border-radius: 15px;
-      padding: 18px;
-      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    .history-section h2 {
+      color: var(--primary-dark);
+      font-size: 1.6rem;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .history-table-container {
       overflow-x: auto;
-      margin-top: 15px;
+      border-radius: 10px;
+      border: 1px solid #e9ecef;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+    
+    .history-message {
+      padding: 30px;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    
+    .history-message i {
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+    }
+    
+    .history-message.receptor-disconnected {
+      border: 2px solid #e63946;
+      background: #fff5f5;
+      color: #e63946;
+    }
+    
+    .history-message.waiting-lora {
+      border: 2px dashed #ff9e00;
+      background: #fff9e6;
+      color: #ff9e00;
+    }
+    
+    .history-message.sensor-error {
+      border: 2px solid #d00000;
+      background: #fff5f5;
+      color: #d00000;
     }
 
     .history-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.85rem;
+      min-width: 700px;
+    }
+
+    .history-table thead {
+      background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
 
     .history-table th {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-      color: white;
-      padding: 10px 8px;
+      padding: 12px 15px;
       text-align: left;
-      font-weight: 600;
-      font-size: 0.8rem;
+      font-weight: 500;
       white-space: nowrap;
+      font-size: 0.85rem;
     }
 
-    .history-table th:first-child {
-      border-radius: 8px 0 0 0;
+    .history-table tbody tr {
+      border-bottom: 1px solid #eee;
+      transition: background 0.3s ease;
     }
 
-    .history-table th:last-child {
-      border-radius: 0 8px 0 0;
+    .history-table tbody tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+
+    .history-table tbody tr:hover {
+      background: #f1f3f5;
     }
 
     .history-table td {
-      padding: 10px 8px;
-      border-bottom: 1px solid #e9ecef;
+      padding: 12px 15px;
       white-space: nowrap;
-    }
-
-    .history-table tr:hover {
-      background: #f8f9fa;
+      font-size: 0.85rem;
     }
 
     .status-badge {
       padding: 4px 10px;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      white-space: nowrap;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      display: inline-block;
+      min-width: 70px;
+      text-align: center;
     }
 
     .status-badge.normal {
@@ -670,261 +864,190 @@
     .status-badge.receptor_disconnected {
       background: #f8d7da;
       color: #721c24;
+      font-weight: bold;
+      animation: alertPulse 1s infinite;
     }
 
     .status-badge.sensor_error {
-      background: #f8d7da;
-      color: #721c24;
+      background: #d00000;
+      color: white;
+      font-weight: bold;
+      animation: errorPulse 0.5s infinite;
     }
 
-    /* UPDATE HISTORY */
-    .update-history-card {
+    /* FOOTER */
+    .footer {
+      text-align: center;
+      padding: 15px;
+      color: var(--gray);
+      font-size: 0.85rem;
       background: white;
       border-radius: 15px;
-      padding: 15px;
-      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-      max-height: 450px;
-      overflow-y: auto;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+      margin-top: 25px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
 
-    .update-entry {
-      padding: 8px 12px;
-      border-left: 3px solid var(--primary);
-      margin-bottom: 10px;
-      background: #f8f9fa;
-      border-radius: 0 8px 8px 0;
-      font-size: 0.8rem;
-      transition: all 0.2s ease;
-    }
-
-    .update-entry:hover {
-      background: #e9ecef;
-      transform: translateX(3px);
-    }
-
-    .update-time {
-      color: var(--primary);
-      font-weight: 600;
-      display: block;
-      margin-bottom: 3px;
-    }
-
-    .update-text {
-      color: var(--gray);
-      font-size: 0.75rem;
-    }
-
-    /* CONFIG MODAL */
-    .config-modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 1000;
+    .update-info {
+      display: flex;
       justify-content: center;
       align-items: center;
+      gap: 12px;
+      margin-top: 12px;
     }
 
-    .modal-content {
-      background: white;
-      border-radius: 15px;
-      width: 90%;
-      max-width: 500px;
-      max-height: 90vh;
-      overflow-y: auto;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.2);
-      animation: modalSlideIn 0.3s ease;
-    }
-
-    @keyframes modalSlideIn {
-      from {
-        opacity: 0;
-        transform: translateY(-30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .modal-header {
-      padding: 20px;
-      border-bottom: 1px solid #e9ecef;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .modal-header h2 {
-      color: var(--primary-dark);
-      font-size: 1.2rem;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .close-modal {
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      color: var(--gray);
-      cursor: pointer;
-      padding: 5px;
-      line-height: 1;
-    }
-
-    .close-modal:hover {
-      color: var(--danger);
-    }
-
-    .modal-body {
-      padding: 20px;
-    }
-
-    .config-form .form-group {
-      margin-bottom: 20px;
-    }
-
-    .config-form label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 600;
-      color: var(--primary-dark);
+    .last-update {
+      color: var(--primary);
+      font-weight: 500;
       font-size: 0.9rem;
     }
 
-    .config-form input {
-      width: 100%;
-      padding: 12px;
-      border: 2px solid #e9ecef;
-      border-radius: 8px;
-      font-size: 1rem;
-      font-family: 'Poppins', sans-serif;
-      transition: all 0.3s ease;
-    }
-
-    .config-form input:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(0, 119, 182, 0.1);
-    }
-
-    .config-info {
-      background: #f8f9fa;
-      padding: 15px;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      color: var(--gray);
-      margin-top: 20px;
-    }
-
-    .modal-footer {
-      padding: 20px;
-      border-top: 1px solid #e9ecef;
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-    }
-
-    .btn {
-      padding: 10px 20px;
-      border-radius: 8px;
-      border: none;
-      font-family: 'Poppins', sans-serif;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      font-size: 0.9rem;
-    }
-
-    .btn-primary {
+    .refresh-btn {
       background: var(--primary);
       color: white;
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      font-size: 1.1rem;
     }
 
-    .btn-primary:hover {
+    .refresh-btn:hover {
       background: var(--primary-dark);
-      transform: translateY(-2px);
-    }
-
-    .btn-secondary {
-      background: #e9ecef;
-      color: var(--dark);
-    }
-
-    .btn-secondary:hover {
-      background: #dee2e6;
+      transform: rotate(180deg);
     }
 
     /* LOADING */
     .loading {
-      text-align: center;
-      padding: 30px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 150px;
+      font-size: 1rem;
       color: var(--gray);
     }
 
-    .spinner {
-      border: 3px solid #f3f3f3;
-      border-top: 3px solid var(--primary);
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
+    .loading i {
+      margin-right: 10px;
       animation: spin 1s linear infinite;
-      margin: 0 auto 15px;
     }
 
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+    /* DEBUG PANEL SIMPLIFICADO */
+    .debug-panel {
+      position: fixed;
+      bottom: 15px;
+      right: 15px;
+      z-index: 1000;
+      display: flex;
+      gap: 10px;
     }
 
-    .no-data-message {
-      text-align: center;
-      padding: 40px;
-      color: var(--gray);
-      font-size: 0.9rem;
+    .debug-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 45px;
+      height: 45px;
+      font-size: 20px;
+      cursor: pointer;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    .no-data-message i {
-      font-size: 3rem;
-      color: var(--secondary);
-      margin-bottom: 15px;
-      display: block;
+    .debug-btn:hover {
+      background: var(--primary-dark);
+      transform: scale(1.1);
+    }
+
+    .debug-btn.config {
+      background: var(--warning);
+    }
+
+    .debug-btn.config:hover {
+      background: #e68a00;
     }
 
     /* RESPONSIVE */
-    @media (max-width: 1024px) {
-      .main-grid {
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      
+      .header h1 {
+        font-size: 1.5rem;
+      }
+      
+      .status-panel {
+        gap: 10px;
+      }
+      
+      .status-item {
+        min-width: calc(50% - 10px);
+        padding: 12px 15px;
+      }
+      
+      .stats-grid {
         grid-template-columns: 1fr;
       }
-
-      .history-section {
-        grid-template-columns: 1fr;
+      
+      .time-selector {
+        flex-wrap: wrap;
+        justify-content: center;
       }
-
-      .level-indicators {
-        grid-template-columns: 1fr;
+      
+      .tank-info {
+        padding: 15px 20px;
+        min-width: 200px;
+      }
+      
+      .percentage {
+        font-size: 2.5rem;
+      }
+      
+      .chart-container {
+        height: 250px;
+      }
+      
+      .history-table-container {
+        max-height: 250px;
+      }
+      
+      .debug-panel {
+        flex-direction: column;
+        bottom: 70px;
+        right: 10px;
       }
     }
 
-    @media (max-width: 768px) {
-      .status-panel {
-        grid-template-columns: 1fr;
+    @media (max-width: 480px) {
+      .header {
+        padding: 12px;
       }
-
-      .water-tank {
-        width: 160px;
-        height: 200px;
+      
+      .content {
+        gap: 15px;
       }
-
-      .percentage-display {
-        font-size: 2.5rem;
+      
+      .tank-section, .chart-section, .history-section {
+        padding: 15px;
       }
-
-      .chart-container {
+      
+      .status-item {
+        min-width: 100%;
+      }
+      
+      .tank-container {
         height: 300px;
       }
     }
@@ -933,219 +1056,204 @@
 <body>
   <div class="container">
     <!-- HEADER -->
-    <div class="header">
-      <h1>
-        <i class="fas fa-water"></i>
-        Monitor Inteligente de Caixa d'Água
-        <button id="configBtn" class="btn btn-secondary" style="margin-left: auto; padding: 8px 15px;">
-          <i class="fas fa-cog"></i> Configurações
-        </button>
-      </h1>
-      <p class="subtitle">Monitoramento em Tempo Real via LoRa</p>
-    </div>
-
-    <!-- CONFIG MODAL -->
-    <div id="configModal" class="config-modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2><i class="fas fa-cog"></i> Configurações da Caixa</h2>
-          <button class="close-modal" id="closeModal">&times;</button>
-        </div>
-        <div class="modal-body">
-          <form id="configForm" class="config-form">
-            <div class="form-group">
-              <label for="volumeTotal">Volume Total (Litros)</label>
-              <input type="number" id="volumeTotal" name="volumeTotal" min="100" max="10000" step="100" required>
-            </div>
-            <div class="form-group">
-              <label for="alturaCaixa">Altura da Caixa (cm)</label>
-              <input type="number" id="alturaCaixa" name="alturaCaixa" min="50" max="500" step="5" required>
-            </div>
-            <div class="form-group">
-              <label for="distanciaCheia">Distância do Sensor Quando Cheia (cm)</label>
-              <input type="number" id="distanciaCheia" name="distanciaCheia" min="10" max="100" step="1" required>
-            </div>
-            <div class="form-group">
-              <label for="distanciaVazia">Distância do Sensor Quando Vazia (cm)</label>
-              <input type="number" id="distanciaVazia" name="distanciaVazia" min="50" max="300" step="5" required>
-            </div>
-            <div class="config-info">
-              <p><i class="fas fa-info-circle"></i> Essas configurações serão usadas para calcular corretamente o nível da água.</p>
-            </div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" id="cancelConfig">Cancelar</button>
-          <button class="btn btn-primary" id="saveConfig">Salvar Configurações</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ALERTS -->
-    <div id="alertContainer"></div>
+    <header class="header">
+      <h1><i class="fas fa-water"></i> Monitor Inteligente de Caixa d'Água</h1>
+      <p class="subtitle">Sistema IoT para monitoramento em tempo real</p>
+    </header>
 
     <!-- STATUS PANEL -->
     <div class="status-panel">
       <div class="status-item">
-        <span class="status-label">Status API</span>
-        <span class="status-value api-status" id="apiStatus">Verificando...</span>
+        <span class="status-label">API:</span>
+        <span class="status-value api-status connected" id="apiStatus">Conectado</span>
       </div>
-      
       <div class="status-item">
-        <span class="status-label">Receptor ESP32</span>
-        <span class="status-value receptor-status" id="receptorStatus">Verificando...</span>
+        <span class="status-label">Receptor:</span>
+        <span class="status-value receptor-status connected" id="receptorStatus">Conectado</span>
       </div>
-      
       <div class="status-item">
-        <span class="status-label">Conexão LoRa</span>
-        <span class="status-value lora-status" id="loraStatus">Verificando...</span>
+        <span class="status-label">LoRa:</span>
+        <span class="status-value lora-status connected" id="loraStatus">Conectado</span>
       </div>
-      
       <div class="status-item">
-        <span class="status-label">Status Sensor</span>
-        <span class="status-value sensor-status" id="sensorStatus">Verificando...</span>
+        <span class="status-label">Sensor:</span>
+        <span class="status-value sensor-status ok" id="sensorStatus">OK</span>
       </div>
-      
       <div class="status-item">
-        <span class="status-label">Sinal LoRa</span>
+        <span class="status-label">Sinal LoRa:</span>
         <div class="signal-info">
-          <div class="signal-bar">
+          <div class="signal-bar" id="signalBar">
             <div class="signal-bar-item"></div>
             <div class="signal-bar-item"></div>
             <div class="signal-bar-item"></div>
             <div class="signal-bar-item"></div>
             <div class="signal-bar-item"></div>
           </div>
-          <span class="signal-quality zero" id="signalQuality">0%</span>
+          <div class="signal-quality zero" id="signalQuality">0%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALERT CONTAINER -->
+    <div id="alertContainer"></div>
+
+    <!-- MAIN CONTENT -->
+    <main>
+      <div class="content">
+        <!-- LEFT COLUMN: TANK AND STATS -->
+        <div class="tank-section" id="tankSection">
+          <h2><i class="fas fa-tint"></i> Nível Atual</h2>
+          
+          <div class="tank-container">
+            <!-- Water Level -->
+            <div class="water" id="waterLevel">
+              <div class="water-wave"></div>
+              <div class="water-wave"></div>
+              <div class="water-wave"></div>
+            </div>
+            
+            <!-- Tank Scale -->
+            <div class="tank-scale">
+              <div class="scale-mark">100%</div>
+              <div class="scale-mark">75%</div>
+              <div class="scale-mark">50%</div>
+              <div class="scale-mark">25%</div>
+              <div class="scale-mark">0%</div>
+            </div>
+            
+            <!-- Tank Info -->
+            <div class="tank-info" id="tankInfo">
+              <div class="percentage" id="percentageText">0%</div>
+              <div class="volume" id="volumeText">0 L</div>
+              <div class="status-message" id="statusMessage">Aguardando dados...</div>
+              <div class="capacity-info">Capacidade: <span id="volumeTotalDisplay">--</span> L</div>
+            </div>
+          </div>
+          
+          <!-- Stats Cards -->
+          <div class="stats-grid">
+            <div class="stat-card" id="distanceCard" onclick="showDetails('distance')">
+              <div class="stat-icon distance">
+                <i class="fas fa-ruler"></i>
+              </div>
+              <div class="stat-info">
+                <h3>Distância do Sensor</h3>
+                <p id="distanceText">-- cm</p>
+              </div>
+            </div>
+            
+            <div class="stat-card" id="levelCard" onclick="showDetails('level')">
+              <div class="stat-icon level">
+                <i class="fas fa-chart-line"></i>
+              </div>
+              <div class="stat-info">
+                <h3>Nível de Água</h3>
+                <p id="levelText">-- cm</p>
+              </div>
+            </div>
+            
+            <div class="stat-card" id="volumeCard" onclick="showDetails('volume')">
+              <div class="stat-icon volume">
+                <i class="fas fa-weight-hanging"></i>
+              </div>
+              <div class="stat-info">
+                <h3>Volume Disponível</h3>
+                <p id="litersText">-- L</p>
+              </div>
+            </div>
+            
+            <div class="stat-card" id="sensorCard" onclick="showDetails('status')">
+              <div class="stat-icon status">
+                <i class="fas fa-check-circle"></i>
+              </div>
+              <div class="stat-info">
+                <h3>Status do Sistema</h3>
+                <p id="sensorStatusText">Aguardando...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- RIGHT COLUMN: CHART -->
+        <div class="chart-section" id="chartSection">
+          <div class="chart-header">
+            <h2><i class="fas fa-chart-area"></i> Histórico de Nível</h2>
+            <div class="time-selector">
+              <button class="time-btn active" data-hours="24">24h</button>
+              <button class="time-btn" data-hours="48">48h</button>
+              <button class="time-btn" data-hours="168">7 Dias</button>
+              <button class="time-btn" data-hours="720">30 Dias</button>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="nivelChart"></canvas>
+            <div class="chart-message" id="chartMessage" style="display: none;">
+              <i class="fas fa-info-circle"></i>
+              <h3 id="chartMessageTitle">Mensagem</h3>
+              <p id="chartMessageText">Texto da mensagem</p>
+            </div>
+          </div>
         </div>
       </div>
       
-      <div class="status-item">
-        <span class="status-label">Última Atualização</span>
-        <span class="status-value" id="lastUpdate">--:--:--</span>
-      </div>
-    </div>
-
-    <!-- MAIN GRID -->
-    <div class="main-grid">
-      <!-- WATER LEVEL CARD -->
-      <div class="water-level-card">
-        <h2 class="card-title">
-          <i class="fas fa-tint"></i>
-          Nível Atual da Água
-        </h2>
-        
-        <div class="tank-container">
-          <div class="water-tank">
-            <div class="water-fill" id="waterFill"></div>
-            <div class="tank-info-display">
-              <div class="percentage-display" id="percentageDisplay">0%</div>
-              <div class="volume-display" id="volumeDisplay">0 L</div>
-            </div>
-          </div>
-          
-          <div class="capacity-info">
-            Capacidade Total: <span id="capacityTotal">3000 L</span>
-          </div>
+      <!-- HISTORY SECTION -->
+      <div class="history-section">
+        <h2><i class="fas fa-history"></i> Histórico de Leituras (Últimas 5)</h2>
+        <div class="loading" id="historyLoading">
+          <i class="fas fa-spinner"></i> Carregando histórico...
         </div>
-        
-        <div class="level-indicators">
-          <div class="level-indicator">
-            <div class="indicator-icon distance">
-              <i class="fas fa-ruler"></i>
-            </div>
-            <div class="indicator-info">
-              <div class="label">Distância Sensor</div>
-              <div class="value" id="distanceValue">0 cm</div>
-            </div>
-          </div>
-          
-          <div class="level-indicator">
-            <div class="indicator-icon level">
-              <i class="fas fa-chart-line"></i>
-            </div>
-            <div class="indicator-info">
-              <div class="label">Nível Água</div>
-              <div class="value" id="levelValue">0 cm</div>
-            </div>
-          </div>
-          
-          <div class="level-indicator">
-            <div class="indicator-icon volume">
-              <i class="fas fa-tint"></i>
-            </div>
-            <div class="indicator-info">
-              <div class="label">Volume Disp.</div>
-              <div class="value" id="volumeValue">0 L</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- CHART CARD -->
-      <div class="chart-card">
-        <h2 class="card-title">
-          <i class="fas fa-chart-line"></i>
-          Histórico de Nível
-        </h2>
-        <div class="chart-container">
-          <canvas id="nivelChart"></canvas>
-        </div>
-      </div>
-    </div>
-
-    <!-- HISTORY SECTION -->
-    <div class="history-section">
-      <!-- HISTÓRICO DE LEITURAS -->
-      <div class="history-card">
-        <h2 class="card-title">
-          <i class="fas fa-history"></i>
-          Histórico de Leituras (Últimas 10)
-        </h2>
-        
-        <div id="historyLoading" class="loading">
-          <div class="spinner"></div>
-          <p>Carregando histórico...</p>
-        </div>
-        
-        <div id="historyMessage" class="no-data-message" style="display: none;">
-          <i class="fas fa-inbox"></i>
-          <p>Nenhum dado disponível</p>
-        </div>
-        
-        <div id="historyTableContainer" class="history-table-container" style="display: none;">
-          <table class="history-table">
+        <div class="history-table-container" id="historyTableContainer" style="display: none;">
+          <table class="history-table" id="historyTable">
             <thead>
               <tr>
-                <th>Hora</th>
-                <th>Device</th>
+                <th>Data/Hora</th>
+                <th>Dispositivo</th>
                 <th>Status</th>
-                <th>%</th>
-                <th>Litros</th>
-                <th>Dist.</th>
-                <th>Nível</th>
-                <th>RSSI</th>
-                <th>Sinal</th>
+                <th>Nível (%)</th>
+                <th>Volume (L)</th>
+                <th>Distância (cm)</th>
+                <th>Nível (cm)</th>
+                <th>Sinal LoRa</th>
+                <th>Qualidade</th>
               </tr>
             </thead>
-            <tbody id="historyBody"></tbody>
+            <tbody id="historyBody">
+              <!-- Dados serão inseridos aqui via JavaScript -->
+            </tbody>
           </table>
         </div>
+        <div class="history-table-container history-message" id="historyMessage" style="display: none;">
+          <i class="fas fa-info-circle"></i>
+          <h3 id="historyMessageTitle">Mensagem</h3>
+          <p id="historyMessageText">Texto da mensagem</p>
+        </div>
       </div>
-
-      <!-- HISTÓRICO DE ATUALIZAÇÕES -->
-      <div class="update-history-card">
-        <h2 class="card-title">
+    </main>
+    
+    <!-- FOOTER -->
+    <footer class="footer">
+      <p>Sistema de Monitoramento IoT - Configuração via transmissor</p>
+      <div class="update-info">
+        <button class="refresh-btn" id="refreshBtn" title="Atualizar dados">
           <i class="fas fa-sync-alt"></i>
-          Atualizações
-        </h2>
-        <div id="updateHistory"></div>
+        </button>
+        <span>Última atualização: <span class="last-update" id="lastUpdate">--:--:--</span></span>
+        <span style="margin-left: 15px; font-size: 0.8rem;">
+          <i class="fas fa-heartbeat"></i> Sistema: <span id="systemStatus">ativo</span>
+        </span>
       </div>
-    </div>
+    </footer>
+  </div>
 
+  <!-- DEBUG PANEL -->
+  <div class="debug-panel">
+    <button class="debug-btn" onclick="debugData()" title="Modo Debug">
+      <i class="fas fa-bug"></i>
+    </button>
   </div>
 
   <script>
+    // Variáveis globais
     let chart = null;
     let currentData = {
       percentage: 0,
@@ -1153,32 +1261,33 @@
       distance: 0,
       level: 0,
       sensor_ok: true,
+      device: "ESP32",
+      timestamp: null,
+      display_mode: "normal",
+      status: "normal",
+      message: "",
+      sensor_error: false,
       lora_signal: {
-        rssi: 0,
+        rssi: null,
+        snr: null,
         quality: 0
       }
     };
-    let updateHistoryData = [];
-    let historyData = [];
-    const MAX_HISTORY_ITEMS = 10;
     
-    // Configurações da caixa (valores padrão baseados nos dados do receptor)
-    let config = {
-      volumeTotal: 3000,
-      alturaCaixa: 55,
-      distanciaCheia: 25,
-      distanciaVazia: 80
+    let currentMode = "normal";
+    let updateInterval = null;
+    let caixaConfig = {
+      altura: 0,
+      volumeTotal: 0,
+      distanciaCheia: 0,
+      distanciaVazia: 0
     };
 
-    // Função para calcular porcentagem corretamente
-    function calcularPorcentagem(distancia) {
-      const { distanciaCheia, distanciaVazia } = config;
-      
-      // Garantir que distância esteja dentro dos limites
+    // Função para calcular porcentagem corretamente baseado nos dados do receptor
+    function calcularPorcentagem(distancia, distanciaCheia, distanciaVazia) {
       if (distancia <= distanciaCheia) return 100;
       if (distancia >= distanciaVazia) return 0;
       
-      // Cálculo linear da porcentagem
       const intervaloTotal = distanciaVazia - distanciaCheia;
       const distanciaDoCheio = distancia - distanciaCheia;
       const porcentagem = 100 - (distanciaDoCheio / intervaloTotal * 100);
@@ -1187,318 +1296,677 @@
     }
 
     // Função para calcular litros corretamente
-    function calcularLitros(porcentagem) {
-      return Math.round((porcentagem / 100) * config.volumeTotal);
+    function calcularLitros(porcentagem, volumeTotal) {
+      return Math.round((porcentagem / 100) * volumeTotal);
     }
 
     // Função para calcular nível de água em cm
-    function calcularNivelAgua(distancia) {
-      return Math.max(0, config.alturaCaixa - (distancia - config.distanciaCheia));
+    function calcularNivelAgua(distancia, altura, distanciaCheia) {
+      return Math.max(0, altura - (distancia - distanciaCheia));
     }
 
-    // Carregar configurações salvas
-    function carregarConfiguracoes() {
-      const savedConfig = localStorage.getItem('waterTankConfig');
-      if (savedConfig) {
-        try {
-          config = JSON.parse(savedConfig);
-          document.getElementById('capacityTotal').textContent = `${config.volumeTotal} L`;
-        } catch (e) {
-          console.warn('Erro ao carregar configurações:', e);
-        }
-      }
-    }
-
-    // Salvar configurações
-    function salvarConfiguracoes(novaConfig) {
-      config = { ...config, ...novaConfig };
-      localStorage.setItem('waterTankConfig', JSON.stringify(config));
-      document.getElementById('capacityTotal').textContent = `${config.volumeTotal} L`;
+    // Inicialização
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('🚀 Dashboard inicializado');
       
-      // Recalcular dados atuais com nova configuração
-      if (currentData.distance > 0) {
-        const porcentagem = calcularPorcentagem(currentData.distance);
-        const litros = calcularLitros(porcentagem);
-        const nivel = calcularNivelAgua(currentData.distance);
-        
-        currentData.percentage = porcentagem;
-        currentData.liters = litros;
-        currentData.level = nivel;
-        
-        atualizarInterface(currentData);
+      // Configurar botões de tempo
+      document.querySelectorAll('.time-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          carregarDados(this.dataset.hours);
+        });
+      });
+      
+      // Botão de refresh
+      document.getElementById('refreshBtn').addEventListener('click', function() {
+        carregarDados();
+        this.classList.add('rotating');
+        setTimeout(() => this.classList.remove('rotating'), 1000);
+        showAlert('🔄 Atualizando dados...', 'info', 2000);
+      });
+      
+      // Carregar dados inicialmente
+      carregarDados();
+      
+      // Atualizar a cada 10 segundos
+      updateInterval = setInterval(carregarDados, 10000);
+    });
+
+    // Função para mostrar alertas
+    function showAlert(message, type = 'info', duration = 5000) {
+      const alertContainer = document.getElementById('alertContainer');
+      
+      const alerts = alertContainer.querySelectorAll('.alert');
+      if (alerts.length > 3) {
+        alerts[0].remove();
       }
+      
+      const alert = document.createElement('div');
+      alert.className = `alert ${type}`;
+      alert.innerHTML = `
+        <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
+        <span>${message}</span>
+      `;
+      
+      alertContainer.appendChild(alert);
+      
+      setTimeout(() => {
+        if (alert.parentNode) {
+          alert.remove();
+        }
+      }, duration);
     }
 
-    // Carregar dados
-    async function carregarDados() {
+    // Função para atualizar barra de sinal (COM SUPORTE PARA ZERO)
+    function updateSignalBar(signalQuality, elementId) {
+      const signalBar = document.getElementById(elementId);
+      const signalQualityElement = document.getElementById('signalQuality');
+      
+      if (!signalBar || !signalQualityElement) return;
+      
+      // Resetar todas as barras
+      signalBar.querySelectorAll('.signal-bar-item').forEach(item => {
+        item.classList.remove('active');
+        item.classList.remove('zero-signal');
+        item.style.background = '';
+      });
+      
+      // Atualizar texto da qualidade
+      signalQualityElement.textContent = `${signalQuality}%`;
+      
+      // Se qualidade for 0, mostrar todas as barras cinza
+      if (signalQuality === 0) {
+        signalBar.querySelectorAll('.signal-bar-item').forEach(item => {
+          item.classList.add('zero-signal');
+          item.style.background = 'var(--signal-none)';
+        });
+        signalQualityElement.className = 'signal-quality zero';
+        return 'zero';
+      }
+      
+      // Determinar quantas barras acender baseado na qualidade
+      let barsToActivate = 0;
+      let colorClass = '';
+      
+      if (signalQuality >= 80) {
+        barsToActivate = 5;
+        colorClass = 'excellent';
+        signalQualityElement.className = 'signal-quality excellent';
+      } else if (signalQuality >= 60) {
+        barsToActivate = 4;
+        colorClass = 'good';
+        signalQualityElement.className = 'signal-quality good';
+      } else if (signalQuality >= 40) {
+        barsToActivate = 3;
+        colorClass = 'fair';
+        signalQualityElement.className = 'signal-quality fair';
+      } else if (signalQuality >= 20) {
+        barsToActivate = 2;
+        colorClass = 'poor';
+        signalQualityElement.className = 'signal-quality poor';
+      } else {
+        barsToActivate = 1;
+        colorClass = 'bad';
+        signalQualityElement.className = 'signal-quality bad';
+      }
+      
+      // Ativar barras
+      signalBar.querySelectorAll('.signal-bar-item').forEach((item, index) => {
+        if (index < barsToActivate) {
+          item.classList.add('active');
+          
+          // Aplicar cores baseado na qualidade
+          switch(colorClass) {
+            case 'excellent':
+              item.style.background = 'var(--signal-excellent)';
+              break;
+            case 'good':
+              item.style.background = 'var(--signal-good)';
+              break;
+            case 'fair':
+              item.style.background = 'var(--signal-fair)';
+              break;
+            case 'poor':
+              item.style.background = 'var(--signal-poor)';
+              break;
+            case 'bad':
+              item.style.background = 'var(--signal-bad)';
+              break;
+          }
+        }
+      });
+      
+      return colorClass;
+    }
+
+    // Função principal para carregar dados
+    async function carregarDados(hours = 24) {
       try {
-        const apiStatus = document.getElementById('apiStatus');
-        apiStatus.textContent = 'Conectado';
-        apiStatus.className = 'status-value api-status connected';
+        console.log('🔄 Buscando dados da API...');
         
         const response = await fetch('/api/lora');
-        
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          throw new Error(`Erro na API: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log('Dados recebidos da API:', data);
+        console.log('📊 Dados recebidos da API:', data);
         
-        // Verificar se recebemos configurações da API
-        if (data.config) {
-          const apiConfig = {
-            volumeTotal: data.config.volume_total || config.volumeTotal,
-            alturaCaixa: data.config.altura || config.alturaCaixa,
-            distanciaCheia: data.config.distancia_cheia || config.distanciaCheia,
-            distanciaVazia: data.config.distancia_vazia || config.distanciaVazia
-          };
-          
-          // Atualizar configurações se diferentes
-          if (JSON.stringify(config) !== JSON.stringify(apiConfig)) {
-            salvarConfiguracoes(apiConfig);
-            showAlert('Configurações atualizadas do receptor', 'info', 3000);
-          }
+        // Processar dados conforme o formato do seu receptor
+        processarDadosReceptor(data);
+        
+        // Atualizar status da conexão
+        const apiStatusElement = document.getElementById('apiStatus');
+        if (apiStatusElement) {
+          apiStatusElement.textContent = 'Conectado';
+          apiStatusElement.className = 'status-value api-status connected';
         }
         
-        // Atualizar status do receptor
-        const receptorStatus = document.getElementById('receptorStatus');
-        if (data.receptor_status && data.receptor_status.connected) {
-          receptorStatus.textContent = 'Conectado';
-          receptorStatus.className = 'status-value receptor-status connected';
-        } else {
-          receptorStatus.textContent = 'Desconectado';
-          receptorStatus.className = 'status-value receptor-status disconnected';
+        // Atualizar último update
+        const lastUpdateElement = document.getElementById('lastUpdate');
+        if (lastUpdateElement) {
+          lastUpdateElement.textContent = new Date().toLocaleTimeString('pt-BR');
         }
         
-        // Atualizar status LoRa
-        const loraStatus = document.getElementById('loraStatus');
-        if (data.lora_connection_status && data.lora_connection_status.connected) {
-          loraStatus.textContent = 'Conectado';
-          loraStatus.className = 'status-value lora-status connected';
-        } else {
-          loraStatus.textContent = 'Desconectado';
-          loraStatus.className = 'status-value lora-status disconnected';
-        }
-        
-        // Atualizar status do sensor
-        const sensorStatus = document.getElementById('sensorStatus');
-        if (data.sensor_status && !data.sensor_status.has_error) {
-          sensorStatus.textContent = 'OK';
-          sensorStatus.className = 'status-value sensor-status ok';
-        } else {
-          sensorStatus.textContent = 'Erro';
-          sensorStatus.className = 'status-value sensor-status error';
-        }
-        
-        // Atualizar sinal LoRa
-        const signalQuality = data.lora_connection_status?.signal_quality || 0;
-        atualizarSinalLoRa(signalQuality);
-        
-        // Processar dados principais
-        if (data.distance && data.distance > 0) {
-          // Calcular valores corretamente
-          const distancia = data.distance;
-          const porcentagem = calcularPorcentagem(distancia);
-          const litros = calcularLitros(porcentagem);
-          const nivel = calcularNivelAgua(distancia);
-          
-          currentData = {
-            percentage: porcentagem,
-            liters: litros,
-            distance: distancia,
-            level: nivel,
-            sensor_ok: !data.sensor_status?.has_error,
-            lora_signal: {
-              rssi: data.lora_rssi || data.lora_connection_status?.rssi || 0,
-              quality: signalQuality
-            },
-            device: data.device || 'TX_CAIXA_01',
-            timestamp: data.timestamp || Date.now()
-          };
-          
-          atualizarInterface(currentData);
-          
-          // Adicionar ao histórico local
-          adicionarAoHistorico({
-            ...currentData,
-            status: "normal",
-            timestamp: new Date().toISOString()
-          });
-        } else {
-          // Modo de erro
-          mostrarEstadoAnormal(data.current_mode || "sensor_error");
-        }
-        
-        // Atualizar última atualização
-        const now = new Date();
-        document.getElementById('lastUpdate').textContent = now.toLocaleTimeString('pt-BR');
-        
-        // Adicionar ao histórico de atualizações
-        adicionarAtualizacao(`Dados recebidos - ${currentData.percentage}% (${currentData.liters}L)`);
-        
-        // Atualizar histórico da API
-        if (data.history && Array.isArray(data.history)) {
-          atualizarHistoricoAPI(data.history);
+        // Atualizar status do sistema
+        const systemStatusElement = document.getElementById('systemStatus');
+        if (systemStatusElement) {
+          systemStatusElement.textContent = 'ativo';
+          systemStatusElement.style.color = '#38b000';
         }
         
       } catch (error) {
-        console.error('Erro ao carregar dados:', error);
-        const apiStatus = document.getElementById('apiStatus');
-        apiStatus.textContent = 'Erro';
-        apiStatus.className = 'status-value api-status disconnected';
-        showAlert('Erro ao conectar com a API', 'error', 5000);
-        adicionarAtualizacao('Erro na conexão com API');
-      }
-    }
-
-    // Adicionar dados ao histórico local
-    function adicionarAoHistorico(dados) {
-      historyData.unshift(dados);
-      
-      if (historyData.length > MAX_HISTORY_ITEMS) {
-        historyData = historyData.slice(0, MAX_HISTORY_ITEMS);
-      }
-      
-      atualizarHistoricoLocal();
-      atualizarGrafico();
-    }
-
-    // Atualizar interface COM CORES DINÂMICAS
-    function atualizarInterface(data) {
-      const waterFill = document.getElementById('waterFill');
-      const percentage = data.percentage;
-      
-      // Atualizar altura
-      waterFill.style.height = `${percentage}%`;
-      
-      // Aplicar classe de cor baseada no nível
-      waterFill.className = 'water-fill';
-      if (percentage < 25) {
-        waterFill.classList.add('level-critical');  // VERMELHO
-      } else if (percentage < 50) {
-        waterFill.classList.add('level-low');        // LARANJA
-      } else if (percentage < 75) {
-        waterFill.classList.add('level-medium');     // AZUL
-      } else {
-        waterFill.classList.add('level-good');       // VERDE
-      }
-      
-      // Atualizar displays centrais
-      document.getElementById('percentageDisplay').textContent = `${percentage}%`;
-      document.getElementById('volumeDisplay').textContent = `${data.liters} L`;
-      
-      // Atualizar indicadores com ícones
-      document.getElementById('distanceValue').textContent = `${data.distance.toFixed(1)} cm`;
-      document.getElementById('levelValue').textContent = `${data.level.toFixed(1)} cm`;
-      document.getElementById('volumeValue').textContent = `${data.liters} L`;
-    }
-
-    // Mostrar estado anormal
-    function mostrarEstadoAnormal(mode) {
-      const waterFill = document.getElementById('waterFill');
-      waterFill.style.height = '0%';
-      waterFill.className = 'water-fill';
-      
-      document.getElementById('percentageDisplay').textContent = '---';
-      document.getElementById('volumeDisplay').textContent = '--- L';
-      document.getElementById('distanceValue').textContent = '--- cm';
-      document.getElementById('levelValue').textContent = '--- cm';
-      document.getElementById('volumeValue').textContent = '--- L';
-      
-      let message = '';
-      if (mode === "receptor_disconnected") {
-        message = 'Receptor ESP32 desconectado!';
-        showAlert(message, 'error');
-      } else if (mode === "waiting_lora") {
-        message = 'Aguardando dados do transmissor LoRa...';
-        showAlert(message, 'warning');
-      } else if (mode === "sensor_error") {
-        message = 'Erro no sensor ultrassônico!';
-        showAlert(message, 'error');
-      }
-      
-      // Adicionar entrada de erro ao histórico
-      adicionarAoHistorico({
-        device: 'ESP32',
-        status: mode,
-        percentage: -1,
-        liters: -1,
-        distance: -1,
-        level: -1,
-        lora_signal: { rssi: 0, quality: 0 },
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    // Atualizar sinal LoRa
-    function atualizarSinalLoRa(quality) {
-      const bars = document.querySelectorAll('.signal-bar-item');
-      const qualityText = document.getElementById('signalQuality');
-      
-      qualityText.textContent = `${quality}%`;
-      
-      if (quality === 0) {
-        qualityText.className = 'signal-quality zero';
-        bars.forEach(bar => {
-          bar.classList.remove('active');
-        });
-      } else {
-        let activeClass = 'good';
-        if (quality >= 80) activeClass = 'excellent';
-        else if (quality >= 60) activeClass = 'good';
-        else if (quality >= 40) activeClass = 'fair';
-        else if (quality >= 20) activeClass = 'poor';
-        else activeClass = 'bad';
+        console.error('❌ Erro ao carregar dados:', error);
         
-        qualityText.className = `signal-quality ${activeClass}`;
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          showAlert('🌐 Erro de rede. Verifique conexão com o servidor.', 'error', 5000);
+          currentMode = "receptor_disconnected";
+          atualizarInterface();
+        } else {
+          showAlert(`⚠️ Erro ao carregar dados: ${error.message}`, 'warning');
+        }
+      }
+    }
+
+    // Processar dados específicos do seu receptor
+    function processarDadosReceptor(data) {
+      console.log('📊 Processando dados do receptor:', data);
+      
+      // Verificar se tem configurações da caixa
+      if (data.config_altura && data.config_volume_total) {
+        caixaConfig = {
+          altura: data.config_altura || 0,
+          volumeTotal: data.config_volume_total || 0,
+          distanciaCheia: data.config_distancia_cheia || 0,
+          distanciaVazia: data.config_distancia_vazia || 0
+        };
         
-        const activeBars = Math.ceil((quality / 100) * 5);
-        bars.forEach((bar, index) => {
-          if (index < activeBars) {
-            bar.classList.add('active');
-          } else {
-            bar.classList.remove('active');
+        // Atualizar display da capacidade total
+        const volumeTotalDisplay = document.getElementById('volumeTotalDisplay');
+        if (volumeTotalDisplay && caixaConfig.volumeTotal > 0) {
+          volumeTotalDisplay.textContent = caixaConfig.volumeTotal.toFixed(0);
+        }
+      }
+      
+      // Determinar modo de operação
+      if (!data || data.receptor_status === false) {
+        currentMode = "receptor_disconnected";
+      } else if (data.distance === undefined || data.distance === null) {
+        currentMode = "waiting_lora";
+      } else if (data.sensor_ok === false) {
+        currentMode = "sensor_error";
+      } else {
+        currentMode = "normal";
+      }
+      
+      // Atualizar status do receptor
+      const receptorStatusElement = document.getElementById('receptorStatus');
+      if (receptorStatusElement) {
+        receptorStatusElement.textContent = currentMode !== "receptor_disconnected" ? 'Conectado' : 'Desconectado';
+        receptorStatusElement.className = `status-value receptor-status ${currentMode !== "receptor_disconnected" ? 'connected' : 'disconnected'}`;
+      }
+      
+      // Atualizar status LoRa
+      const loraStatusElement = document.getElementById('loraStatus');
+      if (loraStatusElement) {
+        const loraConnected = currentMode === "normal" || currentMode === "sensor_error";
+        loraStatusElement.textContent = loraConnected ? 'Conectado' : 'Desconectado';
+        loraStatusElement.className = `status-value lora-status ${loraConnected ? 'connected' : 'disconnected'}`;
+      }
+      
+      // Atualizar status do sensor
+      const sensorStatusElement = document.getElementById('sensorStatus');
+      if (sensorStatusElement) {
+        const sensorOk = currentMode === "normal" && data.sensor_ok !== false;
+        sensorStatusElement.textContent = sensorOk ? 'OK' : 'ERRO';
+        sensorStatusElement.className = `status-value sensor-status ${sensorOk ? 'ok' : 'error'}`;
+      }
+      
+      // Atualizar barra de sinal LoRa
+      if (data.lora_signal || data.lora_quality) {
+        const quality = data.lora_quality || (data.lora_signal ? data.lora_signal.quality : 0);
+        updateSignalBar(quality, 'signalBar');
+      } else {
+        updateSignalBar(0, 'signalBar');
+      }
+      
+      // Preparar dados para exibição
+      if (currentMode === "normal" && data.distance) {
+        // Usar cálculos corretos baseados nas configurações
+        const distancia = parseFloat(data.distance);
+        let porcentagem, litros, nivel;
+        
+        if (caixaConfig.distanciaCheia > 0 && caixaConfig.distanciaVazia > 0) {
+          porcentagem = calcularPorcentagem(distancia, caixaConfig.distanciaCheia, caixaConfig.distanciaVazia);
+        } else {
+          // Fallback para porcentagem enviada pelo receptor
+          porcentagem = data.percentage || 0;
+        }
+        
+        if (caixaConfig.volumeTotal > 0) {
+          litros = calcularLitros(porcentagem, caixaConfig.volumeTotal);
+        } else {
+          litros = data.liters || 0;
+        }
+        
+        if (caixaConfig.altura > 0 && caixaConfig.distanciaCheia > 0) {
+          nivel = calcularNivelAgua(distancia, caixaConfig.altura, caixaConfig.distanciaCheia);
+        } else {
+          nivel = data.level || 0;
+        }
+        
+        currentData = {
+          percentage: porcentagem,
+          liters: litros,
+          distance: distancia,
+          level: nivel,
+          sensor_ok: data.sensor_ok !== false,
+          device: data.device || "TX_CAIXA_01",
+          timestamp: data.timestamp || Date.now(),
+          display_mode: "normal",
+          status: "normal",
+          message: data.message || "",
+          sensor_error: false,
+          lora_signal: {
+            rssi: data.lora_rssi || -70,
+            snr: data.lora_snr || 0,
+            quality: data.lora_quality || 0
           }
-        });
+        };
+      } else {
+        // Modo de erro
+        currentData = {
+          percentage: -1,
+          liters: -1,
+          distance: -1,
+          level: -1,
+          sensor_ok: false,
+          device: data.device || "ESP32",
+          timestamp: data.timestamp || Date.now(),
+          display_mode: currentMode,
+          status: currentMode,
+          message: getErrorMessage(currentMode),
+          sensor_error: currentMode === "sensor_error"
+        };
+      }
+      
+      // Atualizar interface
+      atualizarInterface();
+      
+      // Atualizar histórico
+      if (data.historico && data.historico.length > 0) {
+        atualizarHistorico(data.historico);
+      } else if (currentMode === "normal") {
+        // Adicionar leitura atual ao histórico local
+        adicionarAoHistoricoLocal();
+      }
+      
+      // Atualizar gráfico se no modo normal
+      if (currentMode === "normal" && data.historico) {
+        const normalHistory = data.historico.filter(item => item.status === "normal");
+        if (normalHistory.length > 0) {
+          atualizarGrafico(normalHistory);
+        }
       }
     }
 
-    // Adicionar atualização
-    function adicionarAtualizacao(texto) {
+    // Função para obter mensagem de erro baseado no modo
+    function getErrorMessage(mode) {
+      switch(mode) {
+        case "receptor_disconnected":
+          return "ESP32 receptor offline";
+        case "waiting_lora":
+          return "Aguardando transmissão LoRa";
+        case "sensor_error":
+          return "ERRO NO SENSOR ULTRASSÔNICO";
+        default:
+          return "Sistema funcionando normalmente";
+      }
+    }
+
+    // Adicionar leitura atual ao histórico local
+    function adicionarAoHistoricoLocal() {
+      const historyBody = document.getElementById('historyBody');
+      if (!historyBody) return;
+      
       const now = new Date();
-      const timeString = now.toLocaleTimeString('pt-BR');
+      const historicoItem = {
+        timestamp: now.toISOString(),
+        device: currentData.device,
+        status: currentMode,
+        percentage: currentData.percentage,
+        liters: currentData.liters,
+        distance: currentData.distance,
+        level: currentData.level,
+        lora_signal: currentData.lora_signal
+      };
       
-      updateHistoryData.unshift({
-        time: timeString,
-        text: texto
+      atualizarHistorico([historicoItem]);
+    }
+
+    // Atualizar elementos da interface
+    function atualizarInterface() {
+      const { percentage, liters, distance, level, sensor_ok, message, sensor_error } = currentData;
+      
+      // Elementos DOM
+      const waterLevel = document.getElementById('waterLevel');
+      const tankInfo = document.getElementById('tankInfo');
+      const percentageText = document.getElementById('percentageText');
+      const volumeText = document.getElementById('volumeText');
+      const statusMessage = document.getElementById('statusMessage');
+      const tankSection = document.getElementById('tankSection');
+      const distanceText = document.getElementById('distanceText');
+      const levelText = document.getElementById('levelText');
+      const litersText = document.getElementById('litersText');
+      const sensorStatusText = document.getElementById('sensorStatusText');
+      
+      // Resetar classes
+      waterLevel.className = 'water';
+      tankInfo.className = 'tank-info';
+      percentageText.className = 'percentage';
+      volumeText.className = 'volume';
+      statusMessage.className = 'status-message';
+      tankSection.className = 'tank-section';
+      
+      // Cards
+      [distanceText, levelText, litersText, sensorStatusText].forEach(el => {
+        if (el) {
+          el.className = '';
+          el.style.color = '';
+          el.style.fontSize = '';
+        }
       });
       
-      if (updateHistoryData.length > 20) {
-        updateHistoryData = updateHistoryData.slice(0, 20);
+      // Resetar cards
+      document.querySelectorAll('.stat-card').forEach(card => {
+        card.className = 'stat-card';
+      });
+      document.querySelectorAll('.stat-icon').forEach(icon => {
+        icon.className = icon.className.replace(/receptor-disconnected|waiting-lora|sensor-error/g, '').trim();
+      });
+      
+      // Verificar se é erro específico do sensor
+      const isSensorError = sensor_error || !sensor_ok || 
+                          (distance === -1 && level === -1 && percentage === -1 && liters === -1);
+      
+      if (isSensorError && currentMode === "normal") {
+        currentMode = "sensor_error";
       }
       
-      renderizarHistoricoAtualizacoes();
-    }
-
-    // Renderizar histórico de atualizações
-    function renderizarHistoricoAtualizacoes() {
-      const container = document.getElementById('updateHistory');
-      container.innerHTML = '';
+      switch(currentMode) {
+        case "receptor_disconnected":
+          waterLevel.style.height = `10%`;
+          waterLevel.classList.add('receptor-disconnected');
+          
+          tankInfo.classList.add('receptor-disconnected');
+          tankSection.classList.add('receptor-disconnected');
+          
+          percentageText.textContent = "---";
+          percentageText.classList.add('receptor-disconnected');
+          volumeText.innerHTML = `0 L`;
+          statusMessage.textContent = message || "ESP32 receptor offline";
+          statusMessage.classList.add('receptor-disconnected');
+          
+          if (distanceText) distanceText.textContent = "---";
+          if (levelText) levelText.textContent = "---";
+          if (litersText) litersText.textContent = "---";
+          if (sensorStatusText) {
+            sensorStatusText.textContent = "DESCONECTADO";
+            sensorStatusText.classList.add('receptor-disconnected');
+          }
+          
+          document.querySelectorAll('.stat-card').forEach(card => {
+            card.classList.add('receptor-disconnected');
+          });
+          document.querySelectorAll('.stat-icon').forEach(icon => {
+            icon.classList.add('receptor-disconnected');
+          });
+          
+          break;
+          
+        case "waiting_lora":
+          waterLevel.style.height = `10%`;
+          waterLevel.classList.add('waiting-lora');
+          
+          tankInfo.classList.add('waiting-lora');
+          tankSection.classList.add('waiting-lora');
+          
+          percentageText.textContent = "---";
+          percentageText.classList.add('waiting-lora');
+          volumeText.innerHTML = `0 L`;
+          statusMessage.textContent = message || "Aguardando transmissão LoRa";
+          statusMessage.classList.add('waiting-lora');
+          
+          if (distanceText) {
+            distanceText.textContent = "---";
+            distanceText.classList.add('waiting-lora');
+          }
+          if (levelText) {
+            levelText.textContent = "---";
+            levelText.classList.add('waiting-lora');
+          }
+          if (litersText) {
+            litersText.textContent = "---";
+            litersText.classList.add('waiting-lora');
+          }
+          if (sensorStatusText) {
+            sensorStatusText.textContent = "AGUARDANDO LoRa";
+            sensorStatusText.classList.add('waiting-lora');
+          }
+          
+          document.querySelectorAll('.stat-card').forEach(card => {
+            card.classList.add('waiting-lora');
+          });
+          document.querySelectorAll('.stat-icon').forEach(icon => {
+            icon.classList.add('waiting-lora');
+          });
+          
+          updateSignalBar(0, 'signalBar');
+          
+          break;
+          
+        case "sensor_error":
+          waterLevel.style.height = `10%`;
+          waterLevel.classList.add('sensor-error');
+          
+          tankInfo.classList.add('sensor-error');
+          tankSection.classList.add('sensor-error');
+          
+          percentageText.textContent = "ERRO";
+          percentageText.classList.add('sensor-error');
+          volumeText.innerHTML = `0 L`;
+          statusMessage.textContent = message || "ERRO NO SENSOR ULTRASSÔNICO";
+          statusMessage.classList.add('sensor-error');
+          
+          if (distanceText) {
+            distanceText.textContent = "ERRO";
+            distanceText.classList.add('sensor-error');
+          }
+          if (levelText) {
+            levelText.textContent = "ERRO";
+            levelText.classList.add('sensor-error');
+          }
+          if (litersText) {
+            litersText.textContent = "ERRO";
+            litersText.classList.add('sensor-error');
+          }
+          if (sensorStatusText) {
+            sensorStatusText.textContent = "ERRO NO SENSOR ❌";
+            sensorStatusText.classList.add('sensor-error');
+          }
+          
+          document.querySelectorAll('.stat-card').forEach(card => {
+            card.classList.add('sensor-error');
+          });
+          document.querySelectorAll('.stat-icon').forEach(icon => {
+            icon.classList.add('sensor-error');
+          });
+          
+          showAlert('❌ ERRO NO SENSOR ULTRASSÔNICO - Verifique conexões do sensor', 'error', 10000);
+          
+          break;
+          
+        case "normal":
+        default:
+          const waterPercentage = Math.max(0, Math.min(100, percentage));
+          waterLevel.style.height = `${waterPercentage}%`;
+          
+          percentageText.textContent = `${waterPercentage}%`;
+          volumeText.innerHTML = `${liters} L`;
+          statusMessage.textContent = message || "Sistema funcionando normalmente";
+          
+          if (distanceText) {
+            distanceText.textContent = distance >= 0 ? `${distance.toFixed(1)} cm` : "---";
+          }
+          if (levelText) {
+            levelText.textContent = level >= 0 ? `${level} cm` : "---";
+          }
+          if (litersText) {
+            litersText.textContent = liters >= 0 ? `${liters} L` : "---";
+          }
+          if (sensorStatusText) {
+            sensorStatusText.textContent = sensor_ok ? "Online ✅" : "Erro ❌";
+            sensorStatusText.style.color = sensor_ok ? "#38b000" : "#e63946";
+          }
+          
+          updateWaterColor(waterPercentage);
+          
+          break;
+      }
       
-      updateHistoryData.forEach(item => {
-        const entry = document.createElement('div');
-        entry.className = 'update-entry';
-        entry.innerHTML = `
-          <span class="update-time">${item.time}</span>
-          <span class="update-text">${item.text}</span>
-        `;
-        container.appendChild(entry);
-      });
+      atualizarComponentesPorModo();
     }
 
-    // Atualizar histórico local
-    function atualizarHistoricoLocal() {
+    // Atualizar cor da água
+    function updateWaterColor(percentage) {
+      const water = document.querySelector('.water');
+      if (!water) return;
+      
+      if (percentage < 10) {
+        water.style.background = 'linear-gradient(to top, #e63946, #d00000)';
+      } else if (percentage < 20) {
+        water.style.background = 'linear-gradient(to top, #ff6b6b, #ee5a52)';
+      } else if (percentage < 50) {
+        water.style.background = 'linear-gradient(to top, #ffa726, #ff9800)';
+      } else if (percentage < 80) {
+        water.style.background = 'linear-gradient(to top, #48cae4, #0096c7)';
+      } else {
+        water.style.background = 'linear-gradient(to top, #0077b6, #023e8a)';
+      }
+    }
+
+    // Atualizar componentes baseado no modo
+    function atualizarComponentesPorModo() {
+      const chartContainer = document.getElementById('nivelChart');
+      const chartMessage = document.getElementById('chartMessage');
+      const historyTableContainer = document.getElementById('historyTableContainer');
+      const historyMessage = document.getElementById('historyMessage');
+      const historyLoading = document.getElementById('historyLoading');
+      
+      if (historyLoading) historyLoading.style.display = 'none';
+      
+      if (chartContainer) {
+        if (currentMode === "normal") {
+          chartContainer.style.display = 'block';
+          if (chartMessage) chartMessage.style.display = 'none';
+        } else {
+          chartContainer.style.display = 'none';
+          if (chartMessage) {
+            chartMessage.style.display = 'flex';
+            chartMessage.className = 'chart-message';
+            
+            switch(currentMode) {
+              case "receptor_disconnected":
+                chartMessage.classList.add('receptor-disconnected');
+                chartMessage.innerHTML = `
+                  <i class="fas fa-exclamation-triangle"></i>
+                  <h3>RECEPTOR ESP32 DESCONECTADO</h3>
+                  <p>O dispositivo receptor está offline. O gráfico será restaurado quando o receptor reconectar.</p>
+                `;
+                break;
+              case "waiting_lora":
+                chartMessage.classList.add('waiting-lora');
+                chartMessage.innerHTML = `
+                  <i class="fas fa-satellite-dish"></i>
+                  <h3>AGUARDANDO TRANSMISSÃO LoRa</h3>
+                  <p>Receptor conectado, mas sem dados do transmissor LoRa.</p>
+                `;
+                break;
+              case "sensor_error":
+                chartMessage.classList.add('sensor-error');
+                chartMessage.innerHTML = `
+                  <i class="fas fa-exclamation-triangle"></i>
+                  <h3>ERRO NO SENSOR ULTRASSÔNICO</h3>
+                  <p>O sensor está com falha. O gráfico será restaurado quando o sensor voltar ao normal.</p>
+                `;
+                break;
+            }
+          }
+        }
+      }
+      
+      if (currentMode === "normal") {
+        if (historyTableContainer) historyTableContainer.style.display = 'block';
+        if (historyMessage) historyMessage.style.display = 'none';
+      } else {
+        if (historyTableContainer) historyTableContainer.style.display = 'none';
+        if (historyMessage) {
+          historyMessage.style.display = 'flex';
+          historyMessage.className = 'history-message';
+          
+          switch(currentMode) {
+            case "receptor_disconnected":
+              historyMessage.classList.add('receptor-disconnected');
+              historyMessage.innerHTML = `
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>RECEPTOR ESP32 DESCONECTADO</h3>
+                <p>O dispositivo receptor está offline.</p>
+              `;
+              break;
+            case "waiting_lora":
+              historyMessage.classList.add('waiting-lora');
+              historyMessage.innerHTML = `
+                <i class="fas fa-satellite-dish"></i>
+                <h3>AGUARDANDO TRANSMISSÃO LoRa</h3>
+                <p>Receptor conectado ao WiFi e servidor, mas sem dados do transmissor LoRa.</p>
+              `;
+              break;
+            case "sensor_error":
+              historyMessage.classList.add('sensor-error');
+              historyMessage.innerHTML = `
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>ERRO NO SENSOR ULTRASSÔNICO</h3>
+                <p>O sensor está com falha.</p>
+              `;
+              break;
+          }
+        }
+      }
+    }
+
+    // Atualizar tabela de histórico
+    function atualizarHistorico(historico) {
       const historyBody = document.getElementById('historyBody');
       const loading = document.getElementById('historyLoading');
       const container = document.getElementById('historyTableContainer');
@@ -1506,21 +1974,23 @@
       
       if (loading) loading.style.display = 'none';
       
-      if (historyData.length === 0) {
+      if (historico.length === 0 || currentMode !== "normal") {
         if (container) container.style.display = 'none';
-        if (message) message.style.display = 'block';
         return;
       }
       
       if (container) container.style.display = 'block';
       if (message) message.style.display = 'none';
       
-      historyBody.innerHTML = '';
+      if (historyBody) historyBody.innerHTML = '';
       
-      historyData.slice(0, 10).forEach(item => {
+      historico.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      const historicoLimitado = historico.slice(0, 5);
+      
+      historicoLimitado.forEach(item => {
         const row = document.createElement('tr');
         
-        let formattedDate = '--:--:--';
+        let formattedDate = '--/--/-- --:--';
         try {
           const date = new Date(item.timestamp);
           if (!isNaN(date.getTime())) {
@@ -1556,86 +2026,43 @@
         const displayPercentage = item.percentage >= 0 ? `${item.percentage}%` : "---";
         const displayLiters = item.liters >= 0 ? `${item.liters} L` : "---";
         const displayDistance = item.distance >= 0 ? `${item.distance.toFixed(1)} cm` : "---";
-        const displayLevel = item.level >= 0 ? `${item.level.toFixed(1)} cm` : "---";
+        const displayLevel = item.level >= 0 ? `${item.level} cm` : "---";
         
         let signalQualityText = "0%";
         let signalQualityClass = "zero";
-        let rssiText = "0";
         
-        if (item.lora_signal) {
-          const quality = item.lora_signal.quality || 0;
-          signalQualityText = `${quality}%`;
+        if (item.lora_signal && item.lora_signal.quality !== null && item.lora_signal.quality > 0) {
+          signalQualityText = `${item.lora_signal.quality}%`;
           
-          if (quality >= 80) signalQualityClass = "excellent";
-          else if (quality >= 60) signalQualityClass = "good";
-          else if (quality >= 40) signalQualityClass = "fair";
-          else if (quality >= 20) signalQualityClass = "poor";
-          else if (quality > 0) signalQualityClass = "bad";
-          else signalQualityClass = "zero";
-          
-          rssiText = item.lora_signal.rssi || "0";
+          if (item.lora_signal.quality >= 80) signalQualityClass = "excellent";
+          else if (item.lora_signal.quality >= 60) signalQualityClass = "good";
+          else if (item.lora_signal.quality >= 40) signalQualityClass = "fair";
+          else if (item.lora_signal.quality >= 20) signalQualityClass = "poor";
+          else signalQualityClass = "bad";
         }
         
         row.innerHTML = `
           <td>${formattedDate}</td>
-          <td>${item.device || 'TX_CAIXA_01'}</td>
+          <td>${item.device || 'ESP32'}</td>
           <td><span class="status-badge ${statusClass}">${statusText}</span></td>
           <td>${displayPercentage}</td>
           <td>${displayLiters}</td>
           <td>${displayDistance}</td>
           <td>${displayLevel}</td>
-          <td>${rssiText}</td>
+          <td>${signalQualityText}</td>
           <td><span class="signal-quality ${signalQualityClass}">${signalQualityText}</span></td>
         `;
         
-        historyBody.appendChild(row);
-      });
-    }
-
-    // Atualizar histórico da API
-    function atualizarHistoricoAPI(historicoAPI) {
-      if (!historicoAPI || !Array.isArray(historicoAPI)) return;
-      
-      // Adicionar apenas os dados mais recentes que não temos
-      historicoAPI.forEach(item => {
-        if (item.status === "normal" && item.distance && item.distance > 0) {
-          // Verificar se já existe no histórico local
-          const existe = historyData.some(h => 
-            h.timestamp === item.timestamp || 
-            (h.distance === item.distance && Math.abs(new Date(h.timestamp) - new Date(item.timestamp)) < 60000)
-          );
-          
-          if (!existe) {
-            const porcentagem = calcularPorcentagem(item.distance);
-            const litros = calcularLitros(porcentagem);
-            const nivel = calcularNivelAgua(item.distance);
-            
-            adicionarAoHistorico({
-              device: item.device,
-              status: item.status,
-              percentage: porcentagem,
-              liters: litros,
-              distance: item.distance,
-              level: nivel,
-              lora_signal: {
-                rssi: item.lora_rssi || item.lora_signal?.rssi || 0,
-                quality: item.lora_signal?.quality || 0
-              },
-              timestamp: item.timestamp
-            });
-          }
-        }
+        if (historyBody) historyBody.appendChild(row);
       });
     }
 
     // Atualizar gráfico
-    function atualizarGrafico() {
+    function atualizarGrafico(historico) {
       const ctx = document.getElementById('nivelChart');
       if (!ctx) return;
       
-      const normalHistory = historyData.filter(item => 
-        item.status === "normal" && item.percentage !== -1
-      );
+      const normalHistory = historico.filter(item => item.status === "normal" && item.percentage !== -1);
       
       if (normalHistory.length === 0) {
         return;
@@ -1648,12 +2075,13 @@
           const date = new Date(item.timestamp);
           if (!isNaN(date.getTime())) {
             return date;
+          } else {
+            return new Date();
           }
         } catch (e) {
-          console.warn('Erro ao processar data:', e);
+          return new Date();
         }
-        return new Date();
-      }).filter(date => date instanceof Date && !isNaN(date.getTime()));
+      });
       
       const data = normalHistory.map(item => item.percentage || 0);
       
@@ -1711,9 +2139,9 @@
               x: {
                 type: 'time',
                 time: {
-                  unit: 'minute',
+                  unit: 'hour',
                   displayFormats: {
-                    minute: 'HH:mm'
+                    hour: 'HH:mm'
                   }
                 },
                 grid: {
@@ -1724,100 +2152,78 @@
           }
         });
       } else {
-        if (labels.length > 0 && data.length > 0) {
-          chart.data.labels = labels;
-          chart.data.datasets[0].data = data;
-          chart.update('none');
-        }
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = data;
+        chart.update('none');
       }
     }
 
-    // Mostrar alerta
-    function showAlert(message, type = 'info', duration = 5000) {
-      const container = document.getElementById('alertContainer');
-      const alert = document.createElement('div');
-      alert.className = `alert ${type}`;
-      alert.innerHTML = `
-        <i class="fas fa-${type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
-        <span>${message}</span>
-      `;
-      container.appendChild(alert);
+    // Função de debug
+    function debugData() {
+      console.log('=== 🐛 MODO DEBUG ===');
+      console.log('Dados atuais:', currentData);
+      console.log('Modo atual:', currentMode);
+      console.log('Configuração da caixa:', caixaConfig);
+      console.log('Sinal LoRa:', currentData.lora_signal.quality + '%');
+      console.log('Tempo desde última atualização:', document.getElementById('lastUpdate').textContent);
       
-      setTimeout(() => {
-        alert.style.opacity = '0';
-        setTimeout(() => alert.remove(), 500);
-      }, duration);
+      fetch('/api/lora')
+        .then(res => {
+          console.log('Status API:', res.status, res.statusText);
+          return res.json();
+        })
+        .then(data => {
+          console.log('Resposta API completa:', data);
+          console.log('Dados do receptor:', {
+            device: data.device,
+            distance: data.distance,
+            level: data.level,
+            percentage: data.percentage,
+            liters: data.liters,
+            config: {
+              altura: data.config_altura,
+              volumeTotal: data.config_volume_total,
+              distanciaCheia: data.config_distancia_cheia,
+              distanciaVazia: data.config_distancia_vazia
+            }
+          });
+        })
+        .catch(err => console.error('❌ Erro na requisição:', err));
+      
+      showAlert('🐛 Modo debug ativado. Verifique o console.', 'info', 3000);
     }
 
-    // Gerenciar modal de configurações
-    function gerenciarModal() {
-      const modal = document.getElementById('configModal');
-      const configBtn = document.getElementById('configBtn');
-      const closeModal = document.getElementById('closeModal');
-      const cancelConfig = document.getElementById('cancelConfig');
-      const saveConfig = document.getElementById('saveConfig');
-      const configForm = document.getElementById('configForm');
-      
-      // Preencher formulário com configurações atuais
-      document.getElementById('volumeTotal').value = config.volumeTotal;
-      document.getElementById('alturaCaixa').value = config.alturaCaixa;
-      document.getElementById('distanciaCheia').value = config.distanciaCheia;
-      document.getElementById('distanciaVazia').value = config.distanciaVazia;
-      
-      // Abrir modal
-      configBtn.addEventListener('click', () => {
-        modal.style.display = 'flex';
-      });
-      
-      // Fechar modal
-      function fecharModal() {
-        modal.style.display = 'none';
+    // Função para mostrar detalhes
+    function showDetails(type) {
+      if (currentMode === "receptor_disconnected") {
+        alert('❌ RECEPTOR ESP32 DESCONECTADO!\n\nO dispositivo receptor está offline. Verifique:\n\n1. Alimentação do ESP32 receptor\n2. Conexão WiFi do receptor\n3. Se o ESP32 está ligado\n4. Conexão física do dispositivo');
+        return;
       }
       
-      closeModal.addEventListener('click', fecharModal);
-      cancelConfig.addEventListener('click', fecharModal);
+      if (currentMode === "waiting_lora") {
+        alert('📡 AGUARDANDO DADOS DO TRANSMISSOR LoRa\n\nO receptor está conectado ao WiFi e servidor, mas não está recebendo dados do transmissor LoRa. Verifique:\n\n1. Transmissor está ligado e com bateria\n2. Distância entre os dispositivos\n3. Antenas conectadas corretamente\n4. Configurações LoRa idênticas em ambos\n\n⚠️ SINAL LoRa ZERADO até reconexão');
+        return;
+      }
       
-      // Fechar ao clicar fora
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-          fecharModal();
-        }
-      });
+      if (currentMode === "sensor_error") {
+        alert('❌ ERRO NO SENSOR ULTRASSÔNICO!\n\nO sensor está com falha. Verifique:\n\n1. Conexões do sensor (VCC=5V, GND, TRIG=GPIO12, ECHO=GPIO13)\n2. Alimentação do sensor (5V, não 3.3V)\n3. Sensor não está obstruído\n4. Distância entre 2cm e 400cm\n5. Cabos do sensor em bom estado');
+        return;
+      }
       
-      // Salvar configurações
-      saveConfig.addEventListener('click', () => {
-        const novaConfig = {
-          volumeTotal: parseInt(document.getElementById('volumeTotal').value),
-          alturaCaixa: parseInt(document.getElementById('alturaCaixa').value),
-          distanciaCheia: parseInt(document.getElementById('distanciaCheia').value),
-          distanciaVazia: parseInt(document.getElementById('distanciaVazia').value)
-        };
-        
-        // Validação básica
-        if (novaConfig.volumeTotal <= 0 || 
-            novaConfig.alturaCaixa <= 0 || 
-            novaConfig.distanciaCheia >= novaConfig.distanciaVazia) {
-          showAlert('Configurações inválidas! Verifique os valores.', 'error');
-          return;
-        }
-        
-        salvarConfiguracoes(novaConfig);
-        showAlert('Configurações salvas com sucesso!', 'success');
-        fecharModal();
-        adicionarAtualizacao('Configurações atualizadas');
-      });
+      const messages = {
+        distance: `Distância atual: ${currentData.distance} cm\nDistância do sensor ultrassônico até a superfície da água.`,
+        level: `Nível atual: ${currentData.level} cm\nAltura da coluna de água na caixa.`,
+        volume: `Volume disponível: ${currentData.liters} L\nQuantidade de água disponível para uso.\nCapacidade total: ${caixaConfig.volumeTotal || '--'} L`,
+        status: `Status: ${currentData.sensor_ok ? 'OK ✅' : 'ERRO ❌'}\nSinal LoRa: ${currentData.lora_signal.quality}%\n${currentData.sensor_ok ? 'Sensor funcionando normalmente.' : 'Problema detectado no sensor.'}`
+      };
+      
+      alert(messages[type] || 'Informações detalhadas');
     }
 
-    // Inicializar
-    function init() {
-      carregarConfiguracoes();
-      carregarDados();
-      gerenciarModal();
-      setInterval(carregarDados, 5000);
-    }
-
-    // Iniciar quando o DOM estiver carregado
-    document.addEventListener('DOMContentLoaded', init);
+    // Exportar funções para debug
+    window.debugData = debugData;
+    window.carregarDados = carregarDados;
+    window.showDetails = showDetails;
   </script>
 </body>
 </html>
