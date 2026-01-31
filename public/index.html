@@ -367,22 +367,10 @@
       height: 300px;
       margin: 20px auto;
       border: 4px solid var(--primary-dark);
-      border-radius: 0 0 15px 15px;
+      border-radius: 15px;
       background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
       overflow: hidden;
       box-shadow: inset 0 0 30px rgba(0,0,0,0.1);
-    }
-
-    .tank::before {
-      content: '';
-      position: absolute;
-      top: -4px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 60%;
-      height: 20px;
-      background: var(--primary-dark);
-      border-radius: 10px 10px 0 0;
     }
 
     .water {
@@ -398,6 +386,7 @@
       font-weight: 700;
       font-size: 1.8rem;
       text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      min-height: 40px;
     }
 
     .water::before {
@@ -801,32 +790,41 @@
         }
         
         const data = await response.json();
-        console.log('📡 Dados recebidos:', data);
+        console.log('📡 Dados recebidos da API:', data);
         
         // Atualizar status da API
         document.getElementById('apiStatus').textContent = 'Conectado';
         document.getElementById('apiStatus').className = 'status-value api-status connected';
         
-        // Processar dados atuais
-        if (data.current) {
-          currentData = {
-            percentage: data.current.percentage ?? -1,
-            liters: data.current.liters ?? -1,
-            distance: data.current.distance ?? -1,
-            level: data.current.level ?? -1,
-            sensor_ok: data.current.sensor_ok ?? false,
-            lora_signal: data.current.lora_signal ?? { quality: 0 }
-          };
-          
-          // Atualizar interface
-          atualizarInterface(currentData, data.current.status);
+        // Processar dados - a API retorna os dados diretamente no objeto raiz
+        currentData = {
+          percentage: parseInt(data.percentage) || 0,
+          liters: parseInt(data.liters) || 0,
+          distance: parseFloat(data.distance) || 0,
+          level: parseInt(data.level) || 0,
+          sensor_ok: data.sensor_ok !== false,
+          lora_signal: data.lora_signal || { quality: 0 },
+          device: data.device || 'ESP32',
+          status: data.status || 'normal'
+        };
+        
+        console.log('📊 Dados processados:', currentData);
+        
+        // Atualizar capacidade total se disponível
+        if (data.config_volume_total) {
+          document.getElementById('totalCapacity').textContent = `${data.config_volume_total} L`;
         }
         
-        // Atualizar histórico e gráfico
-        if (data.history && Array.isArray(data.history)) {
-          console.log('📊 Histórico:', data.history.length, 'registros');
-          atualizarHistorico(data.history);
-          atualizarGrafico(data.history);
+        // Atualizar interface
+        atualizarInterface(currentData, currentData.status);
+        
+        // Atualizar histórico e gráfico se disponível
+        if (data.historico && Array.isArray(data.historico)) {
+          console.log('📊 Histórico:', data.historico.length, 'registros');
+          atualizarHistorico(data.historico);
+          atualizarGrafico(data.historico);
+        } else {
+          console.log('⚠️ Nenhum histórico disponível');
         }
         
         // Atualizar última atualização
@@ -849,60 +847,35 @@
       warningBanner.className = 'connection-warning';
       warningBanner.innerHTML = '';
       
-      // Verificar status do receptor
-      if (status === 'receptor_disconnected') {
-        document.getElementById('receptorStatus').textContent = 'Desconectado';
-        document.getElementById('receptorStatus').className = 'status-value receptor-status disconnected';
-        
-        warningBanner.className = 'connection-warning receptor-off show';
-        warningBanner.innerHTML = '<i class="fas fa-exclamation-triangle"></i> RECEPTOR ESP32 DESCONECTADO! Verifique a alimentação e conexão WiFi do dispositivo.';
-        
-        // Zerar valores
-        document.getElementById('waterLevel').style.height = '0%';
-        document.getElementById('waterLevel').textContent = '---';
-        document.getElementById('currentVolume').textContent = '---';
-        document.getElementById('currentDistance').textContent = '---';
-        document.getElementById('currentLevel').textContent = '---';
-        atualizarSinalLoRa(0);
-        document.getElementById('sensorStatus').textContent = 'Indisponível';
-        document.getElementById('sensorStatus').className = 'status-value sensor-status';
-        
-        return;
+      // Determinar status baseado nos dados recebidos
+      let currentStatus = status || 'normal';
+      
+      // Se não temos dados válidos de sensor, verificar
+      if (data.percentage === 0 && data.liters === 0 && data.distance === 0 && data.level === 0) {
+        currentStatus = 'waiting_lora';
       }
       
-      // Receptor conectado
+      // Verificar status do receptor (API sempre conectada se chegou aqui)
       document.getElementById('receptorStatus').textContent = 'Conectado';
       document.getElementById('receptorStatus').className = 'status-value receptor-status connected';
       
-      // Verificar status LoRa
-      if (status === 'waiting_lora') {
-        warningBanner.className = 'connection-warning lora-off show';
-        warningBanner.innerHTML = '<i class="fas fa-satellite-dish"></i> AGUARDANDO SINAL LoRa... O transmissor não está enviando dados.';
-        
-        atualizarSinalLoRa(0);
-        document.getElementById('sensorStatus').textContent = 'Aguardando';
-        document.getElementById('sensorStatus').className = 'status-value sensor-status';
-        
-        return;
-      }
-      
-      // Verificar erro de sensor
-      if (status === 'sensor_error' || !data.sensor_ok) {
+      // Verificar status do sensor
+      if (!data.sensor_ok || currentStatus === 'sensor_error') {
         document.getElementById('sensorStatus').textContent = 'Erro';
         document.getElementById('sensorStatus').className = 'status-value sensor-status error';
         showAlert('Erro no sensor ultrassônico! Verifique as conexões.', 'error');
-        
         return;
       }
       
-      // Tudo OK - atualizar valores
+      // Sensor OK
       document.getElementById('sensorStatus').textContent = 'OK';
       document.getElementById('sensorStatus').className = 'status-value sensor-status ok';
       
-      // Atualizar tank visual
+      // Atualizar tanque visual
       const percentage = data.percentage >= 0 ? data.percentage : 0;
-      document.getElementById('waterLevel').style.height = `${percentage}%`;
-      document.getElementById('waterLevel').textContent = `${percentage}%`;
+      const waterElement = document.getElementById('waterLevel');
+      waterElement.style.height = `${percentage}%`;
+      waterElement.textContent = `${percentage}%`;
       
       // Atualizar informações
       document.getElementById('currentVolume').textContent = data.liters >= 0 ? data.liters : '---';
@@ -914,7 +887,7 @@
       atualizarSinalLoRa(signalQuality);
       
       // Adicionar atualização ao histórico
-      adicionarAtualizacao(`📊 Nível: ${percentage}% | Volume: ${data.liters}L`);
+      adicionarAtualizacao(`📊 Nível: ${percentage}% | Volume: ${data.liters}L | Distância: ${data.distance.toFixed(1)}cm`);
     }
 
     // Atualizar sinal LoRa
