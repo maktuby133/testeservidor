@@ -856,16 +856,24 @@
         };
         
         console.log('📊 Dados processados:', currentData);
-        console.log('🗄️ Capacidade total da API:', data.config_volume_total);
+        console.log('🗄️ Capacidade total recebida da API:', data.config_volume_total);
+        console.log('🗄️ Tipo:', typeof data.config_volume_total);
         
         // Atualizar capacidade total CORRETAMENTE
         const totalCapacityElement = document.getElementById('totalCapacity');
-        if (data.config_volume_total && data.config_volume_total > 0) {
-          totalCapacityElement.textContent = `${data.config_volume_total} L`;
-          console.log('✅ Capacidade total atualizada para:', data.config_volume_total, 'L');
+        console.log('📍 Elemento totalCapacity encontrado:', totalCapacityElement !== null);
+        
+        if (totalCapacityElement) {
+          if (data.config_volume_total) {
+            const capacidade = parseInt(data.config_volume_total);
+            totalCapacityElement.textContent = `${capacidade} L`;
+            console.log('✅ Capacidade total EXIBIDA:', capacidade, 'L');
+          } else {
+            totalCapacityElement.textContent = '-- L';
+            console.log('⚠️ Capacidade total não disponível na API');
+          }
         } else {
-          totalCapacityElement.textContent = '-- L';
-          console.log('⚠️ Capacidade total não disponível');
+          console.error('❌ ERRO: Elemento totalCapacity não encontrado no DOM!');
         }
         
         // Atualizar interface
