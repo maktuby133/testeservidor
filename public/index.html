@@ -1069,13 +1069,17 @@
     let updateHistoryData = [];
     let capacityTotal = 500;
     const MAX_HISTORY_ITEMS = 20;
-    let refreshInterval = 5000; // 5 segundos
+    let refreshInterval = 5000;
     let lastUpdateTime = null;
+    let configLoaded = false;
 
     // Inicialização
     document.addEventListener('DOMContentLoaded', function() {
       // Atualizar ano no footer
       document.getElementById('currentYear').textContent = new Date().getFullYear();
+      
+      // Carregar configuração primeiro
+      carregarConfiguracao();
       
       // Carregar dados pela primeira vez
       carregarDados();
@@ -1092,6 +1096,38 @@
         }
       });
     });
+
+    // Carregar configuração da API
+    async function carregarConfiguracao() {
+      try {
+        const response = await fetch('/api/config', {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Configuração recebida:', data);
+        
+        // Atualizar capacidade total
+        if (data.volumeTotal) {
+          capacityTotal = data.volumeTotal;
+          document.getElementById('capacityTotal').textContent = `${capacityTotal} L`;
+          configLoaded = true;
+        }
+        
+      } catch (error) {
+        console.warn('Não foi possível carregar configuração:', error);
+        // Usar valor padrão de 500L
+        document.getElementById('capacityTotal').textContent = `${capacityTotal} L`;
+      }
+    }
 
     // Carregar dados da API
     async function carregarDados() {
@@ -1119,9 +1155,9 @@
         apiStatus.textContent = 'Conectado';
         apiStatus.className = 'status-value api-status connected';
         
-        // Atualizar capacidade total se disponível
-        if (data.config && data.config.volumeTotal) {
-          capacityTotal = data.config.volumeTotal;
+        // Se não carregou configuração ainda, tentar obter capacidade dos dados
+        if (!configLoaded && data.capacity) {
+          capacityTotal = data.capacity;
           document.getElementById('capacityTotal').textContent = `${capacityTotal} L`;
         }
         
@@ -1193,10 +1229,8 @@
         adicionarAtualizacao(`Dados atualizados - ${currentMode === "normal" ? currentData.percentage + "%" : "Modo: " + currentMode}`);
         
         // Atualizar histórico e gráfico
-        if (data.history && Array.isArray(data.history)) {
-          atualizarHistorico(data.history);
-          atualizarGrafico(data.history);
-        }
+        atualizarHistorico(data);
+        atualizarGrafico(data);
         
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
@@ -1410,7 +1444,7 @@
     }
 
     // Atualizar histórico de leituras
-    function atualizarHistorico(historico) {
+    function atualizarHistorico(data) {
       const historyBody = document.getElementById('historyBody');
       const loading = document.getElementById('historyLoading');
       const container = document.getElementById('historyTableContainer');
@@ -1418,7 +1452,18 @@
       
       if (loading) loading.style.display = 'none';
       
-      if (!historico || historico.length === 0) {
+      // Verificar se há histórico disponível
+      let historico = [];
+      
+      if (data.history && Array.isArray(data.history)) {
+        historico = data.history;
+      } else if (data.readings && Array.isArray(data.readings)) {
+        historico = data.readings;
+      } else if (data.leituras && Array.isArray(data.leituras)) {
+        historico = data.leituras;
+      }
+      
+      if (historico.length === 0) {
         if (container) container.style.display = 'none';
         if (message) message.style.display = 'block';
         return;
@@ -1430,7 +1475,12 @@
       historyBody.innerHTML = '';
       
       // Ordenar por timestamp (mais recente primeiro) e limitar a 5
-      historico.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      historico.sort((a, b) => {
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return timeB - timeA;
+      });
+      
       const historicoLimitado = historico.slice(0, 5);
       
       historicoLimitado.forEach(item => {
@@ -1439,9 +1489,11 @@
         // Formatar data
         let formattedDate = '--:--:--';
         try {
-          const date = new Date(item.timestamp);
-          if (!isNaN(date.getTime())) {
-            formattedDate = date.toLocaleTimeString('pt-BR');
+          if (item.timestamp) {
+            const date = new Date(item.timestamp);
+            if (!isNaN(date.getTime())) {
+              formattedDate = date.toLocaleTimeString('pt-BR');
+            }
           }
         } catch (e) {
           console.warn('Erro ao formatar data:', e);
@@ -1449,7 +1501,8 @@
         
         // Determinar status
         let statusText, statusClass;
-        switch(item.status) {
+        const itemStatus = item.status || item.mode || "normal";
+        switch(itemStatus) {
           case "normal":
             statusText = "Normal";
             statusClass = "normal";
@@ -1472,30 +1525,39 @@
         }
         
         // Formatar valores
-        const displayPercentage = item.percentage >= 0 ? `${item.percentage}%` : "---";
-        const displayLiters = item.liters >= 0 ? `${item.liters.toFixed(1)} L` : "---";
-        const displayDistance = item.distance >= 0 ? `${item.distance.toFixed(1)} cm` : "---";
-        const displayLevel = item.level >= 0 ? `${item.level.toFixed(1)} cm` : "---";
+        const percentage = item.percentage !== undefined ? item.percentage : 
+                          (item.percentual !== undefined ? item.percentual : 0);
+        const liters = item.liters !== undefined ? item.liters : 
+                      (item.volume !== undefined ? item.volume : 0);
+        const distance = item.distance !== undefined ? item.distance : 
+                        (item.distancia !== undefined ? item.distancia : 0);
+        const level = item.level !== undefined ? item.level : 
+                     (item.nivel !== undefined ? item.nivel : 0);
+        
+        const displayPercentage = percentage >= 0 ? `${percentage}%` : "---";
+        const displayLiters = liters >= 0 ? `${liters.toFixed(1)} L` : "---";
+        const displayDistance = distance >= 0 ? `${distance.toFixed(1)} cm` : "---";
+        const displayLevel = level >= 0 ? `${level.toFixed(1)} cm` : "---";
         
         // Formatar sinal LoRa
         let signalQualityText = "0%";
         let signalQualityClass = "zero";
         let rssiText = "0";
         
-        if (item.lora_signal) {
-          if (item.lora_signal.quality !== null && item.lora_signal.quality > 0) {
-            signalQualityText = `${item.lora_signal.quality}%`;
-            
-            if (item.lora_signal.quality >= 80) signalQualityClass = "excellent";
-            else if (item.lora_signal.quality >= 60) signalQualityClass = "good";
-            else if (item.lora_signal.quality >= 40) signalQualityClass = "fair";
-            else if (item.lora_signal.quality >= 20) signalQualityClass = "poor";
-            else signalQualityClass = "bad";
-          }
+        const loraSignal = item.lora_signal || item.signal || {};
+        
+        if (loraSignal.quality !== undefined && loraSignal.quality !== null && loraSignal.quality > 0) {
+          signalQualityText = `${loraSignal.quality}%`;
           
-          if (item.lora_signal.rssi) {
-            rssiText = item.lora_signal.rssi.toString();
-          }
+          if (loraSignal.quality >= 80) signalQualityClass = "excellent";
+          else if (loraSignal.quality >= 60) signalQualityClass = "good";
+          else if (loraSignal.quality >= 40) signalQualityClass = "fair";
+          else if (loraSignal.quality >= 20) signalQualityClass = "poor";
+          else signalQualityClass = "bad";
+        }
+        
+        if (loraSignal.rssi !== undefined) {
+          rssiText = loraSignal.rssi.toString();
         }
         
         row.innerHTML = `
@@ -1515,14 +1577,28 @@
     }
 
     // Atualizar gráfico
-    function atualizarGrafico(historico) {
+    function atualizarGrafico(data) {
       const ctx = document.getElementById('nivelChart');
       if (!ctx) return;
       
+      // Coletar dados para o gráfico
+      let historico = [];
+      
+      if (data.history && Array.isArray(data.history)) {
+        historico = data.history;
+      } else if (data.readings && Array.isArray(data.readings)) {
+        historico = data.readings;
+      } else if (data.leituras && Array.isArray(data.leituras)) {
+        historico = data.leituras;
+      }
+      
       // Filtrar apenas dados normais com porcentagem válida
-      const normalHistory = historico.filter(item => 
-        item.status === "normal" && item.percentage !== -1 && item.percentage !== null
-      );
+      const normalHistory = historico.filter(item => {
+        const status = item.status || item.mode || "normal";
+        const percentage = item.percentage !== undefined ? item.percentage : 
+                          (item.percentual !== undefined ? item.percentual : -1);
+        return status === "normal" && percentage !== -1 && percentage !== null;
+      });
       
       if (normalHistory.length === 0) {
         // Destruir gráfico existente se não houver dados
@@ -1530,33 +1606,65 @@
           chart.destroy();
           chart = null;
         }
+        
+        // Mostrar mensagem de sem dados
+        const chartContainer = document.querySelector('.chart-container');
+        if (!chartContainer.querySelector('.no-data-message')) {
+          chartContainer.innerHTML = `
+            <div class="no-data-message">
+              <i class="fas fa-chart-line" aria-hidden="true"></i>
+              <p>Nenhum dado disponível para gráfico</p>
+            </div>
+          `;
+        }
         return;
       }
       
       // Ordenar por timestamp (mais antigo primeiro para o gráfico)
-      normalHistory.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      normalHistory.sort((a, b) => {
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return timeA - timeB;
+      });
       
       // Preparar dados
       const labels = normalHistory.map(item => {
         try {
-          const date = new Date(item.timestamp);
-          return isNaN(date.getTime()) ? new Date() : date;
+          if (item.timestamp) {
+            const date = new Date(item.timestamp);
+            return isNaN(date.getTime()) ? new Date() : date;
+          }
+          return new Date();
         } catch (e) {
           return new Date();
         }
       });
       
-      const data = normalHistory.map(item => item.percentage || 0);
+      const chartData = normalHistory.map(item => {
+        return item.percentage !== undefined ? item.percentage : 
+               (item.percentual !== undefined ? item.percentual : 0);
+      });
       
       // Criar ou atualizar gráfico
       if (!chart) {
-        chart = new Chart(ctx.getContext('2d'), {
+        // Remover mensagem de sem dados se existir
+        const chartContainer = document.querySelector('.chart-container');
+        const noDataMessage = chartContainer.querySelector('.no-data-message');
+        if (noDataMessage) {
+          noDataMessage.remove();
+        }
+        
+        // Restaurar canvas
+        chartContainer.innerHTML = '<canvas id="nivelChart" role="img" aria-label="Gráfico do histórico do nível da água"></canvas>';
+        
+        const newCtx = document.getElementById('nivelChart');
+        chart = new Chart(newCtx.getContext('2d'), {
           type: 'line',
           data: {
             labels: labels,
             datasets: [{
               label: 'Nível da Água (%)',
-              data: data,
+              data: chartData,
               borderColor: '#0077b6',
               backgroundColor: 'rgba(0, 119, 182, 0.1)',
               borderWidth: 3,
@@ -1617,7 +1725,7 @@
         });
       } else {
         chart.data.labels = labels;
-        chart.data.datasets[0].data = data;
+        chart.data.datasets[0].data = chartData;
         chart.update('none');
       }
     }
