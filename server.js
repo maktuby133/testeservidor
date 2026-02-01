@@ -621,7 +621,7 @@ function calculateSignalQuality(rssi, snr) {
   return Math.round(Math.max(1, Math.min(100, quality)));
 }
 
-// ====== FUNÇÃO PRINCIPAL DE VERIFICAÇÃO - VERSÃO CORRIGIDA ======
+// ====== FUNÇÃO PRINCIPAL DE VERIFICAÇÃO ======
 function checkSystemStatus() {
   const now = Date.now();
   const timeSinceReceptor = now - lastReceptorRequest;
@@ -641,7 +641,7 @@ function checkSystemStatus() {
     }
   }
 
-  // ====== REGRA 2: STATUS LoRa - VERSÃO CORRIGIDA ======
+  // ====== REGRA 2: STATUS LoRa ======
   if (systemStatus.receptor.connected) {
     // ✅ CORREÇÃO: Verificar se há dados válidos recentes no histórico
     const hasRecentValidData = historico.length > 0 && 
@@ -657,22 +657,14 @@ function checkSystemStatus() {
       systemStatus.lora.rssi = null;
       systemStatus.lora.snr = null;
     } else {
-      // LoRa ATIVO - MANTER ÚLTIMO SINAL (MESMO QUE FRACO)
+      // LoRa ATIVO - RESTAURAR ÚLTIMO SINAL BOM
       systemStatus.lora.connected = true;
       systemStatus.lora.waitingData = false;
-      
-      // ✅ CORREÇÃO PRINCIPAL: Mostrar último sinal recebido mesmo que seja fraco
-      if (lastGoodLoRaSignal.rssi !== null && lastGoodLoRaSignal.rssi !== 0) {
-        systemStatus.lora.description = "Transmissão LoRa ativa";
-        systemStatus.lora.quality = lastGoodLoRaSignal.quality;
-        systemStatus.lora.rssi = lastGoodLoRaSignal.rssi;
-        systemStatus.lora.snr = lastGoodLoRaSignal.snr;
-      } else {
-        systemStatus.lora.description = "Transmissão LoRa detectada";
-        systemStatus.lora.quality = 0;
-        systemStatus.lora.rssi = null;
-        systemStatus.lora.snr = null;
-      }
+      systemStatus.lora.description = "Transmissão LoRa ativa";
+      // Restaurar último sinal bom
+      systemStatus.lora.quality = lastGoodLoRaSignal.quality;
+      systemStatus.lora.rssi = lastGoodLoRaSignal.rssi;
+      systemStatus.lora.snr = lastGoodLoRaSignal.snr;
     }
   } else {
     systemStatus.lora.connected = false;
@@ -683,7 +675,6 @@ function checkSystemStatus() {
     systemStatus.lora.description = "Receptor offline";
   }
 }
-
 
 // ====== ROTAS ADICIONAIS ======
 app.get("/api/test", (req, res) => {
