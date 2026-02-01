@@ -47,7 +47,7 @@ let systemStatus = {
     waitingData: false,
     rssi: null,
     snr: null,
-    quality: 0, // ZERADO quando perder conexão
+    quality: 0,
     description: "Transmissão LoRa ativa"
   },
   sensor: {
@@ -157,7 +157,43 @@ function calcularConsumo(currentIndex) {
   return { uso1h, usoSemana, usoMes };
 }
 
-// ====== FUNÇÃO PRINCIPAL DE VERIFICAÇÃO ======
+// ====== FUNÇÃO AUXILIAR: CALCULAR QUALIDADE DO SINAL ======
+// VERSÃO CORRIGIDA - RANGE ESTENDIDO ATÉ -130 dBm
+function calculateSignalQuality(rssi, snr) {
+  if (rssi === null || rssi === undefined) return 0;
+  
+  let quality = 0;
+  
+  // RANGE ESTENDIDO - Aceita sinais muito fracos até -130 dBm
+  if (rssi >= -40) quality = 100;
+  else if (rssi >= -50) quality = 95;
+  else if (rssi >= -60) quality = 85;
+  else if (rssi >= -70) quality = 75;
+  else if (rssi >= -80) quality = 65;
+  else if (rssi >= -90) quality = 50;
+  else if (rssi >= -100) quality = 35;
+  else if (rssi >= -110) quality = 20;
+  else if (rssi >= -115) quality = 12;
+  else if (rssi >= -120) quality = 8;
+  else if (rssi >= -125) quality = 5;
+  else if (rssi >= -130) quality = 3;
+  else quality = 1;  // NUNCA ZERO se houver RSSI válido
+  
+  // Ajuste baseado no SNR
+  if (snr !== null && snr !== undefined) {
+    if (snr > 10) quality = Math.min(100, quality + 15);
+    else if (snr > 5) quality = Math.min(100, quality + 10);
+    else if (snr > 0) quality = Math.min(100, quality + 5);
+    else if (snr >= -5) quality = Math.max(1, quality - 5);
+    else if (snr >= -10) quality = Math.max(1, quality - 10);
+    else quality = Math.max(1, quality - 15);
+  }
+  
+  // GARANTIR que nunca seja 0 quando há RSSI válido
+  return Math.round(Math.max(1, Math.min(100, quality)));
+}
+
+// ====== FUNÇÃO PRINCIPAL DE VERIFICAÇÃO - VERSÃO CORRIGIDA ======
 function checkSystemStatus() {
   const now = Date.now();
   const timeSinceReceptor = now - lastReceptorRequest;
@@ -177,7 +213,7 @@ function checkSystemStatus() {
     }
   }
 
-  // ====== REGRA 2: STATUS LoRa ======
+  // ====== REGRA 2: STATUS LoRa - VERSÃO CORRIGIDA ======
   if (systemStatus.receptor.connected) {
     // ✅ CORREÇÃO: Verificar se há dados válidos recentes no histórico
     const hasRecentValidData = historico.length > 0 && 
@@ -193,14 +229,22 @@ function checkSystemStatus() {
       systemStatus.lora.rssi = null;
       systemStatus.lora.snr = null;
     } else {
-      // LoRa ATIVO - RESTAURAR ÚLTIMO SINAL BOM
+      // LoRa ATIVO - MANTER ÚLTIMO SINAL (MESMO QUE FRACO)
       systemStatus.lora.connected = true;
       systemStatus.lora.waitingData = false;
-      systemStatus.lora.description = "Transmissão LoRa ativa";
-      // Restaurar último sinal bom
-      systemStatus.lora.quality = lastGoodLoRaSignal.quality;
-      systemStatus.lora.rssi = lastGoodLoRaSignal.rssi;
-      systemStatus.lora.snr = lastGoodLoRaSignal.snr;
+      
+      // ✅ CORREÇÃO PRINCIPAL: Mostrar último sinal recebido mesmo que seja fraco
+      if (lastGoodLoRaSignal.rssi !== null && lastGoodLoRaSignal.rssi !== 0) {
+        systemStatus.lora.description = "Transmissão LoRa ativa";
+        systemStatus.lora.quality = lastGoodLoRaSignal.quality;
+        systemStatus.lora.rssi = lastGoodLoRaSignal.rssi;
+        systemStatus.lora.snr = lastGoodLoRaSignal.snr;
+      } else {
+        systemStatus.lora.description = "Transmissão LoRa detectada";
+        systemStatus.lora.quality = 0;
+        systemStatus.lora.rssi = null;
+        systemStatus.lora.snr = null;
+      }
     }
   } else {
     systemStatus.lora.connected = false;
@@ -550,7 +594,7 @@ function criarRespostaStatus(status) {
     lora_signal: {
       rssi: systemStatus.lora.rssi,
       snr: systemStatus.lora.snr,
-      quality: systemStatus.lora.quality // ZERADO quando waiting_lora
+      quality: systemStatus.lora.quality
     },
     config_applied: {
       volume_total: caixaConfig.volumeTotal,
@@ -583,97 +627,6 @@ function criarRespostaStatus(status) {
   }
 
   return baseResponse;
-}
-
-// ====== FUNÇÃO AUXILIAR: CALCULAR QUALIDADE DO SINAL ======
-// VERSÃO CORRIGIDA - RANGE ESTENDIDO ATÉ -130 dBm
-function calculateSignalQuality(rssi, snr) {
-  if (rssi === null || rssi === undefined) return 0;
-  
-  let quality = 0;
-  
-  // RANGE ESTENDIDO - Aceita sinais muito fracos até -130 dBm
-  if (rssi >= -40) quality = 100;
-  else if (rssi >= -50) quality = 95;
-  else if (rssi >= -60) quality = 85;
-  else if (rssi >= -70) quality = 75;
-  else if (rssi >= -80) quality = 65;
-  else if (rssi >= -90) quality = 50;
-  else if (rssi >= -100) quality = 35;
-  else if (rssi >= -110) quality = 20;
-  else if (rssi >= -115) quality = 12;  // NOVO - sinal muito fraco
-  else if (rssi >= -120) quality = 8;   // NOVO - sinal extremamente fraco
-  else if (rssi >= -125) quality = 5;   // NOVO - limite de sensibilidade
-  else if (rssi >= -130) quality = 3;   // NOVO - mínimo detectável
-  else quality = 1;  // NUNCA ZERO se houver RSSI válido
-  
-  // Ajuste baseado no SNR
-  if (snr !== null && snr !== undefined) {
-    if (snr > 10) quality = Math.min(100, quality + 15);
-    else if (snr > 5) quality = Math.min(100, quality + 10);
-    else if (snr > 0) quality = Math.min(100, quality + 5);
-    else if (snr >= -5) quality = Math.max(1, quality - 5);
-    else if (snr >= -10) quality = Math.max(1, quality - 10);
-    else quality = Math.max(1, quality - 15);
-  }
-  
-  // GARANTIR que nunca seja 0 quando há RSSI válido
-  return Math.round(Math.max(1, Math.min(100, quality)));
-}
-
-// ====== FUNÇÃO PRINCIPAL DE VERIFICAÇÃO ======
-function checkSystemStatus() {
-  const now = Date.now();
-  const timeSinceReceptor = now - lastReceptorRequest;
-  const timeSinceLoRa = lastLoRaPacket ? now - lastLoRaPacket : Infinity;
-
-  // ====== REGRA 1: RECEPTOR CONECTADO/DESCONECTADO ======
-  if (timeSinceReceptor > RECEPTOR_TIMEOUT_MS) {
-    if (systemStatus.receptor.connected) {
-      systemStatus.receptor.connected = false;
-      systemStatus.receptor.description = `Receptor offline - Sem comunicação há ${Math.floor(timeSinceReceptor/1000)}s`;
-      historico = [];
-    }
-  } else {
-    if (!systemStatus.receptor.connected) {
-      systemStatus.receptor.connected = true;
-      systemStatus.receptor.description = "Receptor conectado ao WiFi";
-    }
-  }
-
-  // ====== REGRA 2: STATUS LoRa ======
-  if (systemStatus.receptor.connected) {
-    // ✅ CORREÇÃO: Verificar se há dados válidos recentes no histórico
-    const hasRecentValidData = historico.length > 0 && 
-      historico[historico.length - 1].status === "normal" &&
-      (Date.now() - new Date(historico[historico.length - 1].timestamp).getTime()) < 60000; // menos de 60s
-    
-    if (timeSinceLoRa > LORA_TIMEOUT_MS && !hasRecentValidData) {
-      // AGUARDANDO LoRa - ZERAR SINAL (apenas se não houver dados válidos recentes)
-      systemStatus.lora.connected = false;
-      systemStatus.lora.waitingData = true;
-      systemStatus.lora.description = "Aguardando transmissão LoRa";
-      systemStatus.lora.quality = 0; // ZERAR QUALIDADE DO SINAL
-      systemStatus.lora.rssi = null;
-      systemStatus.lora.snr = null;
-    } else {
-      // LoRa ATIVO - RESTAURAR ÚLTIMO SINAL BOM
-      systemStatus.lora.connected = true;
-      systemStatus.lora.waitingData = false;
-      systemStatus.lora.description = "Transmissão LoRa ativa";
-      // Restaurar último sinal bom
-      systemStatus.lora.quality = lastGoodLoRaSignal.quality;
-      systemStatus.lora.rssi = lastGoodLoRaSignal.rssi;
-      systemStatus.lora.snr = lastGoodLoRaSignal.snr;
-    }
-  } else {
-    systemStatus.lora.connected = false;
-    systemStatus.lora.waitingData = true;
-    systemStatus.lora.quality = 0;
-    systemStatus.lora.rssi = null;
-    systemStatus.lora.snr = null;
-    systemStatus.lora.description = "Receptor offline";
-  }
 }
 
 // ====== ROTAS ADICIONAIS ======
@@ -714,7 +667,7 @@ app.get("/health", (req, res) => {
     lora: {
       connected: systemStatus.lora.connected,
       waiting: systemStatus.lora.waitingData,
-      quality: systemStatus.lora.quality, // ZERADO quando desconectado
+      quality: systemStatus.lora.quality,
       last_packet: systemStatus.lora.lastPacket ? 
         new Date(systemStatus.lora.lastPacket).toISOString() : null
     },
