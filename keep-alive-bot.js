@@ -1,11 +1,9 @@
 #!/usr/bin/env node
-
 /**
  * BOT SIMPLES PARA MANTER SERVIDOR ATIVO NO RENDER
  * Faz ping a cada 14 minutos para evitar desligamento
+ * Usa fetch nativo do Node.js 18+ (sem dependências extras)
  */
-
-import fetch from 'node-fetch';
 
 // Configurações
 const SERVER_URL = process.env.SERVER_URL || "https://testeservidor-6opr.onrender.com";
@@ -27,17 +25,20 @@ async function pingServer() {
     `${SERVER_URL}/health`,
     `${SERVER_URL}/api/test`
   ];
-  
+
   for (const url of urls) {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), PING_TIMEOUT);
+
       const startTime = Date.now();
-      const response = await fetch(url, { 
-        timeout: PING_TIMEOUT,
+      const response = await fetch(url, {
+        signal: controller.signal,
         headers: { 'User-Agent': 'KeepAlive-Bot/1.0' }
       });
-      const endTime = Date.now();
-      const responseTime = endTime - startTime;
-      
+      clearTimeout(timeoutId);
+      const responseTime = Date.now() - startTime;
+
       if (response.ok) {
         console.log(`✅ ${url} - ${response.status} (${responseTime}ms)`);
       } else {
@@ -46,12 +47,12 @@ async function pingServer() {
     } catch (error) {
       console.log(`❌ ${url} - ERRO: ${error.message}`);
     }
-    
+
     // Pequena pausa entre requisições
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
-  
-  console.log(`🔄 Próximo ping em: ${new Date(Date.now() + PING_INTERVAL).toLocaleTimeString()}`);
+
+  console.log(`🔄 Próximo ping em: ${new Date(Date.now() + PING_INTERVAL).toLocaleTimeString()}\n`);
 }
 
 // Ping imediato
@@ -59,11 +60,6 @@ pingServer();
 
 // Configurar intervalo
 const intervalId = setInterval(pingServer, PING_INTERVAL);
-
-// Manter processo rodando
-setInterval(() => {
-  // Apenas para manter ativo
-}, 60000);
 
 // Tratamento de sinais
 process.on('SIGINT', () => {
