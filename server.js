@@ -585,31 +585,57 @@ function criarRespostaStatus(status) {
   return baseResponse;
 }
 
-// ====== FUNÇÃO AUXILIAR: CALCULAR QUALIDADE DO SINAL ======
-function calculateSignalQuality(rssi, snr) {
-  if (rssi === null || rssi === undefined) return 0;
+// ====== FUNÇÃO PARA CALCULAR QUALIDADE DO SINAL ====== 
+// VERSÃO CORRIGIDA COM RANGE ESTENDIDO
+int calculateSignalQuality(int16_t rssi, float snr) {
+  // NUNCA retornar 0 se houver RSSI válido (comunicação estabelecida)
+  if (rssi == 0) return 0;
   
-  let quality = 0;
+  int quality = 0;
   
+  // RANGE ESTENDIDO - Aceita sinais muito fracos até -130 dBm
   if (rssi >= -40) quality = 100;
   else if (rssi >= -50) quality = 95;
   else if (rssi >= -60) quality = 85;
   else if (rssi >= -70) quality = 75;
   else if (rssi >= -80) quality = 65;
   else if (rssi >= -90) quality = 50;
-  else if (rssi >= -100) quality = 30;
-  else if (rssi >= -110) quality = 15;
-  else quality = 5;
+  else if (rssi >= -100) quality = 35;
+  else if (rssi >= -110) quality = 20;
+  else if (rssi >= -115) quality = 12;  // NOVO - sinal muito fraco
+  else if (rssi >= -120) quality = 8;   // NOVO - sinal extremamente fraco
+  else if (rssi >= -125) quality = 5;   // NOVO - limite de sensibilidade
+  else if (rssi >= -130) quality = 3;   // NOVO - mínimo detectável
+  else quality = 1;  // NUNCA ZERO se houver comunicação
   
-  if (snr !== null && snr !== undefined) {
-    if (snr > 10) quality = Math.min(100, quality + 15);
-    else if (snr > 5) quality = Math.min(100, quality + 10);
-    else if (snr < -5) quality = Math.max(0, quality - 20);
-    else if (snr < 0) quality = Math.max(0, quality - 10);
-  }
+  // Ajuste baseado no SNR
+  if (snr > 10) quality = min(100, quality + 15);
+  else if (snr > 5) quality = min(100, quality + 10);
+  else if (snr > 0) quality = min(100, quality + 5);
+  else if (snr >= -5) quality = max(1, quality - 5);
+  else if (snr >= -10) quality = max(1, quality - 10);
+  else quality = max(1, quality - 15);
   
-  return Math.round(Math.max(0, Math.min(100, quality)));
+  // GARANTIR que nunca seja 0 quando há RSSI
+  return max(1, quality);
 }
+
+// ====== VERSÃO ALTERNATIVA COM LÓGICA MAIS SIMPLES ======
+int calculateSignalQualitySimple(int16_t rssi) {
+  if (rssi == 0) return 0;
+  
+  // Mapear -130 dBm a -40 dBm para 1% a 100%
+  // RSSI melhor = -40 dBm = 100%
+  // RSSI pior = -130 dBm = 1%
+  
+  int quality = map(rssi, -130, -40, 1, 100);
+  
+  // Garantir limites
+  quality = constrain(quality, 1, 100);
+  
+  return quality;
+}
+
 
 // ====== ROTAS ADICIONAIS ======
 app.get("/api/test", (req, res) => {
